@@ -25,6 +25,16 @@ export const profileSchema = z.object({
   avatar_url: z.string().url().nullable().optional(),
 })
 
+export const passwordChangeSchema = z
+  .object({
+    password: z.string().min(6, 'Password must be at least 6 characters.'),
+    confirmPassword: z.string().min(6, 'Confirm your password.'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match.',
+    path: ['confirmPassword'],
+  })
+
 const wasteTypeValues = WASTE_TYPES.map((item) => item.value) as [
   string,
   ...string[],
@@ -48,4 +58,6 @@ export const listingSchema = z.object({
 
 export type LoginFormValues = z.infer<typeof loginSchema>
 export type SignUpFormValues = z.infer<typeof signUpSchema>
+export type ProfileFormValues = z.input<typeof profileSchema>
+export type PasswordChangeFormValues = z.infer<typeof passwordChangeSchema>
 export type ListingFormValues = z.input<typeof listingSchema>

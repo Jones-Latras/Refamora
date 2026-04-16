@@ -68,6 +68,15 @@ export default function BuyerDashboardScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.topActions}>
+          <Pressable
+            onPress={() => router.push('/(shared)/profile')}
+            style={styles.profileButton}
+          >
+            <Text style={styles.profileButtonText}>Open profile</Text>
+          </Pressable>
+        </View>
+
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View>
@@ -145,6 +154,20 @@ const styles = StyleSheet.create({
   content: {
     padding: 24,
     gap: 18,
+  },
+  topActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  profileButton: {
+    backgroundColor: palette.parchment,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  profileButtonText: {
+    color: palette.sageDark,
+    fontWeight: '800',
   },
   section: {
     gap: 14,

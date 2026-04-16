@@ -55,6 +55,14 @@ export async function signOut() {
   return getSupabaseClient().auth.signOut()
 }
 
+export async function updatePassword(password: string) {
+  if (!hasSupabaseEnv) {
+    return { data: null, error: new Error('Supabase is not configured yet.') }
+  }
+
+  return getSupabaseClient().auth.updateUser({ password })
+}
+
 export async function getSession(): Promise<Session | null> {
   if (!hasSupabaseEnv) {
     return null

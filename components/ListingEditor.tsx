@@ -15,6 +15,14 @@ import { FormField } from './FormField'
 import { LocationPicker } from './LocationPicker'
 import { WasteSuggestions } from './WasteSuggestions'
 
+const fulfillmentOptions = [
+  { value: 'pickup', label: 'Pickup' },
+  { value: 'delivery', label: 'Delivery' },
+  { value: 'both', label: 'Both' },
+] as const
+
+const unitPresets = ['kg', 'sack', 'bundle', 'ton']
+
 type ListingEditorProps = {
   heroTitle?: string
   heroSubtitle?: string
@@ -56,6 +64,8 @@ export function ListingEditor({
     longitude: watch('longitude') as number | null,
   }
   const acceptsOffers = watch('accept_offers')
+  const selectedFulfillmentType = watch('fulfillment_type')
+  const selectedUnit = watch('unit')
   const wasteSuggestions = getWasteSuggestions(selectedWasteType)
   const selectedImage = watch('image_url')
 
@@ -221,6 +231,38 @@ export function ListingEditor({
               )}
             />
           </View>
+          <View style={styles.selectorBlock}>
+            <Text style={styles.selectorLabel}>Common units</Text>
+            <View style={styles.selectorWrap}>
+              {unitPresets.map((unit) => {
+                const selected = selectedUnit === unit
+
+                return (
+                  <Pressable
+                    key={unit}
+                    onPress={() =>
+                      setValue('unit', unit, {
+                        shouldValidate: true,
+                      })
+                    }
+                    style={[
+                      styles.selectorChip,
+                      selected ? styles.selectorChipActive : null,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.selectorChipText,
+                        selected ? styles.selectorChipTextActive : null,
+                      ]}
+                    >
+                      {unit}
+                    </Text>
+                  </Pressable>
+                )
+              })}
+            </View>
+          </View>
           <Controller
             control={control}
             name="address"
@@ -234,19 +276,43 @@ export function ListingEditor({
               />
             )}
           />
-          <Controller
-            control={control}
-            name="fulfillment_type"
-            render={({ field: { onChange, value } }) => (
-              <FormField
-                label="Fulfillment type"
-                value={value}
-                onChangeText={onChange}
-                placeholder="pickup"
-                error={errors.fulfillment_type?.message}
-              />
-            )}
-          />
+          <View style={styles.selectorBlock}>
+            <Text style={styles.selectorLabel}>Fulfillment type</Text>
+            <View style={styles.selectorWrap}>
+              {fulfillmentOptions.map((option) => {
+                const selected = selectedFulfillmentType === option.value
+
+                return (
+                  <Pressable
+                    key={option.value}
+                    onPress={() =>
+                      setValue('fulfillment_type', option.value, {
+                        shouldValidate: true,
+                      })
+                    }
+                    style={[
+                      styles.selectorChip,
+                      selected ? styles.selectorChipActive : null,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.selectorChipText,
+                        selected ? styles.selectorChipTextActive : null,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                )
+              })}
+            </View>
+            {errors.fulfillment_type?.message ? (
+              <Text style={styles.errorText}>
+                {errors.fulfillment_type.message}
+              </Text>
+            ) : null}
+          </View>
 
           <Pressable
             onPress={() =>

@@ -55,6 +55,31 @@ export async function uploadListingImage(
   return { data: data.publicUrl, error: null }
 }
 
+export async function uploadAvatarImage(
+  uri: string,
+  userId: string,
+): Promise<ServiceResult<string>> {
+  const filePath = `${userId}/avatar-${Date.now()}.jpg`
+  const uploadResult = await uploadImage('avatars', filePath, uri)
+
+  if (uploadResult.error || !uploadResult.data) {
+    return {
+      data: null,
+      error: uploadResult.error ?? new Error('Failed to upload profile photo.'),
+    }
+  }
+
+  if (!hasSupabaseEnv) {
+    return { data: null, error: new Error('Supabase is not configured yet.') }
+  }
+
+  const { data } = getSupabaseClient().storage
+    .from('avatars')
+    .getPublicUrl(uploadResult.data)
+
+  return { data: data.publicUrl, error: null }
+}
+
 export async function deleteImage(
   bucket: StorageBucket,
   filePath: string,
