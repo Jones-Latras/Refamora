@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import type { ListingFilters, ListingPreview } from '../types/app'
 
@@ -87,20 +87,22 @@ export function useBuyerListings(filters: ListingFilters = {}) {
 }
 
 export function useFarmerListings(userId?: string | null) {
+  const loadFarmerListings = useCallback(async () => {
+    if (!userId) {
+      return []
+    }
+
+    const result = await getFarmerListings(userId)
+
+    if (result.error) {
+      throw result.error
+    }
+
+    return result.data ?? []
+  }, [userId])
+
   return useAsync<ListingPreview[]>(
-    async () => {
-      if (!userId) {
-        return []
-      }
-
-      const result = await getFarmerListings(userId)
-
-      if (result.error) {
-        throw result.error
-      }
-
-      return result.data ?? []
-    },
+    loadFarmerListings,
     [userId],
     Boolean(userId),
   )

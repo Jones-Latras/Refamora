@@ -46,7 +46,7 @@ function SplashGate() {
   if (isLoading) {
     return (
       <View style={styles.splash}>
-        <Text style={styles.eyebrow}>AgriWaste E-Market</Text>
+        <Text style={styles.eyebrow}>Refamora</Text>
         <Text style={styles.title}>Linking farmers and buyers</Text>
         <ActivityIndicator color={palette.harvest} size="small" />
       </View>

@@ -59,7 +59,7 @@ export default function SignUpScreen() {
       >
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.hero}>
-            <Text style={styles.title}>Create your AgriWaste account</Text>
+            <Text style={styles.title}>Create your Refamora account</Text>
           </View>
 
           <View style={styles.form}>

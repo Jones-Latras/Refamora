@@ -78,7 +78,7 @@ export default function MyListingsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {isLoading ? (
+      {isLoading && data === null ? (
         <View style={styles.center}>
           <Text style={styles.helper}>Loading your listings...</Text>
         </View>

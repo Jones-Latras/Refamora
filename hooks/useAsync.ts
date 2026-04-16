@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 export function useAsync<T>(
   asyncFn: () => Promise<T>,
@@ -48,7 +48,7 @@ export function useAsync<T>(
     }
   }, [enabled, ...deps])
 
-  const refetch = async () => {
+  const refetch = useCallback(async () => {
     setIsLoading(true)
     setError(null)
 
@@ -64,7 +64,7 @@ export function useAsync<T>(
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [asyncFn])
 
   return { data, isLoading, error, refetch }
 }

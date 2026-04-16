@@ -1,8 +1,8 @@
 import type { ExpoConfig } from 'expo/config'
 
 const config: ExpoConfig = {
-  name: 'AgriWaste Market',
-  slug: 'agriwaste-market',
+  name: 'Refamora',
+  slug: 'refamora',
   scheme: 'agriwaste',
   version: '1.0.0',
   orientation: 'portrait',

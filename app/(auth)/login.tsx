@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, router } from 'expo-router'
 import { Controller, useForm } from 'react-hook-form'
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -18,7 +19,7 @@ import { signIn } from '../../services/authService'
 import { hasSupabaseEnv } from '../../services/supabase'
 import type { LoginFormValues } from '../../utils/schemas'
 import { loginSchema } from '../../utils/schemas'
-import { palette, radii } from '../../utils/theme'
+import { palette, radii, shadow } from '../../utils/theme'
 
 export default function LoginScreen() {
   const { showToast } = useToast()
@@ -52,70 +53,98 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}
       >
-        <ScrollView contentContainerStyle={styles.content}>
-          <View style={styles.hero}>
-            <Text style={styles.eyebrow}>Refamora</Text>
-            <Text style={styles.title}>Sign in</Text>
-          </View>
+        <View style={styles.background}>
+          <View style={styles.topGlow} />
+          <View style={styles.midGlow} />
 
-          {!hasSupabaseEnv ? (
-            <View style={styles.notice}>
-              <Text style={styles.noticeTitle}>Supabase not connected yet</Text>
-              <Text style={styles.noticeText}>
-                Copy `SUPABASE_URL` and `SUPABASE_ANON_KEY` into `.env` before
-                testing auth.
-              </Text>
+          <ScrollView
+            bounces={false}
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.main}>
+              <View style={styles.brandBlock}>
+                <Image
+                  source={require('../../assets/icon.png')}
+                  style={styles.logo}
+                />
+                <Text style={styles.brand}>Refamora</Text>
+                <Text style={styles.brandMeaning}>
+                  Where farm waste becomes more value.
+                </Text>
+              </View>
+
+              {!hasSupabaseEnv ? (
+                <View style={styles.notice}>
+                  <Text style={styles.noticeTitle}>Supabase not connected yet</Text>
+                  <Text style={styles.noticeText}>
+                    Add `SUPABASE_URL` and `SUPABASE_ANON_KEY` to `.env` before
+                    testing login.
+                  </Text>
+                </View>
+              ) : null}
+
+              <View style={styles.form}>
+                <Controller
+                  control={control}
+                  name="email"
+                  render={({ field: { onChange, value } }) => (
+                    <FormField
+                      label="Email"
+                      value={value}
+                      onChangeText={onChange}
+                      placeholder="farmer@example.com"
+                      keyboardType="email-address"
+                      error={errors.email?.message}
+                    />
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="password"
+                  render={({ field: { onChange, value } }) => (
+                    <FormField
+                      label="Password"
+                      value={value}
+                      onChangeText={onChange}
+                      placeholder="Your password"
+                      secureTextEntry
+                      error={errors.password?.message}
+                    />
+                  )}
+                />
+
+                <Pressable
+                  disabled={isSubmitting}
+                  onPress={onSubmit}
+                  style={styles.primaryButton}
+                >
+                  <Text style={styles.primaryButtonText}>
+                    {isSubmitting ? 'Signing in...' : 'Sign In'}
+                  </Text>
+                </Pressable>
+              </View>
+
+              <View style={styles.footer}>
+                <Text style={styles.footerText}>Need an account?</Text>
+                <Link href="/(auth)/signup" style={styles.footerLink}>
+                  Create one here
+                </Link>
+              </View>
             </View>
-          ) : null}
+          </ScrollView>
 
-          <View style={styles.form}>
-            <Controller
-              control={control}
-              name="email"
-              render={({ field: { onChange, value } }) => (
-                <FormField
-                  label="Email"
-                  value={value}
-                  onChangeText={onChange}
-                  placeholder="farmer@example.com"
-                  keyboardType="email-address"
-                  error={errors.email?.message}
-                />
-              )}
-            />
-            <Controller
-              control={control}
-              name="password"
-              render={({ field: { onChange, value } }) => (
-                <FormField
-                  label="Password"
-                  value={value}
-                  onChangeText={onChange}
-                  placeholder="Your password"
-                  secureTextEntry
-                  error={errors.password?.message}
-                />
-              )}
-            />
-
-            <Pressable
-              disabled={isSubmitting}
-              onPress={onSubmit}
-              style={styles.primaryButton}
-            >
-              <Text style={styles.primaryButtonText}>
-                {isSubmitting ? 'Signing in...' : 'Sign In'}
-              </Text>
-            </Pressable>
+          <View pointerEvents="none" style={styles.landscape}>
+            <View style={[styles.hill, styles.hillBack]} />
+            <View style={[styles.hill, styles.hillMiddle]} />
+            <View style={[styles.hill, styles.hillFrontLeft]} />
+            <View style={[styles.hill, styles.hillFrontRight]} />
+            <View style={[styles.field, styles.fieldOne]} />
+            <View style={[styles.field, styles.fieldTwo]} />
+            <View style={[styles.field, styles.fieldThree]} />
           </View>
-
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Need an account?</Text>
-            <Link href="/(auth)/signup" style={styles.footerLink}>
-              Create one here
-            </Link>
-          </View>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   )
@@ -129,30 +158,72 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
+  background: {
+    flex: 1,
+    backgroundColor: '#f7f8fb',
+  },
+  topGlow: {
+    position: 'absolute',
+    top: -120,
+    left: -60,
+    right: -60,
+    height: 260,
+    borderRadius: 200,
+    backgroundColor: 'rgba(98, 150, 214, 0.10)',
+  },
+  midGlow: {
+    position: 'absolute',
+    top: 220,
+    left: 40,
+    right: 40,
+    height: 220,
+    borderRadius: 140,
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+  },
   content: {
-    padding: 24,
-    gap: 22,
-  },
-  hero: {
-    gap: 6,
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 28,
     paddingTop: 24,
+    paddingBottom: 210,
   },
-  eyebrow: {
-    color: palette.sageDark,
-    fontWeight: '700',
-    fontSize: 14,
+  main: {
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 360,
+    gap: 18,
   },
-  title: {
-    color: palette.soil,
-    fontWeight: '800',
-    fontSize: 32,
-    lineHeight: 38,
+  brandBlock: {
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 6,
+  },
+  logo: {
+    width: 88,
+    height: 88,
+  },
+  brand: {
+    color: '#214d33',
+    fontSize: 42,
+    lineHeight: 46,
+    fontWeight: '900',
+    textAlign: 'center',
+    letterSpacing: 0.2,
+  },
+  brandMeaning: {
+    maxWidth: 320,
+    color: '#6c7b74',
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
   },
   notice: {
-    backgroundColor: palette.parchment,
+    backgroundColor: 'rgba(255, 248, 235, 0.96)',
     borderRadius: radii.md,
-    padding: 16,
-    gap: 6,
+    padding: 14,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(176, 126, 40, 0.16)',
   },
   noticeTitle: {
     color: palette.clay,
@@ -166,11 +237,12 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   primaryButton: {
-    marginTop: 8,
-    backgroundColor: palette.sage,
+    marginTop: 4,
+    backgroundColor: '#2f7d42',
     borderRadius: 999,
-    paddingVertical: 16,
+    paddingVertical: 17,
     alignItems: 'center',
+    ...shadow,
   },
   primaryButtonText: {
     color: palette.cream,
@@ -179,13 +251,82 @@ const styles = StyleSheet.create({
   },
   footer: {
     flexDirection: 'row',
+    justifyContent: 'center',
     gap: 6,
   },
   footerText: {
     color: palette.muted,
   },
   footerLink: {
-    color: palette.sageDark,
+    color: '#365b45',
     fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+  landscape: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 185,
+    overflow: 'hidden',
+  },
+  hill: {
+    position: 'absolute',
+    bottom: -28,
+    borderRadius: 240,
+  },
+  hillBack: {
+    left: -40,
+    right: -40,
+    height: 120,
+    backgroundColor: '#e5eddc',
+  },
+  hillMiddle: {
+    left: 20,
+    right: 20,
+    bottom: -34,
+    height: 110,
+    backgroundColor: '#d7e6cd',
+  },
+  hillFrontLeft: {
+    left: -70,
+    width: 250,
+    bottom: -44,
+    height: 120,
+    backgroundColor: '#bad28c',
+  },
+  hillFrontRight: {
+    right: -70,
+    width: 250,
+    bottom: -48,
+    height: 126,
+    backgroundColor: '#a5c36d',
+  },
+  field: {
+    position: 'absolute',
+    bottom: 22,
+    borderRadius: 999,
+    opacity: 0.95,
+  },
+  fieldOne: {
+    left: -30,
+    width: 220,
+    height: 72,
+    backgroundColor: '#d9e26d',
+    transform: [{ rotate: '-8deg' }],
+  },
+  fieldTwo: {
+    left: 120,
+    right: 60,
+    height: 70,
+    backgroundColor: '#cfd95b',
+    transform: [{ rotate: '10deg' }],
+  },
+  fieldThree: {
+    right: -20,
+    width: 170,
+    height: 62,
+    backgroundColor: '#b4cc55',
+    transform: [{ rotate: '-10deg' }],
   },
 })

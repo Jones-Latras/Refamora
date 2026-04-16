@@ -221,7 +221,7 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.identity}>
-            <Text style={styles.name}>{profile.full_name ?? 'AgriWaste user'}</Text>
+            <Text style={styles.name}>{profile.full_name ?? 'Refamora user'}</Text>
             <Text style={styles.meta}>
               {(role ?? 'buyer').toUpperCase()} · {profile.email ?? user?.email ?? 'No email'}
             </Text>
