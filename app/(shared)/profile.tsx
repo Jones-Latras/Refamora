@@ -169,7 +169,7 @@ export default function ProfileScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
         <View style={styles.loadingState}>
           <ActivityIndicator color={palette.sage} size="small" />
           <Text style={styles.loadingText}>Loading profile...</Text>
@@ -180,7 +180,7 @@ export default function ProfileScreen() {
 
   if (!profile) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
         <View style={styles.emptyWrapper}>
           <EmptyState
             title="Profile details are empty"
@@ -192,7 +192,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.cover}>
           <View style={styles.coverGlow} />

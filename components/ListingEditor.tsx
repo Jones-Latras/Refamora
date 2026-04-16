@@ -138,7 +138,7 @@ export function ListingEditor({
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
       <ScrollView ref={scrollViewRef} contentContainerStyle={styles.content}>
         {heroTitle || heroSubtitle ? (
           <View style={styles.hero}>

@@ -1,5 +1,4 @@
-import { router, Stack } from 'expo-router'
-import { Pressable, Text } from 'react-native'
+import { Stack } from 'expo-router'
 
 import { palette } from '../../utils/theme'
 
@@ -10,20 +9,9 @@ export default function BuyerLayout() {
         headerShadowVisible: false,
         headerTintColor: palette.soil,
         headerStyle: { backgroundColor: palette.cream },
-        headerTitleStyle: { fontWeight: '700' },
+        headerBackTitleVisible: false,
+        headerTitleStyle: { fontWeight: '700', fontSize: 17 },
         contentStyle: { backgroundColor: palette.cream },
-        headerRight: () => (
-          <Pressable onPress={() => router.push('/(shared)/profile')}>
-            <Text
-              style={{
-                color: palette.sageDark,
-                fontWeight: '800',
-              }}
-            >
-              Profile
-            </Text>
-          </Pressable>
-        ),
       }}
     >
       <Stack.Screen name="feed" options={{ title: 'Buyer Feed' }} />

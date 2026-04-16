@@ -186,7 +186,7 @@ export default function ListingDetailScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
         <View style={styles.loadingState}>
           <ActivityIndicator color={palette.sage} size="small" />
           <Text style={styles.loadingText}>Loading listing details...</Text>
@@ -197,7 +197,7 @@ export default function ListingDetailScreen() {
 
   if (!listing) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
         <View style={styles.emptyWrapper}>
           <EmptyState
             title="Listing not available"
@@ -209,7 +209,7 @@ export default function ListingDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
       <ScrollView
         contentContainerStyle={[
           styles.content,

@@ -66,7 +66,7 @@ export default function BuyerDashboardScreen() {
   const recentRequests = requests.slice(0, 3)
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.topActions}>
           <Pressable

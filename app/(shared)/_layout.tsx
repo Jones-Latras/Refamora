@@ -9,7 +9,8 @@ export default function SharedLayout() {
         headerShadowVisible: false,
         headerTintColor: palette.soil,
         headerStyle: { backgroundColor: palette.cream },
-        headerTitleStyle: { fontWeight: '700' },
+        headerBackTitleVisible: false,
+        headerTitleStyle: { fontWeight: '700', fontSize: 17 },
         contentStyle: { backgroundColor: palette.cream },
       }}
     >

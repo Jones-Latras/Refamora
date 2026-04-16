@@ -38,7 +38,7 @@ export default function FeedScreen() {
   ].filter((value) => value != null && value !== '').length
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
       <View style={styles.content}>
         <TextInput
           value={query}

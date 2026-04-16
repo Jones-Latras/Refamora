@@ -28,7 +28,7 @@ A complete, phase-by-phase construction guide. Each task is checkable. Weaknesse
 ## Master Checklist â€” All 71 Tasks
 
 Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
-Latest note: 2026-04-16 UI polish pass applied across auth, dashboards, listings, shared surfaces, filter interactions, and map popup presentation. Buyer/shared profile page now supports avatar upload, personal info editing, password change, and logout.
+Latest note: 2026-04-16 UI polish pass applied across auth, dashboards, listings, shared surfaces, filter interactions, and map popup presentation. Buyer/shared profile page now supports avatar upload, personal info editing, password change, and logout. Farmer dashboard was reworked around greeting-first hierarchy, tighter stat cards, one primary CTA, better empty states, and useful listing previews.
 ### Phase 0 â€” Project Setup (8 tasks)
 - [x] Initialize Expo project with TypeScript template
 - [x] Configure folder structure (components, services, hooks, utils, types, screens)

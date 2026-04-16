@@ -125,7 +125,7 @@ export default function EditListingScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
         <View style={styles.center}>
           <ActivityIndicator color={palette.sage} size="small" />
           <Text style={styles.helper}>Loading listing...</Text>
@@ -136,7 +136,7 @@ export default function EditListingScreen() {
 
   if (!initialValues) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
         <View style={styles.wrapper}>
           <EmptyState
             title="Listing not found"

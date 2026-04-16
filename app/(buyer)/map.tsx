@@ -50,7 +50,7 @@ export default function MapScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
       <View style={styles.container}>
         {isLoading ? (
           <View style={styles.loadingState}>

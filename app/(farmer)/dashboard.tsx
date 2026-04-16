@@ -1,25 +1,132 @@
 import { useFocusEffect } from '@react-navigation/native'
 import { router } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { ContactRequestCard } from '../../components/ContactRequestCard'
 import { EmptyState } from '../../components/EmptyState'
-import { ListingCard } from '../../components/ListingCard'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
+import { useProfile } from '../../hooks/useProfile'
 import {
   getSellerInquiries,
   markSellerInquiriesSeen,
 } from '../../services/contactService'
-import { signOut } from '../../services/authService'
 import { getFarmerListings } from '../../services/listingService'
 import type { ContactRequestSummary, ListingPreview } from '../../types/app'
-import { palette, radii } from '../../utils/theme'
+import { formatDate, formatPrice } from '../../utils/formatters'
+import { palette, radii, shadow } from '../../utils/theme'
+
+function getGreeting(name?: string | null) {
+  const hour = new Date().getHours()
+  const normalizedName = name?.includes('@') ? name.split('@')[0] : name
+  const firstName = normalizedName?.trim().split(/[\s._-]+/)[0]
+
+  if (hour < 12) {
+    return `Good morning${firstName ? `, ${firstName}` : ''}`
+  }
+
+  if (hour < 18) {
+    return `Good afternoon${firstName ? `, ${firstName}` : ''}`
+  }
+
+  return `Good evening${firstName ? `, ${firstName}` : ''}`
+}
+
+function getInitials(name?: string | null, fallback = 'R') {
+  if (!name) {
+    return fallback.charAt(0).toUpperCase()
+  }
+
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('')
+}
+
+type MetricCardProps = {
+  label: string
+  value: string
+  tone?: 'default' | 'attention'
+}
+
+function MetricCard({ label, value, tone = 'default' }: MetricCardProps) {
+  return (
+    <View
+      style={[
+        styles.metricCard,
+        tone === 'attention' ? styles.metricCardAttention : null,
+      ]}
+    >
+      <Text style={styles.metricValue}>{value}</Text>
+      <Text style={styles.metricLabel}>{label}</Text>
+      {tone === 'attention' ? (
+        <View style={styles.metricBadge}>
+          <Text style={styles.metricBadgeText}>Needs attention</Text>
+        </View>
+      ) : null}
+    </View>
+  )
+}
+
+type ListingPreviewCardProps = {
+  listing: ListingPreview
+  onEdit: () => void
+}
+
+function ListingPreviewCard({ listing, onEdit }: ListingPreviewCardProps) {
+  return (
+    <View style={styles.listingCard}>
+      {listing.imageUrl ? (
+        <Image source={{ uri: listing.imageUrl }} style={styles.listingImage} />
+      ) : (
+        <View style={styles.listingImageFallback}>
+          <Text style={styles.listingImageFallbackText}>{listing.wasteType}</Text>
+        </View>
+      )}
+
+      <View style={styles.listingContent}>
+        <View style={styles.listingHeader}>
+          <View style={styles.listingTextBlock}>
+            <Text numberOfLines={1} style={styles.listingTitle}>
+              {listing.title}
+            </Text>
+            <Text style={styles.listingMeta}>
+              {listing.wasteType} | {formatPrice(listing.price, listing.unit)}
+            </Text>
+          </View>
+
+          <View
+            style={[
+              styles.statusPill,
+              listing.status === 'active'
+                ? styles.statusActive
+                : listing.status === 'sold'
+                  ? styles.statusSold
+                  : styles.statusUnavailable,
+            ]}
+          >
+            <Text style={styles.statusText}>{listing.status}</Text>
+          </View>
+        </View>
+
+        <View style={styles.listingFooter}>
+          <Text style={styles.listingDate}>Posted {formatDate(listing.createdAt)}</Text>
+          <Pressable onPress={onEdit} style={styles.inlineAction}>
+            <Text style={styles.inlineActionText}>Edit</Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  )
+}
 
 export default function FarmerDashboardScreen() {
   const { user } = useAuth()
+  const { profile } = useProfile(user?.id)
   const { showToast } = useToast()
   const [listings, setListings] = useState<ListingPreview[]>([])
   const [inquiries, setInquiries] = useState<ContactRequestSummary[]>([])
@@ -54,11 +161,6 @@ export default function FarmerDashboardScreen() {
     }, [loadDashboard]),
   )
 
-  const handleSignOut = async () => {
-    await signOut()
-    router.replace('/(auth)/login')
-  }
-
   const handleMarkAllSeen = async () => {
     if (!user) {
       return
@@ -92,52 +194,95 @@ export default function FarmerDashboardScreen() {
     () => inquiries.filter((request) => request.status === 'pending').length,
     [inquiries],
   )
-
-  const metrics = [
-    { label: 'Active Listings', value: activeCount.toString() },
-    { label: 'Sold', value: soldCount.toString() },
-    { label: 'New Inquiries', value: pendingInquiryCount.toString() },
-  ]
+  const profileIncomplete = useMemo(
+    () => !profile?.phone || !profile?.city || !profile?.avatar_url,
+    [profile],
+  )
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.accountRow}>
-          <Text numberOfLines={1} style={styles.accountEmail}>
-            {user?.email ?? 'Signed in'}
-          </Text>
-          <Pressable onPress={handleSignOut}>
-            <Text style={styles.signOut}>Sign out</Text>
-          </Pressable>
+        <View style={styles.header}>
+          <View style={styles.identityRow}>
+            {profile?.avatar_url ? (
+              <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
+            ) : (
+              <View style={styles.avatarFallback}>
+                <Text style={styles.avatarText}>
+                  {getInitials(profile?.full_name, user?.email ?? 'R')}
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.identityText}>
+              <Text style={styles.greeting}>
+                {getGreeting(profile?.full_name ?? user?.email)}
+              </Text>
+              <Text style={styles.headerSubtext}>
+                Manage your listings and buyer inquiries.
+              </Text>
+              <Text style={styles.headerMeta}>
+                {profile?.email ?? user?.email ?? 'No email'} | Verified seller
+              </Text>
+            </View>
+
+            <Pressable
+              accessibilityLabel="Open profile"
+              onPress={() => router.push('/(shared)/profile')}
+              style={styles.profileButton}
+            >
+              <Text style={styles.profileButtonText}>
+                {getInitials(profile?.full_name, 'P').slice(0, 1)}
+              </Text>
+            </Pressable>
+          </View>
+
+          {profileIncomplete ? (
+            <View style={styles.tipCard}>
+              <Text style={styles.tipTitle}>Complete your profile</Text>
+              <Text style={styles.tipText}>
+                Add your photo, phone number, and city so buyers can trust your
+                listings faster.
+              </Text>
+              <Pressable
+                onPress={() => router.push('/(shared)/profile')}
+                style={styles.tipAction}
+              >
+                <Text style={styles.tipActionText}>Finish profile</Text>
+              </Pressable>
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.metricRow}>
-          {metrics.map((metric) => (
-            <View key={metric.label} style={styles.metricCard}>
-              <Text style={styles.metricValue}>{metric.value}</Text>
-              <Text style={styles.metricLabel}>{metric.label}</Text>
-            </View>
-          ))}
+          <MetricCard label="Active listings" value={activeCount.toString()} />
+          <MetricCard
+            label="New inquiries"
+            value={pendingInquiryCount.toString()}
+            tone={pendingInquiryCount > 0 ? 'attention' : 'default'}
+          />
+          <MetricCard label="Sold items" value={soldCount.toString()} />
         </View>
 
-        <View style={styles.actions}>
-          <Pressable
-            onPress={() => router.push('/(farmer)/create-listing')}
-            style={styles.primaryButton}
-          >
-            <Text style={styles.primaryButtonText}>Create a Listing</Text>
-          </Pressable>
+        <Pressable
+          onPress={() => router.push('/(farmer)/create-listing')}
+          style={styles.primaryButton}
+        >
+          <Text style={styles.primaryButtonText}>+ Create Listing</Text>
+        </Pressable>
+
+        <View style={styles.secondaryActions}>
           <Pressable
             onPress={() => router.push('/(farmer)/my-listings')}
             style={styles.secondaryButton}
           >
-            <Text style={styles.secondaryButtonText}>Manage Existing Listings</Text>
+            <Text style={styles.secondaryButtonText}>Manage Listings</Text>
           </Pressable>
           <Pressable
             onPress={() => router.push('/(shared)/profile')}
             style={styles.secondaryButton}
           >
-            <Text style={styles.secondaryButtonText}>Open My Profile</Text>
+            <Text style={styles.secondaryButtonText}>View Profile</Text>
           </Pressable>
         </View>
 
@@ -159,7 +304,7 @@ export default function FarmerDashboardScreen() {
 
           {inquiries.length > 0 ? (
             <View style={styles.stack}>
-              {inquiries.slice(0, 3).map((inquiry) => (
+              {inquiries.slice(0, 2).map((inquiry) => (
                 <ContactRequestCard
                   key={inquiry.id}
                   request={inquiry}
@@ -170,27 +315,42 @@ export default function FarmerDashboardScreen() {
           ) : (
             <EmptyState
               title="No inquiries yet"
-              description="When a buyer contacts you from a listing, the inquiry will appear here."
+              description="Buyers who message you about your listings will appear here."
+              actionLabel="Create first listing"
+              onAction={() => router.push('/(farmer)/create-listing')}
             />
           )}
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent listings</Text>
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text style={styles.sectionTitle}>Your listings</Text>
+              <Text style={styles.sectionSubtitle}>
+                {activeCount} active | {soldCount} sold
+              </Text>
+            </View>
+            <Pressable onPress={() => router.push('/(farmer)/my-listings')}>
+              <Text style={styles.linkText}>View all</Text>
+            </Pressable>
+          </View>
+
           {listings.length > 0 ? (
             <View style={styles.stack}>
               {listings.slice(0, 3).map((listing) => (
-                <ListingCard
+                <ListingPreviewCard
                   key={listing.id}
                   listing={listing}
-                  onPress={() => router.push(`/(shared)/listing/${listing.id}`)}
+                  onEdit={() => router.push(`/(farmer)/edit-listing/${listing.id}`)}
                 />
               ))}
             </View>
           ) : (
             <EmptyState
-              title="Your recent listings will appear here"
-              description="Create a listing and it will show up here with its current status."
+              title="No listings yet"
+              description="Create your first listing to start receiving buyer inquiries."
+              actionLabel="Create first listing"
+              onAction={() => router.push('/(farmer)/create-listing')}
             />
           )}
         </View>
@@ -202,74 +362,176 @@ export default function FarmerDashboardScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: palette.cream,
+    backgroundColor: '#f8faf7',
   },
   content: {
-    padding: 24,
-    gap: 24,
+    padding: 20,
+    gap: 20,
   },
-  accountRow: {
+  header: {
+    gap: 16,
+  },
+  identityRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     gap: 12,
   },
-  accountEmail: {
-    flex: 1,
-    color: palette.muted,
-    fontWeight: '600',
+  avatarImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#dfe6dd',
   },
-  signOut: {
+  avatarFallback: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: palette.sage,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: palette.cream,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  identityText: {
+    flex: 1,
+    gap: 2,
+  },
+  greeting: {
+    color: palette.soil,
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  headerSubtext: {
+    color: palette.muted,
+    lineHeight: 20,
+  },
+  headerMeta: {
+    color: '#6e7c72',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  profileButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: palette.surface,
+    borderWidth: 1,
+    borderColor: palette.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileButtonText: {
     color: palette.sageDark,
-    fontWeight: '700',
+    fontWeight: '900',
+    fontSize: 14,
+  },
+  tipCard: {
+    backgroundColor: '#eef6ed',
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(58, 102, 72, 0.12)',
+    padding: 16,
+    gap: 6,
+  },
+  tipTitle: {
+    color: palette.sageDark,
+    fontWeight: '800',
+    fontSize: 15,
+  },
+  tipText: {
+    color: palette.sageDark,
+    lineHeight: 20,
+  },
+  tipAction: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    backgroundColor: palette.surface,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  tipActionText: {
+    color: palette.sageDark,
+    fontWeight: '800',
+    fontSize: 13,
   },
   metricRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
   metricCard: {
     flex: 1,
+    minHeight: 108,
     backgroundColor: palette.surface,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: palette.border,
-    padding: 18,
-    gap: 4,
+    padding: 14,
+    justifyContent: 'space-between',
+    ...shadow,
+  },
+  metricCardAttention: {
+    borderColor: 'rgba(176, 126, 40, 0.28)',
+    backgroundColor: '#fffaf1',
   },
   metricValue: {
     color: palette.soil,
-    fontSize: 28,
-    fontWeight: '800',
+    fontSize: 30,
+    fontWeight: '900',
   },
   metricLabel: {
     color: palette.muted,
-    fontSize: 13,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '700',
   },
-  actions: {
-    gap: 12,
+  metricBadge: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    backgroundColor: '#f5e6c4',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  metricBadgeText: {
+    color: palette.clay,
+    fontSize: 11,
+    fontWeight: '800',
   },
   primaryButton: {
     backgroundColor: palette.sage,
     borderRadius: 999,
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 15,
+    ...shadow,
   },
   primaryButtonText: {
     color: palette.cream,
     fontWeight: '800',
+    fontSize: 15,
+  },
+  secondaryActions: {
+    flexDirection: 'row',
+    gap: 10,
   },
   secondaryButton: {
-    backgroundColor: palette.parchment,
+    flex: 1,
+    backgroundColor: palette.surface,
     borderRadius: 999,
+    borderWidth: 1,
+    borderColor: palette.border,
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 13,
   },
   secondaryButtonText: {
     color: palette.clay,
     fontWeight: '800',
+    fontSize: 14,
   },
   section: {
-    gap: 14,
+    gap: 12,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -279,18 +541,116 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: palette.soil,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
   },
   sectionSubtitle: {
     color: palette.muted,
     marginTop: 2,
+    lineHeight: 18,
   },
   linkText: {
     color: palette.sageDark,
-    fontWeight: '700',
+    fontWeight: '800',
+    fontSize: 13,
   },
   stack: {
     gap: 12,
+  },
+  listingCard: {
+    flexDirection: 'row',
+    gap: 12,
+    backgroundColor: palette.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: palette.border,
+    padding: 12,
+    ...shadow,
+  },
+  listingImage: {
+    width: 72,
+    height: 72,
+    borderRadius: radii.sm,
+    backgroundColor: '#e6ece4',
+  },
+  listingImageFallback: {
+    width: 72,
+    height: 72,
+    borderRadius: radii.sm,
+    backgroundColor: '#e6ece4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  listingImageFallbackText: {
+    color: palette.clay,
+    fontSize: 11,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  listingContent: {
+    flex: 1,
+    gap: 8,
+  },
+  listingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+    alignItems: 'flex-start',
+  },
+  listingTextBlock: {
+    flex: 1,
+    gap: 2,
+  },
+  listingTitle: {
+    color: palette.soil,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  listingMeta: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  statusPill: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  statusActive: {
+    backgroundColor: '#dcebdc',
+  },
+  statusSold: {
+    backgroundColor: '#e8e8e8',
+  },
+  statusUnavailable: {
+    backgroundColor: '#f3ead1',
+  },
+  statusText: {
+    color: palette.soil,
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'capitalize',
+  },
+  listingFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 10,
+  },
+  listingDate: {
+    color: palette.muted,
+    fontSize: 12,
+  },
+  inlineAction: {
+    borderRadius: 999,
+    backgroundColor: palette.parchment,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  inlineActionText: {
+    color: palette.clay,
+    fontWeight: '800',
+    fontSize: 12,
   },
 })
