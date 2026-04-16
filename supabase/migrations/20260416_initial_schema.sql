@@ -110,12 +110,13 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_auth_user_created();
 
+drop policy if exists "Authenticated users can view profiles" on public.users;
 drop policy if exists "Users can view own profile" on public.users;
-create policy "Users can view own profile"
+create policy "Authenticated users can view profiles"
   on public.users
   for select
   to authenticated
-  using (id = auth.uid());
+  using (true);
 
 drop policy if exists "Users can insert own profile" on public.users;
 create policy "Users can insert own profile"

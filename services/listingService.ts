@@ -1,8 +1,10 @@
 import type {
+  ListingDetail,
   ListingFilters,
   ListingPin,
   ListingPreview,
   ListingStatus,
+  SellerProfile,
   ServiceResult,
 } from '../types/app'
 import type { Tables, TablesInsert, TablesUpdate } from '../types/database'
@@ -10,6 +12,7 @@ import type { Tables, TablesInsert, TablesUpdate } from '../types/database'
 import { getSupabaseClient, hasSupabaseEnv } from './supabase'
 
 type ListingRow = Tables<'listings'>
+type SellerRow = Tables<'users'>
 const PAGE_SIZE = 12
 
 function mapListing(row: ListingRow): ListingPreview {
@@ -26,6 +29,46 @@ function mapListing(row: ListingRow): ListingPreview {
     sellerName: null,
     fulfillmentType: row.fulfillment_type,
     createdAt: row.created_at ?? new Date().toISOString(),
+  }
+}
+
+function mapSeller(row: SellerRow | null): SellerProfile | null {
+  if (!row) {
+    return null
+  }
+
+  return {
+    id: row.id,
+    fullName: row.full_name,
+    city: row.city,
+    avatarUrl: row.avatar_url,
+    phone: row.phone,
+  }
+}
+
+function mapListingDetail(
+  row: ListingRow,
+  seller: SellerRow | null,
+): ListingDetail {
+  return {
+    id: row.id,
+    sellerId: row.seller_id,
+    title: row.title,
+    wasteType: row.waste_type,
+    description: row.description,
+    quantity: row.quantity,
+    unit: row.unit,
+    price: row.price,
+    acceptOffers: row.accept_offers,
+    imageUrl: row.image_url,
+    address: row.address,
+    city: row.city ?? seller?.city ?? 'Unknown location',
+    latitude: row.latitude,
+    longitude: row.longitude,
+    fulfillmentType: row.fulfillment_type,
+    status: row.status,
+    createdAt: row.created_at ?? new Date().toISOString(),
+    seller: mapSeller(seller),
   }
 }
 
@@ -96,7 +139,7 @@ export async function getFarmerListings(
 
 export async function getListingById(
   listingId: string,
-): Promise<ServiceResult<ListingRow>> {
+): Promise<ServiceResult<ListingDetail>> {
   if (!hasSupabaseEnv) {
     return { data: null, error: new Error('Supabase is not configured yet.') }
   }
@@ -107,7 +150,17 @@ export async function getListingById(
     .eq('id', listingId)
     .single()
 
-  return { data, error }
+  if (error || !data) {
+    return { data: null, error }
+  }
+
+  const { data: seller } = await getSupabaseClient()
+    .from('users')
+    .select('id, full_name, city, avatar_url, phone')
+    .eq('id', data.seller_id)
+    .maybeSingle()
+
+  return { data: mapListingDetail(data, seller), error: null }
 }
 
 export async function createListing(

@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import type { ListingPreview } from '../types/app'
 
+import { FulfillmentLabel } from './FulfillmentLabel'
 import { formatDate, formatPrice } from '../utils/formatters'
 import { palette, radii, shadow } from '../utils/theme'
 
@@ -37,7 +38,7 @@ export function ListingCard({ listing, onPress }: ListingCardProps) {
         </Text>
         <Text style={styles.price}>{formatPrice(listing.price, listing.unit)}</Text>
         <View style={styles.footer}>
-          <Text style={styles.footerText}>{listing.fulfillmentType}</Text>
+          <FulfillmentLabel type={listing.fulfillmentType} />
           <Text style={styles.footerText}>{formatDate(listing.createdAt)}</Text>
         </View>
       </View>

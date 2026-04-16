@@ -24,6 +24,12 @@ export async function sendContactRequest(
 export async function getSentContactRequests(
   buyerId: string,
 ): Promise<ServiceResult<ContactRequest[]>> {
+  return getBuyerContactRequests(buyerId)
+}
+
+export async function getBuyerContactRequests(
+  buyerId: string,
+): Promise<ServiceResult<ContactRequest[]>> {
   if (!hasSupabaseEnv) {
     return { data: [], error: null }
   }
@@ -38,6 +44,12 @@ export async function getSentContactRequests(
 }
 
 export async function getReceivedContactRequests(
+  sellerId: string,
+): Promise<ServiceResult<ContactRequest[]>> {
+  return getSellerInquiries(sellerId)
+}
+
+export async function getSellerInquiries(
   sellerId: string,
 ): Promise<ServiceResult<ContactRequest[]>> {
   if (!hasSupabaseEnv) {

@@ -1,66 +1,329 @@
 import { useLocalSearchParams } from 'expo-router'
-import { useEffect, useState } from 'react'
-import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  ActivityIndicator,
+  Image,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import { ContactSellerModal } from '../../../components/ContactSellerModal'
 import { EmptyState } from '../../../components/EmptyState'
+import { FulfillmentLabel } from '../../../components/FulfillmentLabel'
+import { useToast } from '../../../components/Toast'
+import { useAuth } from '../../../hooks/useAuth'
+import {
+  getBuyerContactRequests,
+  sendContactRequest,
+} from '../../../services/contactService'
 import { getListingById } from '../../../services/listingService'
-import type { Tables } from '../../../types/database'
-import { formatPrice } from '../../../utils/formatters'
-import { palette, radii } from '../../../utils/theme'
+import type { ListingDetail } from '../../../types/app'
+import { formatDate, formatPrice, titleCase } from '../../../utils/formatters'
+import { palette, radii, shadow } from '../../../utils/theme'
+
+function getAvatarInitials(name?: string | null) {
+  if (!name) {
+    return 'AG'
+  }
+
+  const parts = name.split(' ').filter(Boolean)
+
+  return parts
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('')
+}
 
 export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
-  const [listing, setListing] = useState<Tables<'listings'> | null>(null)
+  const { user, role } = useAuth()
+  const { showToast } = useToast()
+  const [listing, setListing] = useState<ListingDetail | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isContactModalVisible, setIsContactModalVisible] = useState(false)
+  const [contactMessage, setContactMessage] = useState('')
+  const [isSubmittingContact, setIsSubmittingContact] = useState(false)
+  const [hasRequestedContact, setHasRequestedContact] = useState(false)
 
   useEffect(() => {
-    if (!id) {
-      return
-    }
+    let isMounted = true
 
     const loadListing = async () => {
+      if (!id) {
+        if (isMounted) {
+          setListing(null)
+          setIsLoading(false)
+        }
+        return
+      }
+
+      setIsLoading(true)
       const result = await getListingById(id)
+
+      if (!isMounted) {
+        return
+      }
+
+      if (result.error) {
+        showToast(result.error.message, 'error')
+      }
+
       setListing(result.data)
+      setIsLoading(false)
     }
 
     void loadListing()
-  }, [id])
+
+    return () => {
+      isMounted = false
+    }
+  }, [id, showToast])
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadContactState = async () => {
+      if (!user || role !== 'buyer' || !listing) {
+        if (isMounted) {
+          setHasRequestedContact(false)
+        }
+        return
+      }
+
+      const result = await getBuyerContactRequests(user.id)
+
+      if (!isMounted) {
+        return
+      }
+
+      setHasRequestedContact(
+        (result.data ?? []).some((request) => request.listing_id === listing.id),
+      )
+    }
+
+    void loadContactState()
+
+    return () => {
+      isMounted = false
+    }
+  }, [listing, role, user])
+
+  const readableWasteType = useMemo(() => {
+    if (!listing) {
+      return ''
+    }
+
+    return titleCase(listing.wasteType.replace(/_/g, ' '))
+  }, [listing])
+
+  const canContactSeller =
+    role === 'buyer' && !!user && !!listing && user.id !== listing.sellerId
+
+  const handleSubmitContactRequest = async () => {
+    if (!user || !listing) {
+      showToast('Sign in before contacting a seller.', 'error')
+      return
+    }
+
+    setIsSubmittingContact(true)
+
+    const result = await sendContactRequest({
+      listing_id: listing.id,
+      buyer_id: user.id,
+      seller_id: listing.sellerId,
+      message: contactMessage.trim() || null,
+    })
+
+    setIsSubmittingContact(false)
+
+    if (result.error) {
+      showToast(result.error.message, 'error')
+      return
+    }
+
+    setHasRequestedContact(true)
+    setContactMessage('')
+    setIsContactModalVisible(false)
+
+    if (listing.seller?.phone) {
+      showToast('Request sent. Seller phone is now visible below.', 'success')
+      return
+    }
+
+    showToast('Request sent. The seller has not added a phone number yet.', 'info')
+  }
+
+  const handleContactPress = async () => {
+    if (!listing?.seller?.phone || !hasRequestedContact) {
+      setIsContactModalVisible(true)
+      return
+    }
+
+    const supported = await Linking.canOpenURL(`tel:${listing.seller.phone}`)
+
+    if (!supported) {
+      showToast('Calling is not available on this device.', 'error')
+      return
+    }
+
+    await Linking.openURL(`tel:${listing.seller.phone}`)
+  }
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.loadingState}>
+          <ActivityIndicator color={palette.sage} size="small" />
+          <Text style={styles.loadingText}>Loading listing details...</Text>
+        </View>
+      </SafeAreaView>
+    )
+  }
+
+  if (!listing) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.emptyWrapper}>
+          <EmptyState
+            title="Listing not available"
+            description="This listing could not be loaded or may no longer be active."
+          />
+        </View>
+      </SafeAreaView>
+    )
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content}>
-        {listing ? (
-          <>
-            <View style={styles.hero}>
-              <Text style={styles.eyebrow}>{listing.waste_type}</Text>
-              <Text style={styles.title}>{listing.title}</Text>
-              <Text style={styles.price}>{formatPrice(listing.price, listing.unit)}</Text>
-              <Text style={styles.meta}>
-                {listing.city ?? 'Unknown city'} • {listing.quantity} {listing.unit}
-              </Text>
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>About this listing</Text>
-              <Text style={styles.sectionText}>
-                {listing.description ?? 'No description added yet.'}
-              </Text>
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Fulfillment</Text>
-              <Text style={styles.sectionText}>
-                {listing.fulfillment_type} • status: {listing.status}
-              </Text>
-            </View>
-          </>
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          canContactSeller ? styles.contentWithFooter : null,
+        ]}
+      >
+        {listing.imageUrl ? (
+          <Image source={{ uri: listing.imageUrl }} style={styles.heroImage} />
         ) : (
-          <EmptyState
-            title="Listing not available"
-            description="The detail route is in place, but this item is missing or has not been loaded from Supabase yet."
-          />
+          <View style={styles.heroPlaceholder}>
+            <Text style={styles.heroPlaceholderLabel}>{readableWasteType}</Text>
+          </View>
         )}
+
+        <View style={styles.heroContent}>
+          <Text style={styles.eyebrow}>{readableWasteType}</Text>
+          <Text style={styles.title}>{listing.title}</Text>
+          <Text style={styles.price}>{formatPrice(listing.price, listing.unit)}</Text>
+          <Text style={styles.meta}>
+            {listing.city} | {listing.quantity} {listing.unit} | {formatDate(listing.createdAt)}
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>About this listing</Text>
+          <Text style={styles.sectionText}>
+            {listing.description ?? 'No description added yet.'}
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Details</Text>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Fulfillment</Text>
+            <FulfillmentLabel type={listing.fulfillmentType} />
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Offers</Text>
+            <Text style={styles.detailValue}>
+              {listing.acceptOffers ? 'Seller accepts offers' : 'Fixed price'}
+            </Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Status</Text>
+            <Text style={styles.detailValue}>{titleCase(listing.status)}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Address</Text>
+            <Text style={styles.detailValue}>
+              {listing.address ?? 'Address not provided'}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.sellerSection}>
+          <Text style={styles.sectionTitle}>Seller</Text>
+          {listing.seller ? (
+            <View style={styles.sellerRow}>
+              {listing.seller.avatarUrl ? (
+                <Image
+                  source={{ uri: listing.seller.avatarUrl }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <View style={styles.avatarFallback}>
+                  <Text style={styles.avatarText}>
+                    {getAvatarInitials(listing.seller.fullName)}
+                  </Text>
+                </View>
+              )}
+              <View style={styles.sellerMeta}>
+                <Text style={styles.sellerName}>{listing.seller.fullName}</Text>
+                <Text style={styles.sellerLocation}>
+                  {listing.seller.city ?? 'Location not provided'}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <Text style={styles.sectionText}>
+              Seller information is unavailable right now.
+            </Text>
+          )}
+        </View>
+
+        {hasRequestedContact ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Seller contact</Text>
+            <Text style={styles.sectionText}>
+              {listing.seller?.phone
+                ? `Phone: ${listing.seller.phone}`
+                : 'This seller has not added a phone number yet.'}
+            </Text>
+          </View>
+        ) : null}
       </ScrollView>
+
+      {canContactSeller ? (
+        <View style={styles.footer}>
+          <Pressable onPress={handleContactPress} style={styles.footerButton}>
+            <Text style={styles.footerButtonText}>
+              {hasRequestedContact && listing.seller?.phone
+                ? `Call ${listing.seller.phone}`
+                : hasRequestedContact
+                  ? 'Request sent'
+                  : 'Contact Seller'}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      <ContactSellerModal
+        isVisible={isContactModalVisible}
+        message={contactMessage}
+        isSubmitting={isSubmittingContact}
+        onChangeMessage={setContactMessage}
+        onClose={() => {
+          if (!isSubmittingContact) {
+            setIsContactModalVisible(false)
+          }
+        }}
+        onSubmit={() => {
+          void handleSubmitContactRequest()
+        }}
+      />
     </SafeAreaView>
   )
 }
@@ -71,34 +334,67 @@ const styles = StyleSheet.create({
     backgroundColor: palette.cream,
   },
   content: {
-    padding: 24,
+    padding: 20,
     gap: 16,
   },
-  hero: {
-    backgroundColor: palette.soil,
+  contentWithFooter: {
+    paddingBottom: 120,
+  },
+  loadingState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  loadingText: {
+    color: palette.sageDark,
+    fontWeight: '600',
+  },
+  emptyWrapper: {
+    flex: 1,
+    padding: 20,
+  },
+  heroImage: {
+    width: '100%',
+    height: 240,
     borderRadius: radii.lg,
-    padding: 24,
+    backgroundColor: '#ded3c4',
+  },
+  heroPlaceholder: {
+    height: 240,
+    borderRadius: radii.lg,
+    backgroundColor: '#d8ccb9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroPlaceholderLabel: {
+    color: palette.soil,
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  heroContent: {
     gap: 8,
   },
   eyebrow: {
     color: palette.harvest,
     textTransform: 'uppercase',
-    letterSpacing: 1.5,
+    letterSpacing: 1.4,
     fontWeight: '700',
     fontSize: 11,
   },
   title: {
-    color: palette.cream,
+    color: palette.soil,
     fontSize: 30,
     fontWeight: '800',
+    lineHeight: 36,
   },
   price: {
-    color: '#dfeadf',
-    fontSize: 20,
+    color: palette.sageDark,
+    fontSize: 24,
     fontWeight: '800',
   },
   meta: {
-    color: '#e8dfd1',
+    color: palette.muted,
     lineHeight: 22,
   },
   section: {
@@ -107,7 +403,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: palette.border,
     padding: 18,
-    gap: 8,
+    gap: 12,
+    ...shadow,
+  },
+  sellerSection: {
+    borderTopWidth: 1,
+    borderTopColor: palette.border,
+    paddingTop: 18,
+    gap: 12,
   },
   sectionTitle: {
     color: palette.soil,
@@ -117,5 +420,77 @@ const styles = StyleSheet.create({
   sectionText: {
     color: palette.muted,
     lineHeight: 22,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  detailLabel: {
+    color: palette.muted,
+    fontWeight: '600',
+  },
+  detailValue: {
+    flex: 1,
+    color: palette.soil,
+    textAlign: 'right',
+    fontWeight: '600',
+  },
+  sellerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  avatarImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#d7d0c5',
+  },
+  avatarFallback: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: palette.sage,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: palette.cream,
+    fontWeight: '800',
+    fontSize: 16,
+  },
+  sellerMeta: {
+    flex: 1,
+    gap: 2,
+  },
+  sellerName: {
+    color: palette.soil,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  sellerLocation: {
+    color: palette.muted,
+  },
+  footer: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 16,
+  },
+  footerButton: {
+    minHeight: 56,
+    borderRadius: radii.lg,
+    backgroundColor: palette.sage,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+    ...shadow,
+  },
+  footerButtonText: {
+    color: palette.cream,
+    fontSize: 16,
+    fontWeight: '800',
   },
 })

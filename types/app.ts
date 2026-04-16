@@ -32,6 +32,35 @@ export type ListingPreview = {
   createdAt: string
 }
 
+export type SellerProfile = {
+  id: string
+  fullName: string
+  city: string | null
+  avatarUrl: string | null
+  phone: string | null
+}
+
+export type ListingDetail = {
+  id: string
+  sellerId: string
+  title: string
+  wasteType: string
+  description: string | null
+  quantity: number
+  unit: string
+  price: number
+  acceptOffers: boolean
+  imageUrl: string | null
+  address: string | null
+  city: string
+  latitude: number | null
+  longitude: number | null
+  fulfillmentType: FulfillmentType
+  status: ListingStatus
+  createdAt: string
+  seller: SellerProfile | null
+}
+
 export type ListingPin = {
   id: string
   title: string

@@ -91,15 +91,15 @@ Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
 - [x] View Details navigation from popup to full listing screen
 
 ### Phase 7 â€” Listing Details (4 tasks)
-- [~] Listing details screen (full data display)
-- [ ] Seller info section with avatar + name + location
-- [ ] Pickup / delivery label component
-- [ ] Contact Seller action button (leads to Phase 8)
+- [x] Listing details screen (full data display)
+- [x] Seller info section with avatar + name + location
+- [x] Pickup / delivery label component
+- [x] Contact Seller action button (leads to Phase 8)
 
 ### Phase 8 â€” Contact System (5 tasks)
-- [~] Build ContactService: sendContactRequest, getBuyerRequests, getSellerRequests
-- [ ] Contact form modal (optional message + send button)
-- [ ] Contact info reveal (shows seller phone after request is sent)
+- [x] Build ContactService: sendContactRequest, getBuyerRequests, getSellerRequests
+- [x] Contact form modal (optional message + send button)
+- [x] Contact info reveal (shows seller phone after request is sent)
 - [ ] Inquiry badge on farmer dashboard (unread count)
 - [ ] Buyer: sent contact request history screen
 
