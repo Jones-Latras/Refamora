@@ -200,19 +200,29 @@ export default function FarmerDashboardScreen() {
   )
 
   return (
-    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <View style={styles.identityRow}>
-            {profile?.avatar_url ? (
-              <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
-            ) : (
-              <View style={styles.avatarFallback}>
-                <Text style={styles.avatarText}>
-                  {getInitials(profile?.full_name, user?.email ?? 'R')}
-                </Text>
+            <Pressable
+              accessibilityLabel="Open profile"
+              onPress={() => router.push('/(shared)/profile')}
+              style={styles.avatarPressable}
+            >
+              {profile?.avatar_url ? (
+                <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
+              ) : (
+                <View style={styles.avatarFallback}>
+                  <Text style={styles.avatarText}>
+                    {getInitials(profile?.full_name, user?.email ?? 'R')}
+                  </Text>
+                </View>
+              )}
+              <View style={styles.avatarEditBadge}>
+                <View style={styles.avatarEditGlyph} />
+                <View style={styles.avatarEditNib} />
               </View>
-            )}
+            </Pressable>
 
             <View style={styles.identityText}>
               <Text style={styles.greeting}>
@@ -225,16 +235,6 @@ export default function FarmerDashboardScreen() {
                 {profile?.email ?? user?.email ?? 'No email'} | Verified seller
               </Text>
             </View>
-
-            <Pressable
-              accessibilityLabel="Open profile"
-              onPress={() => router.push('/(shared)/profile')}
-              style={styles.profileButton}
-            >
-              <Text style={styles.profileButtonText}>
-                {getInitials(profile?.full_name, 'P').slice(0, 1)}
-              </Text>
-            </Pressable>
           </View>
 
           {profileIncomplete ? (
@@ -264,25 +264,18 @@ export default function FarmerDashboardScreen() {
           <MetricCard label="Sold items" value={soldCount.toString()} />
         </View>
 
-        <Pressable
-          onPress={() => router.push('/(farmer)/create-listing')}
-          style={styles.primaryButton}
-        >
-          <Text style={styles.primaryButtonText}>+ Create Listing</Text>
-        </Pressable>
-
-        <View style={styles.secondaryActions}>
+        <View style={styles.primaryActions}>
+          <Pressable
+            onPress={() => router.push('/(farmer)/create-listing')}
+            style={styles.primaryButton}
+          >
+            <Text style={styles.primaryButtonText}>+ Create Listing</Text>
+          </Pressable>
           <Pressable
             onPress={() => router.push('/(farmer)/my-listings')}
             style={styles.secondaryButton}
           >
             <Text style={styles.secondaryButtonText}>Manage Listings</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push('/(shared)/profile')}
-            style={styles.secondaryButton}
-          >
-            <Text style={styles.secondaryButtonText}>View Profile</Text>
           </Pressable>
         </View>
 
@@ -316,8 +309,12 @@ export default function FarmerDashboardScreen() {
             <EmptyState
               title="No inquiries yet"
               description="Buyers who message you about your listings will appear here."
-              actionLabel="Create first listing"
-              onAction={() => router.push('/(farmer)/create-listing')}
+              actionLabel={listings.length === 0 ? 'Create first listing' : undefined}
+              onAction={
+                listings.length === 0
+                  ? () => router.push('/(farmer)/create-listing')
+                  : undefined
+              }
             />
           )}
         </View>
@@ -376,6 +373,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  avatarPressable: {
+    position: 'relative',
+  },
   avatarImage: {
     width: 56,
     height: 56,
@@ -395,6 +395,42 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
   },
+  avatarEditBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: palette.soil,
+    borderWidth: 2,
+    borderColor: '#f8faf7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarEditGlyph: {
+    width: 10,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: palette.cream,
+    transform: [{ rotate: '-45deg' }],
+  },
+  avatarEditNib: {
+    position: 'absolute',
+    right: 5,
+    bottom: 5,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 3,
+    borderRightWidth: 0,
+    borderTopWidth: 2,
+    borderBottomWidth: 2,
+    borderLeftColor: palette.cream,
+    borderTopColor: 'transparent',
+    borderBottomColor: 'transparent',
+    borderRightColor: 'transparent',
+    transform: [{ rotate: '-45deg' }],
+  },
   identityText: {
     flex: 1,
     gap: 2,
@@ -412,21 +448,6 @@ const styles = StyleSheet.create({
     color: '#6e7c72',
     fontSize: 12,
     lineHeight: 18,
-  },
-  profileButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: palette.surface,
-    borderWidth: 1,
-    borderColor: palette.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profileButtonText: {
-    color: palette.sageDark,
-    fontWeight: '900',
-    fontSize: 14,
   },
   tipCard: {
     backgroundColor: '#eef6ed',
@@ -500,7 +521,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
   },
+  primaryActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
   primaryButton: {
+    flex: 1,
     backgroundColor: palette.sage,
     borderRadius: 999,
     alignItems: 'center',
@@ -511,10 +537,6 @@ const styles = StyleSheet.create({
     color: palette.cream,
     fontWeight: '800',
     fontSize: 15,
-  },
-  secondaryActions: {
-    flexDirection: 'row',
-    gap: 10,
   },
   secondaryButton: {
     flex: 1,

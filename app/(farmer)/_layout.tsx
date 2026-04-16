@@ -14,7 +14,7 @@ export default function FarmerLayout() {
         contentStyle: { backgroundColor: palette.cream },
       }}
     >
-      <Stack.Screen name="dashboard" options={{ title: 'Farmer Dashboard' }} />
+      <Stack.Screen name="dashboard" options={{ headerShown: false }} />
       <Stack.Screen name="my-listings" options={{ title: 'My Listings' }} />
       <Stack.Screen name="create-listing" options={{ title: 'Create Listing' }} />
       <Stack.Screen name="edit-listing/[id]" options={{ title: 'Edit Listing' }} />
