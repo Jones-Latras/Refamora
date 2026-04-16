@@ -1,0 +1,33 @@
+export type UserRole = 'farmer' | 'buyer'
+
+export type ListingStatus = 'active' | 'sold' | 'unavailable'
+
+export type FulfillmentType = 'pickup' | 'delivery' | 'both'
+
+export type ServiceResult<T, E = Error> = {
+  data: T | null
+  error: E | null
+}
+
+export type ListingPreview = {
+  id: string
+  title: string
+  wasteType: string
+  price: number
+  unit: string
+  quantity: number
+  city: string
+  imageUrl: string | null
+  status: ListingStatus
+  sellerName: string | null
+  fulfillmentType: FulfillmentType
+  createdAt: string
+}
+
+export type ListingPin = {
+  id: string
+  title: string
+  latitude: number
+  longitude: number
+  wasteType: string
+}

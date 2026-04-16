@@ -1,0 +1,21 @@
+import { Stack } from 'expo-router'
+
+import { palette } from '../../utils/theme'
+
+export default function FarmerLayout() {
+  return (
+    <Stack
+      screenOptions={{
+        headerShadowVisible: false,
+        headerTintColor: palette.soil,
+        headerStyle: { backgroundColor: palette.cream },
+        headerTitleStyle: { fontWeight: '700' },
+        contentStyle: { backgroundColor: palette.cream },
+      }}
+    >
+      <Stack.Screen name="dashboard" options={{ title: 'Farmer Dashboard' }} />
+      <Stack.Screen name="my-listings" options={{ title: 'My Listings' }} />
+      <Stack.Screen name="create-listing" options={{ title: 'Create Listing' }} />
+    </Stack>
+  )
+}

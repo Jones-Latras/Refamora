@@ -1,0 +1,21 @@
+import { Stack } from 'expo-router'
+
+import { palette } from '../../utils/theme'
+
+export default function BuyerLayout() {
+  return (
+    <Stack
+      screenOptions={{
+        headerShadowVisible: false,
+        headerTintColor: palette.soil,
+        headerStyle: { backgroundColor: palette.cream },
+        headerTitleStyle: { fontWeight: '700' },
+        contentStyle: { backgroundColor: palette.cream },
+      }}
+    >
+      <Stack.Screen name="feed" options={{ title: 'Buyer Feed' }} />
+      <Stack.Screen name="map" options={{ title: 'Map View' }} />
+      <Stack.Screen name="dashboard" options={{ title: 'Buyer Dashboard' }} />
+    </Stack>
+  )
+}
