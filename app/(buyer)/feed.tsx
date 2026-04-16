@@ -1,6 +1,13 @@
 import { router } from 'expo-router'
-import { useMemo, useState } from 'react'
-import { FlatList, StyleSheet, Text, TextInput, View } from 'react-native'
+import { useState } from 'react'
+import {
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { EmptyState } from '../../components/EmptyState'
@@ -13,21 +20,9 @@ import { palette, radii } from '../../utils/theme'
 export default function FeedScreen() {
   const [query, setQuery] = useState('')
   const debouncedQuery = useDebounce(query)
-  const { data, isLoading } = useBuyerListings()
-
-  const filteredListings = useMemo(() => {
-    const normalized = debouncedQuery.trim().toLowerCase()
-
-    if (!normalized) {
-      return data ?? []
-    }
-
-    return (data ?? []).filter((listing) =>
-      `${listing.title} ${listing.city} ${listing.wasteType}`
-        .toLowerCase()
-        .includes(normalized),
-    )
-  }, [data, debouncedQuery])
+  const { data, isLoading, isFetchingMore, loadMore } = useBuyerListings({
+    search: debouncedQuery.trim() || undefined,
+  })
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -35,8 +30,8 @@ export default function FeedScreen() {
         <View style={styles.hero}>
           <Text style={styles.title}>Browse available waste listings</Text>
           <Text style={styles.subtitle}>
-            Search and filter hooks are wired so later feed pagination can slot
-            in without replacing the screen structure.
+            This feed now pages listings in batches so search can scale without
+            loading everything at once.
           </Text>
         </View>
 
@@ -54,11 +49,20 @@ export default function FeedScreen() {
             <SkeletonCard />
             <SkeletonCard />
           </View>
-        ) : filteredListings.length > 0 ? (
+        ) : data.length > 0 ? (
           <FlatList
-            data={filteredListings}
+            data={data}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.list}
+            onEndReached={loadMore}
+            onEndReachedThreshold={0.8}
+            ListFooterComponent={
+              isFetchingMore ? (
+                <View style={styles.footerLoader}>
+                  <ActivityIndicator color={palette.sage} size="small" />
+                </View>
+              ) : null
+            }
             renderItem={({ item }) => (
               <ListingCard
                 listing={item}
@@ -117,5 +121,9 @@ const styles = StyleSheet.create({
   list: {
     gap: 16,
     paddingBottom: 24,
+  },
+  footerLoader: {
+    paddingVertical: 16,
+    alignItems: 'center',
   },
 })

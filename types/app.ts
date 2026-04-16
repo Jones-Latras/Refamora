@@ -9,6 +9,14 @@ export type ServiceResult<T, E = Error> = {
   error: E | null
 }
 
+export type ListingFilters = {
+  wasteType?: string
+  fulfillmentType?: FulfillmentType
+  minPrice?: number
+  maxPrice?: number
+  search?: string
+}
+
 export type ListingPreview = {
   id: string
   title: string

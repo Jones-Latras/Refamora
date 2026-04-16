@@ -1,4 +1,5 @@
 import type {
+  ListingFilters,
   ListingPin,
   ListingPreview,
   ListingStatus,
@@ -9,6 +10,7 @@ import type { Tables, TablesInsert, TablesUpdate } from '../types/database'
 import { getSupabaseClient, hasSupabaseEnv } from './supabase'
 
 type ListingRow = Tables<'listings'>
+const PAGE_SIZE = 12
 
 function mapListing(row: ListingRow): ListingPreview {
   return {
@@ -27,19 +29,53 @@ function mapListing(row: ListingRow): ListingPreview {
   }
 }
 
-export async function getBuyerFeed(): Promise<ServiceResult<ListingPreview[]>> {
+export async function getListings(
+  page: number,
+  filters: ListingFilters = {},
+): Promise<ServiceResult<{ items: ListingPreview[]; hasMore: boolean }>> {
   if (!hasSupabaseEnv) {
-    return { data: [], error: null }
+    return { data: { items: [], hasMore: false }, error: null }
   }
 
-  const { data, error } = await getSupabaseClient()
+  let query = getSupabaseClient()
     .from('listings')
     .select('*')
     .eq('status', 'active')
     .order('created_at', { ascending: false })
-    .range(0, 11)
+    .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
 
-  return { data: data?.map(mapListing) ?? [], error }
+  if (filters.wasteType) {
+    query = query.eq('waste_type', filters.wasteType)
+  }
+
+  if (filters.fulfillmentType) {
+    query = query.eq('fulfillment_type', filters.fulfillmentType)
+  }
+
+  if (filters.minPrice != null) {
+    query = query.gte('price', filters.minPrice)
+  }
+
+  if (filters.maxPrice != null) {
+    query = query.lte('price', filters.maxPrice)
+  }
+
+  if (filters.search?.trim()) {
+    const term = filters.search.trim()
+    query = query.or(
+      `title.ilike.%${term}%,city.ilike.%${term}%,waste_type.ilike.%${term}%`,
+    )
+  }
+
+  const { data, error } = await query
+
+  return {
+    data: {
+      items: data?.map(mapListing) ?? [],
+      hasMore: (data?.length ?? 0) === PAGE_SIZE,
+    },
+    error,
+  }
 }
 
 export async function getFarmerListings(

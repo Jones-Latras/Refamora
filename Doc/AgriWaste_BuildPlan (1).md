@@ -75,12 +75,12 @@ Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
 - [x] Zod schema for listing form (utils/schemas.ts)
 
 ### Phase 5 â€” Listing Feed (Buyer) (6 tasks)
-- [~] Build ListingService (buyer): getListings (paginated), getListingById
+- [x] Build ListingService (buyer): getListings (paginated), getListingById
 - [x] Listing card component
-- [~] Listing feed screen with infinite scroll (FlatList + onEndReached)
+- [x] Listing feed screen with infinite scroll (FlatList + onEndReached)
 - [x] Search bar with debounce (hooks/useDebounce.ts)
 - [ ] Filter bottom sheet (waste type, fulfillment, price range)
-- [ ] Connect search + filters to paginated listing query
+- [~] Connect search + filters to paginated listing query
 
 ### Phase 6 â€” Map Screen (6 tasks)
 - [ ] Full-screen map setup with react-native-maps (MapView)
