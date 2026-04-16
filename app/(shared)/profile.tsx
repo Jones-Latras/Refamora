@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { EmptyState } from '../../components/EmptyState'
 import { FormField } from '../../components/FormField'
@@ -50,11 +50,14 @@ export default function ProfileScreen() {
   const { showToast } = useToast()
   const { profile, isLoading, refetch } = useProfile(user?.id)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const {
     control,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -70,9 +73,11 @@ export default function ProfileScreen() {
     control: passwordControl,
     handleSubmit: handlePasswordSubmit,
     reset: resetPasswordForm,
+    watch: watchPassword,
     formState: {
       errors: passwordErrors,
       isSubmitting: isUpdatingPassword,
+      isDirty: isPasswordDirty,
     },
   } = useForm<PasswordChangeFormValues>({
     resolver: zodResolver(passwordChangeSchema),
@@ -94,6 +99,40 @@ export default function ProfileScreen() {
       avatar_url: profile.avatar_url ?? null,
     })
   }, [profile, reset])
+
+  const watchedProfile = watch()
+  const watchedPassword = watchPassword()
+
+  const hasProfileChanges = useMemo(() => {
+    if (!profile) {
+      return false
+    }
+
+    return (
+      (watchedProfile.full_name ?? '') !== (profile.full_name ?? '') ||
+      (watchedProfile.phone ?? '') !== (profile.phone ?? '') ||
+      (watchedProfile.city ?? '') !== (profile.city ?? '')
+    )
+  }, [profile, watchedProfile.city, watchedProfile.full_name, watchedProfile.phone])
+
+  const canSubmitPassword =
+    isPasswordDirty &&
+    Boolean(watchedPassword.password) &&
+    Boolean(watchedPassword.confirmPassword) &&
+    !passwordErrors.password &&
+    !passwordErrors.confirmPassword
+
+  const roleLabel = role === 'farmer' ? 'Farmer seller' : 'Buyer account'
+  const locationLabel = profile?.city ? `${roleLabel} from ${profile.city}` : roleLabel
+  const completionItems = [
+    { label: 'Profile photo', done: Boolean(profile?.avatar_url) },
+    { label: 'Phone number', done: Boolean(profile?.phone) },
+    { label: 'City', done: Boolean(profile?.city) },
+  ]
+  const isProfileComplete = completionItems.every((item) => item.done)
+  const completionPercent = Math.round(
+    (completionItems.filter((item) => item.done).length / completionItems.length) * 100,
+  )
 
   const handlePickAvatar = async () => {
     if (!user) {
@@ -147,7 +186,7 @@ export default function ProfileScreen() {
     }
 
     await refetch()
-    showToast('Profile updated successfully.', 'success')
+    showToast('Changes saved.', 'success')
   })
 
   const handleSavePassword = handlePasswordSubmit(async (values) => {
@@ -200,36 +239,58 @@ export default function ProfileScreen() {
 
         <View style={styles.profileHeader}>
           <View style={styles.avatarWrapper}>
-            {profile.avatar_url ? (
-              <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
-            ) : (
-              <View style={styles.avatarFallback}>
-                <Text style={styles.avatarText}>
-                  {getInitials(profile.full_name, user?.email ?? 'A')}
-                </Text>
-              </View>
-            )}
             <Pressable
               disabled={isUploadingAvatar}
               onPress={() => void handlePickAvatar()}
-              style={styles.avatarButton}
+              style={styles.avatarPressable}
             >
+              {profile.avatar_url ? (
+                <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
+              ) : (
+                <View style={styles.avatarFallback}>
+                  <Text style={styles.avatarText}>
+                    {getInitials(profile.full_name, user?.email ?? 'A')}
+                  </Text>
+                </View>
+              )}
+              <View style={styles.avatarBadge}>
+                <Text style={styles.avatarBadgeText}>+</Text>
+              </View>
+            </Pressable>
+            <Pressable disabled={isUploadingAvatar} onPress={() => void handlePickAvatar()}>
               <Text style={styles.avatarButtonText}>
-                {isUploadingAvatar ? 'Uploading...' : 'Edit photo'}
+                {isUploadingAvatar ? 'Uploading photo...' : 'Change photo'}
               </Text>
             </Pressable>
           </View>
 
           <View style={styles.identity}>
             <Text style={styles.name}>{profile.full_name ?? 'Refamora user'}</Text>
-            <Text style={styles.meta}>
-              {(role ?? 'buyer').toUpperCase()} · {profile.email ?? user?.email ?? 'No email'}
-            </Text>
+            <Text style={styles.roleLine}>{locationLabel}</Text>
+            <Text style={styles.meta}>{profile.email ?? user?.email ?? 'No email'}</Text>
+            <View style={styles.verifiedBadge}>
+              <Text style={styles.verifiedBadgeText}>Verified account</Text>
+            </View>
           </View>
 
-          <Pressable onPress={handleLogout} style={styles.logoutButton}>
-            <Text style={styles.logoutText}>Log out</Text>
-          </Pressable>
+          {!isProfileComplete ? (
+            <View style={styles.completionCard}>
+              <View style={styles.completionHeader}>
+                <Text style={styles.completionTitle}>Profile completeness</Text>
+                <Text style={styles.completionPercent}>{completionPercent}%</Text>
+              </View>
+              <View style={styles.progressTrack}>
+                <View style={[styles.progressFill, { width: `${completionPercent}%` }]} />
+              </View>
+              <View style={styles.completionList}>
+                {completionItems.map((item) => (
+                  <Text key={item.label} style={styles.completionItem}>
+                    {item.done ? 'Done' : 'Add'} {item.label}
+                  </Text>
+                ))}
+              </View>
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.card}>
@@ -276,18 +337,21 @@ export default function ProfileScreen() {
           />
 
           <Pressable
-            disabled={isSubmitting}
+            disabled={isSubmitting || !hasProfileChanges}
             onPress={() => void handleSaveProfile()}
-            style={styles.primaryButton}
+            style={[
+              styles.primaryButton,
+              isSubmitting || !hasProfileChanges ? styles.buttonDisabled : null,
+            ]}
           >
             <Text style={styles.primaryButtonText}>
-              {isSubmitting ? 'Saving...' : 'Save changes'}
+              {isSubmitting ? 'Saving...' : hasProfileChanges ? 'Save changes' : 'Up to date'}
             </Text>
           </Pressable>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Security</Text>
+          <Text style={styles.sectionTitle}>Change password</Text>
           <Controller
             control={passwordControl}
             name="password"
@@ -297,8 +361,11 @@ export default function ProfileScreen() {
                 value={value}
                 onChangeText={onChange}
                 placeholder="Create a new password"
-                secureTextEntry
+                secureTextEntry={!showPassword}
                 error={passwordErrors.password?.message}
+                helperText="At least 6 characters."
+                actionLabel={showPassword ? 'Hide' : 'Show'}
+                onActionPress={() => setShowPassword((current) => !current)}
               />
             )}
           />
@@ -311,20 +378,31 @@ export default function ProfileScreen() {
                 value={value}
                 onChangeText={onChange}
                 placeholder="Repeat the new password"
-                secureTextEntry
+                secureTextEntry={!showConfirmPassword}
                 error={passwordErrors.confirmPassword?.message}
+                actionLabel={showConfirmPassword ? 'Hide' : 'Show'}
+                onActionPress={() => setShowConfirmPassword((current) => !current)}
               />
             )}
           />
 
           <Pressable
-            disabled={isUpdatingPassword}
+            disabled={isUpdatingPassword || !canSubmitPassword}
             onPress={() => void handleSavePassword()}
-            style={styles.secondaryButton}
+            style={[
+              styles.secondaryButton,
+              isUpdatingPassword || !canSubmitPassword ? styles.buttonDisabled : null,
+            ]}
           >
             <Text style={styles.secondaryButtonText}>
               {isUpdatingPassword ? 'Updating...' : 'Change password'}
             </Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.card}>
+          <Pressable onPress={handleLogout} style={styles.logoutButton}>
+            <Text style={styles.logoutText}>Log out</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -355,41 +433,44 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   cover: {
-    height: 170,
+    height: 118,
     backgroundColor: '#dcece0',
     overflow: 'hidden',
   },
   coverGlow: {
     position: 'absolute',
-    right: -30,
-    top: -20,
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: '#c1dbc8',
+    right: -16,
+    top: -34,
+    width: 132,
+    height: 132,
+    borderRadius: 66,
+    backgroundColor: 'rgba(193, 219, 200, 0.65)',
   },
   profileHeader: {
-    marginTop: -54,
+    marginTop: -44,
     paddingHorizontal: 24,
-    gap: 14,
+    gap: 12,
     alignItems: 'center',
   },
   avatarWrapper: {
     alignItems: 'center',
-    gap: 10,
+    gap: 6,
+  },
+  avatarPressable: {
+    position: 'relative',
   },
   avatarImage: {
-    width: 116,
-    height: 116,
-    borderRadius: 58,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     borderWidth: 4,
     borderColor: palette.cream,
     backgroundColor: '#e8ebe8',
   },
   avatarFallback: {
-    width: 116,
-    height: 116,
-    borderRadius: 58,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     borderWidth: 4,
     borderColor: palette.cream,
     backgroundColor: palette.sage,
@@ -398,59 +479,122 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     color: palette.cream,
-    fontSize: 34,
+    fontSize: 28,
     fontWeight: '800',
   },
-  avatarButton: {
-    backgroundColor: palette.surface,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: palette.border,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+  avatarBadge: {
+    position: 'absolute',
+    right: 2,
+    bottom: 4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: palette.soil,
+    borderWidth: 2,
+    borderColor: palette.cream,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarBadgeText: {
+    color: palette.cream,
+    fontSize: 14,
+    fontWeight: '800',
   },
   avatarButtonText: {
     color: palette.sageDark,
     fontWeight: '700',
-    fontSize: 13,
+    fontSize: 12,
   },
   identity: {
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
   },
   name: {
     color: palette.soil,
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
+  },
+  roleLine: {
+    color: palette.soil,
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   meta: {
     color: palette.muted,
+    fontSize: 13,
     textAlign: 'center',
   },
-  logoutButton: {
-    backgroundColor: palette.parchment,
+  verifiedBadge: {
+    marginTop: 4,
+    backgroundColor: '#eef5ef',
     borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
-  logoutText: {
-    color: palette.clay,
-    fontWeight: '800',
+  verifiedBadgeText: {
+    color: palette.sageDark,
+    fontSize: 12,
+    fontWeight: '700',
   },
-  card: {
-    marginTop: 20,
-    marginHorizontal: 24,
-    backgroundColor: palette.surface,
-    borderRadius: radii.lg,
+  completionCard: {
+    width: '100%',
+    backgroundColor: '#f7faf7',
+    borderRadius: radii.md,
     borderWidth: 1,
     borderColor: palette.border,
-    padding: 20,
-    gap: 16,
+    padding: 16,
+    gap: 10,
+  },
+  completionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  completionTitle: {
+    color: palette.soil,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  completionPercent: {
+    color: palette.sageDark,
+    fontWeight: '800',
+    fontSize: 14,
+  },
+  progressTrack: {
+    width: '100%',
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: '#e6ece5',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: palette.sage,
+  },
+  completionList: {
+    gap: 4,
+  },
+  completionItem: {
+    color: palette.muted,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  card: {
+    marginTop: 16,
+    marginHorizontal: 24,
+    backgroundColor: palette.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: palette.border,
+    padding: 18,
+    gap: 14,
     ...shadow,
   },
   sectionTitle: {
     color: palette.soil,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
   },
   primaryButton: {
@@ -458,7 +602,7 @@ const styles = StyleSheet.create({
     backgroundColor: palette.sage,
     borderRadius: 999,
     alignItems: 'center',
-    paddingVertical: 15,
+    paddingVertical: 14,
   },
   primaryButtonText: {
     color: palette.cream,
@@ -469,10 +613,23 @@ const styles = StyleSheet.create({
     backgroundColor: palette.parchment,
     borderRadius: 999,
     alignItems: 'center',
-    paddingVertical: 15,
+    paddingVertical: 14,
   },
   secondaryButtonText: {
     color: palette.clay,
+    fontWeight: '800',
+  },
+  buttonDisabled: {
+    opacity: 0.55,
+  },
+  logoutButton: {
+    backgroundColor: '#f9e4df',
+    borderRadius: 999,
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  logoutText: {
+    color: palette.error,
     fontWeight: '800',
   },
 })

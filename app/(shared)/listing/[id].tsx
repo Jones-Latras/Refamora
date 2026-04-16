@@ -1,5 +1,6 @@
 import { useLocalSearchParams } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
+import MapView, { Marker } from 'react-native-maps'
 import {
   ActivityIndicator,
   Image,
@@ -264,6 +265,45 @@ export default function ListingDetailScreen() {
           </View>
         </View>
 
+        {listing.latitude != null && listing.longitude != null ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Location</Text>
+            <Text style={styles.sectionText}>
+              {listing.address ?? `${listing.city} listing location`}
+            </Text>
+            <Pressable
+              onPress={() =>
+                void Linking.openURL(
+                  `https://www.google.com/maps/search/?api=1&query=${listing.latitude},${listing.longitude}`,
+                )
+              }
+            >
+              <MapView
+                pointerEvents="none"
+                style={styles.locationMap}
+                initialRegion={{
+                  latitude: listing.latitude,
+                  longitude: listing.longitude,
+                  latitudeDelta: 0.02,
+                  longitudeDelta: 0.02,
+                }}
+                scrollEnabled={false}
+                zoomEnabled={false}
+                rotateEnabled={false}
+                pitchEnabled={false}
+              >
+                <Marker
+                  coordinate={{
+                    latitude: listing.latitude,
+                    longitude: listing.longitude,
+                  }}
+                />
+              </MapView>
+            </Pressable>
+            <Text style={styles.mapHint}>Tap the map to open the exact location.</Text>
+          </View>
+        ) : null}
+
         <View style={styles.sellerSection}>
           <Text style={styles.sectionTitle}>Seller</Text>
           {listing.seller ? (
@@ -430,6 +470,16 @@ const styles = StyleSheet.create({
   sectionText: {
     color: palette.muted,
     lineHeight: 22,
+  },
+  locationMap: {
+    width: '100%',
+    height: 180,
+    borderRadius: radii.md,
+    marginTop: 2,
+  },
+  mapHint: {
+    color: palette.muted,
+    fontSize: 12,
   },
   detailRow: {
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TextInput, View } from 'react-native'
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 
 import { palette, radii } from '../utils/theme'
 
@@ -11,6 +11,9 @@ type FormFieldProps = {
   multiline?: boolean
   keyboardType?: 'default' | 'email-address' | 'number-pad' | 'phone-pad'
   error?: string
+  helperText?: string
+  actionLabel?: string
+  onActionPress?: () => void
 }
 
 export function FormField({
@@ -22,10 +25,20 @@ export function FormField({
   multiline,
   keyboardType = 'default',
   error,
+  helperText,
+  actionLabel,
+  onActionPress,
 }: FormFieldProps) {
   return (
     <View style={styles.wrapper}>
-      <Text style={styles.label}>{label}</Text>
+      <View style={styles.labelRow}>
+        <Text style={styles.label}>{label}</Text>
+        {actionLabel && onActionPress ? (
+          <Pressable onPress={onActionPress}>
+            <Text style={styles.actionText}>{actionLabel}</Text>
+          </Pressable>
+        ) : null}
+      </View>
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -40,6 +53,7 @@ export function FormField({
           error ? styles.inputError : null,
         ]}
       />
+      {helperText && !error ? <Text style={styles.helper}>{helperText}</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   )
@@ -47,29 +61,45 @@ export function FormField({
 
 const styles = StyleSheet.create({
   wrapper: {
-    gap: 8,
+    gap: 6,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
   },
   label: {
     color: palette.soil,
     fontWeight: '700',
-    fontSize: 14,
+    fontSize: 13,
+  },
+  actionText: {
+    color: palette.sageDark,
+    fontWeight: '700',
+    fontSize: 12,
   },
   input: {
-    borderRadius: radii.md,
+    borderRadius: radii.sm,
     borderWidth: 1,
     borderColor: palette.border,
     backgroundColor: palette.surface,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
     color: palette.ink,
   },
   multiline: {
-    minHeight: 120,
+    minHeight: 96,
     textAlignVertical: 'top',
   },
   inputError: {
     borderColor: palette.error,
+  },
+  helper: {
+    color: palette.muted,
+    fontSize: 12,
+    lineHeight: 16,
   },
   error: {
     color: palette.error,

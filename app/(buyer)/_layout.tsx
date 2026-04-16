@@ -14,7 +14,7 @@ export default function BuyerLayout() {
         contentStyle: { backgroundColor: palette.cream },
       }}
     >
-      <Stack.Screen name="feed" options={{ title: 'Buyer Feed' }} />
+      <Stack.Screen name="feed" options={{ headerShown: false }} />
       <Stack.Screen name="map" options={{ title: 'Map View' }} />
       <Stack.Screen name="dashboard" options={{ title: 'Buyer Dashboard' }} />
       <Stack.Screen name="requests" options={{ title: 'Sent Requests' }} />

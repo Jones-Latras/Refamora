@@ -70,10 +70,16 @@ export default function BuyerDashboardScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.topActions}>
           <Pressable
+            onPress={() => router.push('/(buyer)/map')}
+            style={styles.secondaryButton}
+          >
+            <Text style={styles.secondaryButtonText}>Open map</Text>
+          </Pressable>
+          <Pressable
             onPress={() => router.push('/(shared)/profile')}
             style={styles.profileButton}
           >
-            <Text style={styles.profileButtonText}>Open profile</Text>
+            <Text style={styles.profileButtonText}>Edit profile</Text>
           </Pressable>
         </View>
 
@@ -157,17 +163,33 @@ const styles = StyleSheet.create({
   },
   topActions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    gap: 10,
   },
   profileButton: {
-    backgroundColor: palette.parchment,
+    flex: 1,
+    backgroundColor: palette.sage,
     borderRadius: 999,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
   profileButtonText: {
-    color: palette.sageDark,
+    color: palette.cream,
     fontWeight: '800',
+    textAlign: 'center',
+  },
+  secondaryButton: {
+    flex: 1,
+    backgroundColor: palette.surface,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: palette.border,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  secondaryButtonText: {
+    color: palette.clay,
+    fontWeight: '800',
+    textAlign: 'center',
   },
   section: {
     gap: 14,
