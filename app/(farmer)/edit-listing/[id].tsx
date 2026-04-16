@@ -154,6 +154,7 @@ export default function EditListingScreen() {
       initialValues={initialValues}
       onSubmitValues={handleSubmitValues}
       onInfo={(message) => showToast(message, 'info')}
+      onError={(message) => showToast(message, 'error')}
     />
   )
 }

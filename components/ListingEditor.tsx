@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -31,6 +31,7 @@ type ListingEditorProps = {
   initialValues: ListingFormValues
   onSubmitValues: (values: ListingFormValues) => Promise<void>
   onInfo: (message: string) => void
+  onError: (message: string) => void
 }
 
 export function ListingEditor({
@@ -41,7 +42,10 @@ export function ListingEditor({
   initialValues,
   onSubmitValues,
   onInfo,
+  onError,
 }: ListingEditorProps) {
+  const scrollViewRef = useRef<ScrollView>(null)
+  const fieldPositions = useRef<Partial<Record<keyof ListingFormValues, number>>>({})
   const {
     control,
     handleSubmit,
@@ -68,10 +72,59 @@ export function ListingEditor({
   const selectedUnit = watch('unit')
   const wasteSuggestions = getWasteSuggestions(selectedWasteType)
   const selectedImage = watch('image_url')
+  const fieldOrder = useMemo<(keyof ListingFormValues)[]>(
+    () => [
+      'title',
+      'description',
+      'price',
+      'quantity',
+      'unit',
+      'city',
+      'address',
+      'fulfillment_type',
+    ],
+    [],
+  )
 
-  const onSubmit = handleSubmit(async (values) => {
-    await onSubmitValues(values)
-  })
+  const registerFieldPosition =
+    (fieldName: keyof ListingFormValues) =>
+    (event: { nativeEvent: { layout: { y: number } } }) => {
+      fieldPositions.current[fieldName] = event.nativeEvent.layout.y
+    }
+
+  const scrollToField = (fieldName: keyof ListingFormValues) => {
+    const y = fieldPositions.current[fieldName]
+
+    if (typeof y !== 'number') {
+      return
+    }
+
+    scrollViewRef.current?.scrollTo({
+      y: Math.max(y - 24, 0),
+      animated: true,
+    })
+  }
+
+  const onSubmit = handleSubmit(
+    async (values) => {
+      await onSubmitValues(values)
+    },
+    (fieldErrors) => {
+      const firstErrorField = fieldOrder.find((fieldName) => fieldErrors[fieldName])
+
+      if (firstErrorField) {
+        scrollToField(firstErrorField)
+        const message = fieldErrors[firstErrorField]?.message
+
+        if (typeof message === 'string' && message.length > 0) {
+          onError(message)
+          return
+        }
+      }
+
+      onError('Please complete the missing fields before publishing.')
+    },
+  )
 
   const handlePickImage = async () => {
     const imageUri = await pickAndCompressImage()
@@ -86,7 +139,7 @@ export function ListingEditor({
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView ref={scrollViewRef} contentContainerStyle={styles.content}>
         {heroTitle || heroSubtitle ? (
           <View style={styles.hero}>
             {heroTitle ? <Text style={styles.title}>{heroTitle}</Text> : null}
@@ -140,34 +193,44 @@ export function ListingEditor({
             />
           ) : null}
 
-          <Controller
-            control={control}
-            name="title"
-            render={({ field: { onChange, value } }) => (
-              <FormField
-                label="Listing title"
-                value={value}
-                onChangeText={onChange}
-                placeholder="Dry rice straw for mushroom growing"
-                error={errors.title?.message}
-              />
-            )}
-          />
-          <Controller
-            control={control}
-            name="description"
-            render={({ field: { onChange, value } }) => (
-              <FormField
-                label="Description"
-                value={value}
-                onChangeText={onChange}
-                placeholder="Short details about moisture, condition, and volume"
-                multiline
-                error={errors.description?.message}
-              />
-            )}
-          />
-          <View style={styles.row}>
+          <View onLayout={registerFieldPosition('title')}>
+            <Controller
+              control={control}
+              name="title"
+              render={({ field: { onChange, value } }) => (
+                <FormField
+                  label="Listing title"
+                  value={value}
+                  onChangeText={onChange}
+                  placeholder="Dry rice straw for mushroom growing"
+                  error={errors.title?.message}
+                />
+              )}
+            />
+          </View>
+          <View onLayout={registerFieldPosition('description')}>
+            <Controller
+              control={control}
+              name="description"
+              render={({ field: { onChange, value } }) => (
+                <FormField
+                  label="Description"
+                  value={value}
+                  onChangeText={onChange}
+                  placeholder="Short details about moisture, condition, and volume"
+                  multiline
+                  error={errors.description?.message}
+                />
+              )}
+            />
+          </View>
+          <View
+            style={styles.row}
+            onLayout={(event) => {
+              registerFieldPosition('price')(event)
+              registerFieldPosition('quantity')(event)
+            }}
+          >
             <Controller
               control={control}
               name="price"
@@ -199,7 +262,13 @@ export function ListingEditor({
               )}
             />
           </View>
-          <View style={styles.row}>
+          <View
+            style={styles.row}
+            onLayout={(event) => {
+              registerFieldPosition('unit')(event)
+              registerFieldPosition('city')(event)
+            }}
+          >
             <Controller
               control={control}
               name="unit"
@@ -263,20 +332,25 @@ export function ListingEditor({
               })}
             </View>
           </View>
-          <Controller
-            control={control}
-            name="address"
-            render={({ field: { onChange, value } }) => (
-              <FormField
-                label="Pickup address"
-                value={value}
-                onChangeText={onChange}
-                placeholder="Purok 3, Malaybalay, Bukidnon"
-                error={errors.address?.message}
-              />
-            )}
-          />
-          <View style={styles.selectorBlock}>
+          <View onLayout={registerFieldPosition('address')}>
+            <Controller
+              control={control}
+              name="address"
+              render={({ field: { onChange, value } }) => (
+                <FormField
+                  label="Pickup address"
+                  value={value}
+                  onChangeText={onChange}
+                  placeholder="Purok 3, Malaybalay, Bukidnon"
+                  error={errors.address?.message}
+                />
+              )}
+            />
+          </View>
+          <View
+            style={styles.selectorBlock}
+            onLayout={registerFieldPosition('fulfillment_type')}
+          >
             <Text style={styles.selectorLabel}>Fulfillment type</Text>
             <View style={styles.selectorWrap}>
               {fulfillmentOptions.map((option) => {

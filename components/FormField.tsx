@@ -34,7 +34,11 @@ export function FormField({
         secureTextEntry={secureTextEntry}
         multiline={multiline}
         keyboardType={keyboardType}
-        style={[styles.input, multiline ? styles.multiline : null]}
+        style={[
+          styles.input,
+          multiline ? styles.multiline : null,
+          error ? styles.inputError : null,
+        ]}
       />
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
@@ -63,6 +67,9 @@ const styles = StyleSheet.create({
   multiline: {
     minHeight: 120,
     textAlignVertical: 'top',
+  },
+  inputError: {
+    borderColor: palette.error,
   },
   error: {
     color: palette.error,
