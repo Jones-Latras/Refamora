@@ -65,14 +65,14 @@ Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
 - [ ] Edit Profile form with Zod validation
 
 ### Phase 4 â€” Listing Creation (Farmer) (8 tasks)
-- [~] Build ListingService (farmer): createListing, updateListing, deleteListing, getFarmerListings
-- [~] Waste type constants + suggestions data (utils/wasteTypes.ts)
+- [x] Build ListingService (farmer): createListing, updateListing, deleteListing, getFarmerListings
+- [x] Waste type constants + suggestions data (utils/wasteTypes.ts)
 - [x] Storage service for listing image upload with compression
 - [x] Map location picker component (tap to pin)
-- [~] Create Listing form â€” Part 1: title, waste type, description, quantity, price
-- [~] Create Listing form â€” Part 2: photo upload, location pin, fulfillment type
-- [~] Waste-to-Value suggestions panel (shown after waste type selected)
-- [~] Zod schema for listing form (utils/schemas.ts)
+- [x] Create Listing form â€” Part 1: title, waste type, description, quantity, price
+- [x] Create Listing form â€” Part 2: photo upload, location pin, fulfillment type
+- [x] Waste-to-Value suggestions panel (shown after waste type selected)
+- [x] Zod schema for listing form (utils/schemas.ts)
 
 ### Phase 5 â€” Listing Feed (Buyer) (6 tasks)
 - [~] Build ListingService (buyer): getListings (paginated), getListingById

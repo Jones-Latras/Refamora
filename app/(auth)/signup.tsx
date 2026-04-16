@@ -15,7 +15,6 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { FormField } from '../../components/FormField'
 import { useToast } from '../../components/Toast'
 import { signUp } from '../../services/authService'
-import { initializeUserProfile } from '../../services/profileService'
 import type { SignUpFormValues } from '../../utils/schemas'
 import { signUpSchema } from '../../utils/schemas'
 import { palette, radii } from '../../utils/theme'
@@ -38,23 +37,13 @@ export default function SignUpScreen() {
   })
 
   const onSubmit = handleSubmit(async (values) => {
-    const { user, error } = await signUp(values.email, values.password)
+    const { user, error } = await signUp(values.email, values.password, {
+      full_name: values.fullName,
+      phone: values.phone,
+    })
 
     if (error || !user) {
       showToast(error?.message ?? 'Unable to create account.', 'error')
-      return
-    }
-
-    const profileResult = await initializeUserProfile({
-      id: user.id,
-      email: values.email,
-      full_name: values.fullName,
-      phone: values.phone,
-      role: null,
-    })
-
-    if (profileResult.error) {
-      showToast(profileResult.error.message, 'error')
       return
     }
 

@@ -1,4 +1,5 @@
 import { decode } from 'base64-arraybuffer'
+import * as FileSystem from 'expo-file-system'
 
 import type { ServiceResult } from '../types/app'
 
@@ -15,24 +16,8 @@ export async function uploadImage(
     return { data: null, error: new Error('Supabase is not configured yet.') }
   }
 
-  const response = await fetch(fileUri)
-  const blob = await response.blob()
-  const reader = new FileReader()
-
-  const base64 = await new Promise<string>((resolve, reject) => {
-    reader.onloadend = () => {
-      const result = reader.result
-
-      if (typeof result === 'string') {
-        resolve(result.split(',')[1] ?? '')
-        return
-      }
-
-      reject(new Error('Failed to read image for upload.'))
-    }
-
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
+  const base64 = await FileSystem.readAsStringAsync(fileUri, {
+    encoding: FileSystem.EncodingType.Base64,
   })
 
   const { data, error } = await getSupabaseClient().storage

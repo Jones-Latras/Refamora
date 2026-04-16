@@ -108,6 +108,23 @@ export async function updateListing(
   return { data, error }
 }
 
+export async function deleteListing(
+  listingId: string,
+): Promise<ServiceResult<ListingRow>> {
+  if (!hasSupabaseEnv) {
+    return { data: null, error: new Error('Supabase is not configured yet.') }
+  }
+
+  const { data, error } = await getSupabaseClient()
+    .from('listings')
+    .delete()
+    .eq('id', listingId)
+    .select()
+    .single()
+
+  return { data, error }
+}
+
 export async function setListingStatus(
   listingId: string,
   status: ListingStatus,

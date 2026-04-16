@@ -10,7 +10,11 @@ export async function getUserProfile(userId: string) {
     return { data: null, error: new Error('Supabase is not configured yet.') }
   }
 
-  return getSupabaseClient().from('users').select('*').eq('id', userId).single()
+  return getSupabaseClient()
+    .from('users')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle()
 }
 
 export async function initializeUserProfile(profile: TablesInsert<'users'>) {
@@ -54,7 +58,7 @@ export async function getUserRole(userId: string): Promise<UserRole | null> {
     .from('users')
     .select('role')
     .eq('id', userId)
-    .single()
+    .maybeSingle()
 
   return (data?.role as UserRole | null) ?? null
 }

@@ -7,13 +7,25 @@ type AuthResult = { user: User | null; error: AuthError | Error | null }
 export async function signUp(
   email: string,
   password: string,
+  metadata?: {
+    full_name?: string
+    phone?: string
+    city?: string
+    role?: 'farmer' | 'buyer'
+  },
 ): Promise<AuthResult> {
   if (!hasSupabaseEnv) {
     return { user: null, error: new Error('Supabase is not configured yet.') }
   }
 
   const supabase = getSupabaseClient()
-  const { data, error } = await supabase.auth.signUp({ email, password })
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: metadata,
+    },
+  })
 
   return { user: data.user, error }
 }
