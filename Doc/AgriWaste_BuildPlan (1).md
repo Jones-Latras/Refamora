@@ -29,6 +29,7 @@ A complete, phase-by-phase construction guide. Each task is checkable. Weaknesse
 
 Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
 Latest note: 2026-04-17 UI polish pass applied across auth, dashboards, listings, and shared surfaces. The shared profile page now uses a more compact identity-first layout, profile completion cues, lighter form cards, quieter account actions, and smarter save/password states. Farmer dashboard was reworked around greeting-first hierarchy, tighter stat cards, one primary CTA, and cleaner profile entry.
+Roadmap extension: see `Doc/Refamora_Product_And_AI_BuildPlan.md` for the next-phase product improvements, AI strategy, and checklist rollout.
 ### Phase 0 â€” Project Setup (8 tasks)
 - [x] Initialize Expo project with TypeScript template
 - [x] Configure folder structure (components, services, hooks, utils, types, screens)

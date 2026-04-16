@@ -56,8 +56,38 @@ export const listingSchema = z.object({
   image_url: z.string().nullable().optional(),
 })
 
+export const listingAssistInputSchema = z.object({
+  title: z.string().min(1, 'Listing title is required.'),
+  description: z.string().min(1, 'Add a short description.'),
+  wasteType: z.string().nullable(),
+  quantity: z.number().nullable(),
+  unit: z.string().nullable(),
+  city: z.string().nullable(),
+  fulfillmentType: z.enum(['pickup', 'delivery', 'both']).nullable(),
+  price: z.number().nullable(),
+  imageBase64: z.string().nullable().optional(),
+  imageMimeType: z.string().nullable().optional(),
+})
+
+export const listingAssistOutputSchema = z.object({
+  improvedTitle: z.string(),
+  improvedDescription: z.string(),
+  suggestedWasteType: z.string().nullable(),
+  suggestedUnit: z.string().nullable(),
+  missingFields: z.array(z.string()),
+  publishReadiness: z.enum(['ready', 'needs_review']),
+  notes: z.array(z.string()),
+})
+
+export const listingAssistResultSchema = z.object({
+  provider: z.enum(['local_gemma', 'gemini']),
+  fallbackUsed: z.boolean(),
+  result: listingAssistOutputSchema,
+})
+
 export type LoginFormValues = z.infer<typeof loginSchema>
 export type SignUpFormValues = z.infer<typeof signUpSchema>
 export type ProfileFormValues = z.input<typeof profileSchema>
 export type PasswordChangeFormValues = z.infer<typeof passwordChangeSchema>
 export type ListingFormValues = z.input<typeof listingSchema>
+export type ListingAssistFormValues = z.infer<typeof listingAssistInputSchema>

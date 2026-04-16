@@ -37,3 +37,27 @@ This repo now contains the SQL for:
 - waste suggestion seed data
 
 Those Phase 1 checklist items should remain partial until the SQL is applied to the real Supabase project and verified.
+
+## AI functions
+
+The repo now also contains a first AI edge function scaffold:
+
+- `functions/ai-listing-assist`
+- shared provider layer in `functions/_shared`
+- `localGemmaProvider` as the primary provider
+- `geminiProvider` as the optional fallback
+
+### Suggested function secrets
+
+Set these in Supabase before deploying AI functions:
+
+- `LOCAL_GEMMA_ENABLED=true`
+- `LOCAL_GEMMA_BASE_URL=http://host.docker.internal:11434`
+- `LOCAL_GEMMA_MODEL=gemma`
+- `LOCAL_GEMMA_TIMEOUT_MS=20000`
+- `GEMINI_ENABLED=false`
+- `GEMINI_API_KEY=<your-key-if-used>`
+- `GEMINI_MODEL=gemini-2.5-flash`
+- `GEMINI_TIMEOUT_MS=20000`
+
+If you deploy functions remotely, note that `LOCAL_GEMMA_BASE_URL` must point to a reachable host from the function runtime. For live hackathon demos on one machine, local or self-hosted execution is the safer path.

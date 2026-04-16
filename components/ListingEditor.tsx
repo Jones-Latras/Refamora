@@ -1,13 +1,16 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useMemo, useRef } from 'react'
+import Constants from 'expo-constants'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import type { ListingAssistResult } from '../types/app'
 import type { ListingFormValues } from '../utils/schemas'
 import type { WasteTypeValue } from '../utils/wasteTypes'
 
-import { pickAndCompressImage } from '../utils/imageUtils'
+import { assistListing } from '../services/aiService'
+import { pickAndCompressImage, readImageAsBase64 } from '../utils/imageUtils'
 import { listingSchema } from '../utils/schemas'
 import { palette, radii } from '../utils/theme'
 import { getWasteSuggestions, WASTE_TYPES } from '../utils/wasteTypes'
@@ -22,6 +25,8 @@ const fulfillmentOptions = [
 ] as const
 
 const unitPresets = ['kg', 'sack', 'bundle', 'ton']
+const extra = Constants.expoConfig?.extra ?? {}
+const aiListingAssistEnabled = extra.aiListingAssistEnabled === true
 
 type ListingEditorProps = {
   heroTitle?: string
@@ -46,6 +51,9 @@ export function ListingEditor({
 }: ListingEditorProps) {
   const scrollViewRef = useRef<ScrollView>(null)
   const fieldPositions = useRef<Partial<Record<keyof ListingFormValues, number>>>({})
+  const [isAiApplying, setIsAiApplying] = useState(false)
+  const [aiAssistResult, setAiAssistResult] =
+    useState<ListingAssistResult | null>(null)
   const {
     control,
     handleSubmit,
@@ -137,6 +145,75 @@ export function ListingEditor({
     onInfo('Image ready for upload.')
   }
 
+  const handleAiAssist = async () => {
+    const title = watch('title')?.trim() ?? ''
+    const description = watch('description')?.trim() ?? ''
+
+    if (!title || !description) {
+      onError('Add at least a rough title and description before using AI assist.')
+      return
+    }
+
+    setIsAiApplying(true)
+
+    try {
+      let imageBase64: string | null = null
+      let imageMimeType: string | null = null
+
+      if (selectedImage && !selectedImage.startsWith('http')) {
+        imageBase64 = await readImageAsBase64(selectedImage)
+        imageMimeType = 'image/jpeg'
+      }
+
+      const result = await assistListing({
+        title,
+        description,
+        wasteType: selectedWasteType ?? null,
+        quantity: Number.isFinite(Number(watch('quantity')))
+          ? Number(watch('quantity'))
+          : null,
+        unit: watch('unit')?.trim() || null,
+        city: watch('city')?.trim() || null,
+        fulfillmentType: watch('fulfillment_type') ?? null,
+        price: Number.isFinite(Number(watch('price'))) ? Number(watch('price')) : null,
+        imageBase64,
+        imageMimeType,
+      })
+
+      if (result.error || !result.data) {
+        onError(result.error?.message ?? 'AI assist is unavailable right now.')
+        return
+      }
+
+      const nextValues = result.data.result
+
+      setValue('title', nextValues.improvedTitle, { shouldValidate: true })
+      setValue('description', nextValues.improvedDescription, {
+        shouldValidate: true,
+      })
+
+      if (
+        nextValues.suggestedWasteType &&
+        WASTE_TYPES.some((item) => item.value === nextValues.suggestedWasteType)
+      ) {
+        setValue('waste_type', nextValues.suggestedWasteType as WasteTypeValue, {
+          shouldValidate: true,
+        })
+      }
+
+      if (nextValues.suggestedUnit) {
+        setValue('unit', nextValues.suggestedUnit, { shouldValidate: true })
+      }
+
+      setAiAssistResult(result.data)
+      onInfo('AI suggestions applied. Review the fields before publishing.')
+    } catch {
+      onError('AI assist is unavailable right now. You can continue manually.')
+    } finally {
+      setIsAiApplying(false)
+    }
+  }
+
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
       <ScrollView ref={scrollViewRef} contentContainerStyle={styles.content}>
@@ -224,6 +301,73 @@ export function ListingEditor({
               )}
             />
           </View>
+
+          {aiListingAssistEnabled ? (
+            <View style={styles.aiSection}>
+              <Pressable
+                disabled={isAiApplying}
+                onPress={handleAiAssist}
+                style={[
+                  styles.aiButton,
+                  isAiApplying ? styles.aiButtonDisabled : null,
+                ]}
+              >
+                <Text style={styles.aiButtonText}>
+                  {isAiApplying ? 'Improving with AI...' : 'Improve with AI'}
+                </Text>
+              </Pressable>
+              <Text style={styles.aiMeta}>
+                Refines your title and description using Local Gemma first, then
+                Gemini if fallback is enabled.
+              </Text>
+              {aiAssistResult ? (
+                <View style={styles.aiResultCard}>
+                  <View style={styles.aiResultHeader}>
+                    <Text style={styles.aiResultTitle}>AI suggestions ready</Text>
+                    <View
+                      style={[
+                        styles.aiReadinessBadge,
+                        aiAssistResult.result.publishReadiness === 'ready'
+                          ? styles.aiReadinessBadgeReady
+                          : styles.aiReadinessBadgeReview,
+                      ]}
+                    >
+                      <Text style={styles.aiReadinessText}>
+                        {aiAssistResult.result.publishReadiness === 'ready'
+                          ? 'Ready'
+                          : 'Review'}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.aiProviderMeta}>
+                    Provider: {aiAssistResult.provider === 'local_gemma' ? 'Local Gemma' : 'Gemini'}
+                    {aiAssistResult.fallbackUsed ? ' • fallback used' : ''}
+                  </Text>
+                  {aiAssistResult.result.notes.length > 0 ? (
+                    <View style={styles.aiListBlock}>
+                      <Text style={styles.aiListLabel}>Notes</Text>
+                      {aiAssistResult.result.notes.map((note) => (
+                        <Text key={note} style={styles.aiListItem}>
+                          • {note}
+                        </Text>
+                      ))}
+                    </View>
+                  ) : null}
+                  {aiAssistResult.result.missingFields.length > 0 ? (
+                    <View style={styles.aiListBlock}>
+                      <Text style={styles.aiListLabel}>Still review</Text>
+                      {aiAssistResult.result.missingFields.map((item) => (
+                        <Text key={item} style={styles.aiListItem}>
+                          • {item}
+                        </Text>
+                      ))}
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+
           <View
             style={styles.row}
             onLayout={(event) => {
@@ -494,6 +638,82 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: 16,
+  },
+  aiSection: {
+    gap: 10,
+  },
+  aiButton: {
+    backgroundColor: palette.sageDark,
+    borderRadius: radii.md,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aiButtonDisabled: {
+    opacity: 0.7,
+  },
+  aiButtonText: {
+    color: palette.cream,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  aiMeta: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  aiResultCard: {
+    gap: 10,
+    backgroundColor: palette.parchment,
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: radii.md,
+    padding: 16,
+  },
+  aiResultHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  aiResultTitle: {
+    color: palette.soil,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  aiReadinessBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  aiReadinessBadgeReady: {
+    backgroundColor: 'rgba(58, 102, 72, 0.14)',
+  },
+  aiReadinessBadgeReview: {
+    backgroundColor: 'rgba(176, 126, 40, 0.14)',
+  },
+  aiReadinessText: {
+    color: palette.sageDark,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  aiProviderMeta: {
+    color: palette.muted,
+    fontSize: 13,
+  },
+  aiListBlock: {
+    gap: 6,
+  },
+  aiListLabel: {
+    color: palette.soil,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  aiListItem: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 19,
   },
   selectorBlock: {
     gap: 10,

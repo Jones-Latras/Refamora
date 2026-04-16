@@ -35,6 +35,8 @@ const config: ExpoConfig = {
   extra: {
     supabaseUrl: process.env.SUPABASE_URL ?? '',
     supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? '',
+    aiListingAssistEnabled:
+      process.env.EXPO_PUBLIC_AI_LISTING_ASSIST_ENABLED === 'true',
   },
 }
 

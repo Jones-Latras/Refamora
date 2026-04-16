@@ -1,5 +1,6 @@
 import * as ImageManipulator from 'expo-image-manipulator'
 import * as ImagePicker from 'expo-image-picker'
+import * as FileSystem from 'expo-file-system/legacy'
 import { Platform } from 'react-native'
 
 async function pickImage(
@@ -50,4 +51,10 @@ export async function pickAndCompressImage() {
 
 export async function pickAndCompressAvatar() {
   return pickImage([1, 1], { width: 600, height: 600 })
+}
+
+export async function readImageAsBase64(uri: string) {
+  return FileSystem.readAsStringAsync(uri, {
+    encoding: FileSystem.EncodingType.Base64,
+  })
 }
