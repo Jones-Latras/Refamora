@@ -25,17 +25,24 @@ export const profileSchema = z.object({
   avatar_url: z.string().url().nullable().optional(),
 })
 
+const wasteTypeValues = WASTE_TYPES.map((item) => item.value) as [
+  string,
+  ...string[],
+]
+
 export const listingSchema = z.object({
   title: z.string().min(3, 'Listing title is required.'),
   description: z.string().min(10, 'Add a short description.'),
-  waste_type: z.enum(WASTE_TYPES as [string, ...string[]]),
+  waste_type: z.enum(wasteTypeValues),
   price: z.coerce.number().min(0),
   quantity: z.coerce.number().min(1),
   unit: z.string().min(1),
   city: z.string().min(2),
+  address: z.string().min(4, 'Add a pickup address.'),
   latitude: z.coerce.number().nullable(),
   longitude: z.coerce.number().nullable(),
   fulfillment_type: z.enum(['pickup', 'delivery', 'both']),
+  accept_offers: z.boolean().default(false),
   image_url: z.string().nullable().optional(),
 })
 

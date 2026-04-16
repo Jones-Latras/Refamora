@@ -39,12 +39,12 @@ Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
 - [x] Set up navigation with Expo Router (tab + stack layout)
 
 ### Phase 1 â€” Database & Types (7 tasks)
-- [ ] Create users table with correct columns and indexes
-- [ ] Create listings table with spatial columns (latitude, longitude)
-- [ ] Create contact_requests table
-- [ ] Create waste_suggestions table and seed with 8+ waste types
-- [ ] Create Supabase Storage bucket for listing images and avatars
-- [ ] Write and test Row Level Security policies for all tables
+- [~] Create users table with correct columns and indexes
+- [~] Create listings table with spatial columns (latitude, longitude)
+- [~] Create contact_requests table
+- [~] Create waste_suggestions table and seed with 8+ waste types
+- [~] Create Supabase Storage bucket for listing images and avatars
+- [~] Write and test Row Level Security policies for all tables
 - [~] Generate TypeScript types from Supabase schema (types/database.ts)
 
 ### Phase 2 â€” Authentication (8 tasks)
@@ -67,7 +67,7 @@ Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
 ### Phase 4 â€” Listing Creation (Farmer) (8 tasks)
 - [~] Build ListingService (farmer): createListing, updateListing, deleteListing, getFarmerListings
 - [~] Waste type constants + suggestions data (utils/wasteTypes.ts)
-- [~] Storage service for listing image upload with compression
+- [x] Storage service for listing image upload with compression
 - [~] Map location picker component (tap to pin)
 - [~] Create Listing form â€” Part 1: title, waste type, description, quantity, price
 - [~] Create Listing form â€” Part 2: photo upload, location pin, fulfillment type

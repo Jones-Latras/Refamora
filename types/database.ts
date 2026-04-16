@@ -15,31 +15,31 @@ export type Database = {
         Row: {
           id: string
           email: string | null
-          full_name: string | null
+          full_name: string
           phone: string | null
-          city: string | null
           role: UserRole | null
+          city: string | null
           avatar_url: string | null
-          created_at: string | null
+          created_at: string
         }
         Insert: {
           id: string
           email?: string | null
-          full_name?: string | null
+          full_name: string
           phone?: string | null
-          city?: string | null
           role?: UserRole | null
+          city?: string | null
           avatar_url?: string | null
-          created_at?: string | null
+          created_at?: string
         }
         Update: {
           email?: string | null
-          full_name?: string | null
+          full_name?: string
           phone?: string | null
-          city?: string | null
           role?: UserRole | null
+          city?: string | null
           avatar_url?: string | null
-          created_at?: string | null
+          created_at?: string
         }
         Relationships: []
       }
@@ -48,49 +48,57 @@ export type Database = {
           id: string
           seller_id: string
           title: string
-          description: string | null
           waste_type: string
-          price: number
-          unit: string
+          description: string | null
           quantity: number
-          city: string | null
+          unit: string
+          price: number
+          accept_offers: boolean
           image_url: string | null
+          address: string | null
+          city: string | null
           latitude: number | null
           longitude: number | null
           fulfillment_type: FulfillmentType
           status: ListingStatus
-          created_at: string | null
+          created_at: string
         }
         Insert: {
           id?: string
           seller_id: string
           title: string
-          description?: string | null
           waste_type: string
-          price: number
-          unit: string
+          description?: string | null
           quantity: number
-          city?: string | null
+          unit: string
+          price: number
+          accept_offers?: boolean
           image_url?: string | null
+          address?: string | null
+          city?: string | null
           latitude?: number | null
           longitude?: number | null
           fulfillment_type?: FulfillmentType
           status?: ListingStatus
-          created_at?: string | null
+          created_at?: string
         }
         Update: {
+          seller_id?: string
           title?: string
-          description?: string | null
           waste_type?: string
-          price?: number
-          unit?: string
+          description?: string | null
           quantity?: number
-          city?: string | null
+          unit?: string
+          price?: number
+          accept_offers?: boolean
           image_url?: string | null
+          address?: string | null
+          city?: string | null
           latitude?: number | null
           longitude?: number | null
           fulfillment_type?: FulfillmentType
           status?: ListingStatus
+          created_at?: string
         }
         Relationships: []
       }
@@ -101,7 +109,8 @@ export type Database = {
           buyer_id: string
           seller_id: string
           message: string | null
-          created_at: string | null
+          status: 'pending' | 'seen'
+          created_at: string
         }
         Insert: {
           id?: string
@@ -109,10 +118,33 @@ export type Database = {
           buyer_id: string
           seller_id: string
           message?: string | null
-          created_at?: string | null
+          status?: 'pending' | 'seen'
+          created_at?: string
         }
         Update: {
+          listing_id?: string
+          buyer_id?: string
+          seller_id?: string
           message?: string | null
+          status?: 'pending' | 'seen'
+          created_at?: string
+        }
+        Relationships: []
+      }
+      waste_suggestions: {
+        Row: {
+          id: string
+          waste_type: string
+          suggested_use: string
+        }
+        Insert: {
+          id?: string
+          waste_type: string
+          suggested_use: string
+        }
+        Update: {
+          waste_type?: string
+          suggested_use?: string
         }
         Relationships: []
       }
@@ -134,6 +166,11 @@ export type Database = {
 
 type PublicSchema = Database['public']
 
-export type Tables<T extends keyof PublicSchema['Tables']> = PublicSchema['Tables'][T]['Row']
-export type TablesInsert<T extends keyof PublicSchema['Tables']> = PublicSchema['Tables'][T]['Insert']
-export type TablesUpdate<T extends keyof PublicSchema['Tables']> = PublicSchema['Tables'][T]['Update']
+export type Tables<T extends keyof PublicSchema['Tables']> =
+  PublicSchema['Tables'][T]['Row']
+
+export type TablesInsert<T extends keyof PublicSchema['Tables']> =
+  PublicSchema['Tables'][T]['Insert']
+
+export type TablesUpdate<T extends keyof PublicSchema['Tables']> =
+  PublicSchema['Tables'][T]['Update']

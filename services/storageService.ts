@@ -4,8 +4,10 @@ import type { ServiceResult } from '../types/app'
 
 import { getSupabaseClient, hasSupabaseEnv } from './supabase'
 
+type StorageBucket = 'avatars' | 'listing-images'
+
 export async function uploadImage(
-  bucket: 'avatars' | 'listing-images',
+  bucket: StorageBucket,
   filePath: string,
   fileUri: string,
 ): Promise<ServiceResult<string>> {
@@ -20,6 +22,7 @@ export async function uploadImage(
   const base64 = await new Promise<string>((resolve, reject) => {
     reader.onloadend = () => {
       const result = reader.result
+
       if (typeof result === 'string') {
         resolve(result.split(',')[1] ?? '')
         return
@@ -42,8 +45,33 @@ export async function uploadImage(
   return { data: data?.path ?? null, error }
 }
 
+export async function uploadListingImage(
+  uri: string,
+  userId: string,
+): Promise<ServiceResult<string>> {
+  const filePath = `${userId}/${Date.now()}.jpg`
+  const uploadResult = await uploadImage('listing-images', filePath, uri)
+
+  if (uploadResult.error || !uploadResult.data) {
+    return {
+      data: null,
+      error: uploadResult.error ?? new Error('Failed to upload listing image.'),
+    }
+  }
+
+  if (!hasSupabaseEnv) {
+    return { data: null, error: new Error('Supabase is not configured yet.') }
+  }
+
+  const { data } = getSupabaseClient().storage
+    .from('listing-images')
+    .getPublicUrl(uploadResult.data)
+
+  return { data: data.publicUrl, error: null }
+}
+
 export async function deleteImage(
-  bucket: 'avatars' | 'listing-images',
+  bucket: StorageBucket,
   filePath: string,
 ) {
   if (!hasSupabaseEnv) {
