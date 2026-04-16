@@ -105,11 +105,11 @@ Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
 
 ### Phase 9 â€” Dashboards & Management (6 tasks)
 - [x] Farmer dashboard: active listings count, sold count, inquiry count
-- [~] Buyer dashboard: recently viewed listings, sent contact requests
+- [x] Buyer dashboard: recently viewed listings, sent contact requests
 - [x] My Listings screen (farmer) with status indicators
 - [x] Edit Listing screen (pre-populated form + update call)
 - [x] Mark listing as sold / unavailable (status toggle)
-- [ ] Recently viewed listings stored in local state across tab sessions
+- [x] Recently viewed listings stored in local state across tab sessions
 
 ### Phase 10 â€” Polish & QA (8 tasks)
 - [~] Skeleton loading screens for feed and map

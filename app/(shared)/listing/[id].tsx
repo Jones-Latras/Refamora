@@ -17,6 +17,7 @@ import { EmptyState } from '../../../components/EmptyState'
 import { FulfillmentLabel } from '../../../components/FulfillmentLabel'
 import { useToast } from '../../../components/Toast'
 import { useAuth } from '../../../hooks/useAuth'
+import { useRecentlyViewedStore } from '../../../hooks/useRecentlyViewed'
 import {
   getBuyerContactRequests,
   sendContactRequest,
@@ -43,6 +44,7 @@ export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { user, role } = useAuth()
   const { showToast } = useToast()
+  const addRecentlyViewed = useRecentlyViewedStore((state) => state.addListing)
   const [listing, setListing] = useState<ListingDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isContactModalVisible, setIsContactModalVisible] = useState(false)
@@ -112,6 +114,14 @@ export default function ListingDetailScreen() {
       isMounted = false
     }
   }, [listing, role, user])
+
+  useEffect(() => {
+    if (role !== 'buyer' || !listing) {
+      return
+    }
+
+    addRecentlyViewed(listing.id)
+  }, [addRecentlyViewed, listing, role])
 
   const readableWasteType = useMemo(() => {
     if (!listing) {

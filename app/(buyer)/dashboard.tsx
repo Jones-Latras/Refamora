@@ -6,16 +6,21 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { ContactRequestCard } from '../../components/ContactRequestCard'
 import { EmptyState } from '../../components/EmptyState'
+import { ListingCard } from '../../components/ListingCard'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
+import { useRecentlyViewedStore } from '../../hooks/useRecentlyViewed'
 import { getBuyerContactRequests } from '../../services/contactService'
-import type { ContactRequestSummary } from '../../types/app'
+import { getListingPreviewsByIds } from '../../services/listingService'
+import type { ContactRequestSummary, ListingPreview } from '../../types/app'
 import { palette, radii } from '../../utils/theme'
 
 export default function BuyerDashboardScreen() {
   const { user } = useAuth()
   const { showToast } = useToast()
+  const recentlyViewedIds = useRecentlyViewedStore((state) => state.listingIds)
   const [requests, setRequests] = useState<ContactRequestSummary[]>([])
+  const [recentListings, setRecentListings] = useState<ListingPreview[]>([])
 
   const loadRequests = useCallback(async () => {
     if (!user) {
@@ -34,10 +39,28 @@ export default function BuyerDashboardScreen() {
     setRequests(result.data ?? [])
   }, [showToast, user])
 
+  const loadRecentListings = useCallback(async () => {
+    if (recentlyViewedIds.length === 0) {
+      setRecentListings([])
+      return
+    }
+
+    const result = await getListingPreviewsByIds(recentlyViewedIds)
+
+    if (result.error) {
+      showToast(result.error.message, 'error')
+      setRecentListings([])
+      return
+    }
+
+    setRecentListings(result.data ?? [])
+  }, [recentlyViewedIds, showToast])
+
   useFocusEffect(
     useCallback(() => {
       void loadRequests()
-    }, [loadRequests]),
+      void loadRecentListings()
+    }, [loadRecentListings, loadRequests]),
   )
 
   const recentRequests = requests.slice(0, 3)
@@ -48,17 +71,44 @@ export default function BuyerDashboardScreen() {
         <View style={styles.hero}>
           <Text style={styles.title}>Buyer dashboard</Text>
           <Text style={styles.subtitle}>
-            Sent requests are now tracked here. Recently viewed listings are still
-            the remaining dashboard gap.
+            Sent requests and recently viewed listings now stay available as you
+            move around the buyer flow.
           </Text>
         </View>
 
-        <EmptyState
-          title="No recently viewed listings yet"
-          description="Once a buyer opens listing details, the next step is to store those IDs locally and show them here."
-          actionLabel="Browse the feed"
-          onAction={() => router.push('/(buyer)/feed')}
-        />
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text style={styles.sectionTitle}>Recently viewed</Text>
+              <Text style={styles.sectionSubtitle}>
+                {recentListings.length} listing
+                {recentListings.length === 1 ? '' : 's'} tracked
+              </Text>
+            </View>
+            <Pressable onPress={() => router.push('/(buyer)/feed')}>
+              <Text style={styles.linkText}>Browse feed</Text>
+            </Pressable>
+          </View>
+
+          {recentListings.length > 0 ? (
+            <View style={styles.stack}>
+              {recentListings.map((listing) => (
+                <ListingCard
+                  key={listing.id}
+                  listing={listing}
+                  onPress={() => router.push(`/(shared)/listing/${listing.id}`)}
+                />
+              ))}
+            </View>
+          ) : (
+            <EmptyState
+              title="No recently viewed listings yet"
+              description="Open any listing from the feed or map and it will appear here."
+              actionLabel="Browse the feed"
+              onAction={() => router.push('/(buyer)/feed')}
+            />
+          )}
+        </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>

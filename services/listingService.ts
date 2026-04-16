@@ -137,6 +137,34 @@ export async function getFarmerListings(
   return { data: data?.map(mapListing) ?? [], error }
 }
 
+export async function getListingPreviewsByIds(
+  listingIds: string[],
+): Promise<ServiceResult<ListingPreview[]>> {
+  if (!hasSupabaseEnv || listingIds.length === 0) {
+    return { data: [], error: null }
+  }
+
+  const { data, error } = await getSupabaseClient()
+    .from('listings')
+    .select('*')
+    .in('id', listingIds)
+
+  if (error) {
+    return { data: [], error }
+  }
+
+  const previewsById = new Map(
+    (data ?? []).map((row) => [row.id, mapListing(row)]),
+  )
+
+  return {
+    data: listingIds
+      .map((listingId) => previewsById.get(listingId))
+      .filter((item): item is ListingPreview => Boolean(item)),
+    error: null,
+  }
+}
+
 export async function getListingById(
   listingId: string,
 ): Promise<ServiceResult<ListingDetail>> {
