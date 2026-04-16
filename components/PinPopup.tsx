@@ -1,37 +1,111 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 
-import type { ListingPin } from '../types/app'
+import type { Tables } from '../types/database'
 
-import { palette, radii } from '../utils/theme'
+import { formatPrice } from '../utils/formatters'
+import { palette, radii, shadow } from '../utils/theme'
 
-export function PinPopup({ pin }: { pin: ListingPin }) {
+type PinPopupProps = {
+  listing: Tables<'listings'>
+  onClose: () => void
+  onViewDetails: () => void
+}
+
+export function PinPopup({
+  listing,
+  onClose,
+  onViewDetails,
+}: PinPopupProps) {
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>{pin.title}</Text>
-      <Text style={styles.meta}>{pin.wasteType}</Text>
+      <View style={styles.header}>
+        <View style={styles.headerText}>
+          <Text style={styles.eyebrow}>{listing.waste_type}</Text>
+          <Text numberOfLines={2} style={styles.title}>
+            {listing.title}
+          </Text>
+        </View>
+        <Pressable onPress={onClose} style={styles.closeButton}>
+          <Text style={styles.closeText}>Close</Text>
+        </Pressable>
+      </View>
+
+      <Text style={styles.price}>{formatPrice(listing.price, listing.unit)}</Text>
       <Text style={styles.meta}>
-        {pin.latitude.toFixed(4)}, {pin.longitude.toFixed(4)}
+        {(listing.city ?? 'Unknown city') + ' • ' + listing.quantity} {listing.unit}
       </Text>
+      <Text style={styles.meta}>
+        {listing.fulfillment_type} • status: {listing.status}
+      </Text>
+
+      <Pressable onPress={onViewDetails} style={styles.actionButton}>
+        <Text style={styles.actionButtonText}>View Details</Text>
+      </Pressable>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   card: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    bottom: 24,
     backgroundColor: palette.surface,
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: palette.border,
-    padding: 14,
+    padding: 18,
+    gap: 8,
+    ...shadow,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  headerText: {
+    flex: 1,
     gap: 4,
   },
-  title: {
-    fontSize: 15,
+  eyebrow: {
+    color: palette.harvest,
+    textTransform: 'uppercase',
+    fontSize: 11,
     fontWeight: '700',
+    letterSpacing: 1.2,
+  },
+  title: {
     color: palette.soil,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  closeButton: {
+    alignSelf: 'flex-start',
+  },
+  closeText: {
+    color: palette.sageDark,
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  price: {
+    color: palette.sageDark,
+    fontSize: 18,
+    fontWeight: '800',
   },
   meta: {
-    fontSize: 13,
     color: palette.muted,
+    lineHeight: 20,
+  },
+  actionButton: {
+    marginTop: 6,
+    backgroundColor: palette.sage,
+    borderRadius: 999,
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  actionButtonText: {
+    color: palette.cream,
+    fontWeight: '800',
   },
 })

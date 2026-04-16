@@ -1,28 +1,35 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 
 import { palette } from '../utils/theme'
 
-export function MapMarker({ label }: { label: string }) {
+const wasteTypeColors: Record<string, string> = {
+  rice_straw: '#6a8f4e',
+  corn_stalks: '#8f6a3d',
+  coconut_husk: '#7b563a',
+  banana_trunk: '#70543b',
+  sugarcane_bagasse: '#b07e28',
+  pineapple_leaves: '#7ea04d',
+}
+
+export function MapMarker({ wasteType }: { wasteType: string }) {
   return (
-    <View style={styles.marker}>
-      <Text numberOfLines={1} style={styles.text}>
-        {label}
-      </Text>
-    </View>
+    <View
+      style={[
+        styles.marker,
+        {
+          backgroundColor: wasteTypeColors[wasteType] ?? palette.sage,
+        },
+      ]}
+    />
   )
 }
 
 const styles = StyleSheet.create({
   marker: {
-    backgroundColor: palette.sage,
+    width: 16,
+    height: 16,
     borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    maxWidth: 140,
-  },
-  text: {
-    color: palette.cream,
-    fontSize: 11,
-    fontWeight: '700',
+    borderWidth: 2,
+    borderColor: palette.cream,
   },
 })

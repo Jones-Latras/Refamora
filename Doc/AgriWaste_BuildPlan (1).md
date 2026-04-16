@@ -83,12 +83,12 @@ Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
 - [x] Connect search + filters to paginated listing query
 
 ### Phase 6 â€” Map Screen (6 tasks)
-- [ ] Full-screen map setup with react-native-maps (MapView)
+- [x] Full-screen map setup with react-native-maps (MapView)
 - [x] MapService: fetchListingPins (id, title, latitude, longitude only)
-- [~] Custom marker component (leaf icon, color-coded by waste type)
-- [ ] Marker clustering with react-native-map-clustering
-- [~] Pin popup preview card (fetches full listing on tap)
-- [ ] View Details navigation from popup to full listing screen
+- [x] Custom marker component (leaf icon, color-coded by waste type)
+- [x] Marker clustering with react-native-map-clustering
+- [x] Pin popup preview card (fetches full listing on tap)
+- [x] View Details navigation from popup to full listing screen
 
 ### Phase 7 â€” Listing Details (4 tasks)
 - [~] Listing details screen (full data display)

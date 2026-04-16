@@ -1,51 +1,106 @@
+import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
-import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
+import ClusteredMapView from 'react-native-map-clustering'
+import { Marker } from 'react-native-maps'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { MapMarker } from '../../components/MapMarker'
 import { PinPopup } from '../../components/PinPopup'
-import { fetchListingPins } from '../../services/mapService'
+import { fetchListingPins, fetchPinDetails } from '../../services/mapService'
 import type { ListingPin } from '../../types/app'
-import { palette, radii } from '../../utils/theme'
+import type { Tables } from '../../types/database'
+import { palette } from '../../utils/theme'
+
+const INITIAL_REGION = {
+  latitude: 8.4542,
+  longitude: 124.6319,
+  latitudeDelta: 0.45,
+  longitudeDelta: 0.45,
+}
 
 export default function MapScreen() {
   const [pins, setPins] = useState<ListingPin[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedListing, setSelectedListing] = useState<Tables<'listings'> | null>(
+    null,
+  )
+  const [selectedPinId, setSelectedPinId] = useState<string | null>(null)
 
   useEffect(() => {
     const loadPins = async () => {
+      setIsLoading(true)
       const result = await fetchListingPins()
       setPins(result.data ?? [])
+      setIsLoading(false)
     }
 
     void loadPins()
   }, [])
 
+  const handleSelectPin = async (pinId: string) => {
+    setSelectedPinId(pinId)
+    const result = await fetchPinDetails(pinId)
+
+    if (result.error) {
+      setSelectedPinId(null)
+      return
+    }
+
+    setSelectedListing(result.data)
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.hero}>
-          <Text style={styles.title}>Map layer foundation</Text>
-          <Text style={styles.subtitle}>
-            The data contract for map pins is in place. A clustered map view can
-            replace this canvas once the map dependencies are installed and
-            configured.
-          </Text>
-        </View>
+      <View style={styles.container}>
+        {isLoading ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator color={palette.sage} size="small" />
+            <Text style={styles.loadingText}>Loading map pins...</Text>
+          </View>
+        ) : (
+          <ClusteredMapView
+            style={styles.map}
+            initialRegion={INITIAL_REGION}
+            animationEnabled
+            radius={40}
+            minPoints={3}
+            showsUserLocation
+          >
+            {pins.map((pin) => (
+              <Marker
+                key={pin.id}
+                coordinate={{
+                  latitude: pin.latitude,
+                  longitude: pin.longitude,
+                }}
+                onPress={() => void handleSelectPin(pin.id)}
+              >
+                <MapMarker wasteType={pin.wasteType} />
+              </Marker>
+            ))}
+          </ClusteredMapView>
+        )}
 
-        <View style={styles.mapCanvas}>
-          {pins.length > 0 ? (
-            pins.slice(0, 6).map((pin) => <MapMarker key={pin.id} label={pin.title} />)
-          ) : (
-            <Text style={styles.helper}>No active pins yet.</Text>
-          )}
-        </View>
+        {selectedPinId && !selectedListing ? (
+          <View style={styles.inlineLoader}>
+            <ActivityIndicator color={palette.sage} size="small" />
+          </View>
+        ) : null}
 
-        <View style={styles.popupList}>
-          {pins.slice(0, 5).map((pin) => (
-            <PinPopup key={pin.id} pin={pin} />
-          ))}
-        </View>
-      </ScrollView>
+        {selectedListing ? (
+          <PinPopup
+            listing={selectedListing}
+            onClose={() => {
+              setSelectedListing(null)
+              setSelectedPinId(null)
+            }}
+            onViewDetails={() => {
+              router.push(`/(shared)/listing/${selectedListing.id}`)
+            }}
+          />
+        ) : null}
+      </View>
     </SafeAreaView>
   )
 }
@@ -55,37 +110,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: palette.cream,
   },
-  content: {
-    padding: 24,
-    gap: 18,
+  container: {
+    flex: 1,
   },
-  hero: {
-    gap: 8,
+  map: {
+    flex: 1,
   },
-  title: {
-    color: palette.soil,
-    fontSize: 28,
-    fontWeight: '800',
-  },
-  subtitle: {
-    color: palette.muted,
-    lineHeight: 22,
-  },
-  mapCanvas: {
-    minHeight: 240,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: palette.border,
-    backgroundColor: '#dfe8de',
-    padding: 18,
-    gap: 10,
-    alignItems: 'flex-start',
+  loadingState: {
+    flex: 1,
+    alignItems: 'center',
     justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#dfe8de',
   },
-  helper: {
+  loadingText: {
     color: palette.sageDark,
+    fontWeight: '600',
   },
-  popupList: {
-    gap: 12,
+  inlineLoader: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    backgroundColor: palette.surface,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
 })
