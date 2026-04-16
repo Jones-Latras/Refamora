@@ -17,7 +17,7 @@ import { useToast } from '../../components/Toast'
 import { signUp } from '../../services/authService'
 import type { SignUpFormValues } from '../../utils/schemas'
 import { signUpSchema } from '../../utils/schemas'
-import { palette, radii } from '../../utils/theme'
+import { palette } from '../../utils/theme'
 
 export default function SignUpScreen() {
   const { showToast } = useToast()
@@ -60,10 +60,6 @@ export default function SignUpScreen() {
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.hero}>
             <Text style={styles.title}>Create your AgriWaste account</Text>
-            <Text style={styles.subtitle}>
-              The plan calls for full name and phone up front so profile setup
-              is not a separate dead-end later.
-            </Text>
           </View>
 
           <View style={styles.form}>
@@ -166,20 +162,14 @@ const styles = StyleSheet.create({
     gap: 22,
   },
   hero: {
-    backgroundColor: '#efe1c3',
-    borderRadius: radii.lg,
-    padding: 24,
-    gap: 10,
+    gap: 6,
+    paddingTop: 24,
   },
   title: {
     color: palette.soil,
     fontWeight: '800',
-    fontSize: 28,
-    lineHeight: 34,
-  },
-  subtitle: {
-    color: palette.clay,
-    lineHeight: 22,
+    fontSize: 32,
+    lineHeight: 38,
   },
   form: {
     gap: 16,

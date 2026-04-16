@@ -54,12 +54,8 @@ export default function LoginScreen() {
       >
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.hero}>
-            <Text style={styles.eyebrow}>Northern Mindanao Marketplace</Text>
-            <Text style={styles.title}>Waste streams turned into working supply</Text>
-            <Text style={styles.subtitle}>
-              Start with the Phase 2 login flow from the build plan, then unlock
-              the farmer and buyer routes behind it.
-            </Text>
+            <Text style={styles.eyebrow}>Refamora</Text>
+            <Text style={styles.title}>Sign in</Text>
           </View>
 
           {!hasSupabaseEnv ? (
@@ -138,31 +134,22 @@ const styles = StyleSheet.create({
     gap: 22,
   },
   hero: {
-    backgroundColor: palette.soil,
-    borderRadius: radii.lg,
-    padding: 24,
-    gap: 10,
+    gap: 6,
+    paddingTop: 24,
   },
   eyebrow: {
-    color: palette.harvest,
-    textTransform: 'uppercase',
+    color: palette.sageDark,
     fontWeight: '700',
-    fontSize: 11,
-    letterSpacing: 1.5,
+    fontSize: 14,
   },
   title: {
-    color: palette.cream,
+    color: palette.soil,
     fontWeight: '800',
-    fontSize: 30,
-    lineHeight: 36,
-  },
-  subtitle: {
-    color: '#e8dfd1',
-    fontSize: 15,
-    lineHeight: 24,
+    fontSize: 32,
+    lineHeight: 38,
   },
   notice: {
-    backgroundColor: '#efe1c3',
+    backgroundColor: palette.parchment,
     borderRadius: radii.md,
     padding: 16,
     gap: 6,

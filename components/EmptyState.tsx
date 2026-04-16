@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
-import { palette, radii } from '../utils/theme'
+import { palette, radii, shadow } from '../utils/theme'
 
 type EmptyStateProps = {
   title: string
@@ -36,6 +36,7 @@ const styles = StyleSheet.create({
     borderColor: palette.border,
     padding: 24,
     gap: 10,
+    ...shadow,
   },
   title: {
     fontSize: 20,

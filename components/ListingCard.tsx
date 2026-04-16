@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import type { ListingPreview } from '../types/app'
 
@@ -14,9 +14,13 @@ type ListingCardProps = {
 export function ListingCard({ listing, onPress }: ListingCardProps) {
   return (
     <Pressable onPress={onPress} style={styles.card}>
-      <View style={styles.imagePlaceholder}>
-        <Text style={styles.imageLabel}>{listing.wasteType}</Text>
-      </View>
+      {listing.imageUrl ? (
+        <Image source={{ uri: listing.imageUrl }} style={styles.image} />
+      ) : (
+        <View style={styles.imagePlaceholder}>
+          <Text style={styles.imageLabel}>{listing.wasteType}</Text>
+        </View>
+      )}
       <View style={styles.content}>
         <View style={styles.row}>
           <Text style={styles.title}>{listing.title}</Text>
@@ -57,10 +61,15 @@ const styles = StyleSheet.create({
   },
   imagePlaceholder: {
     height: 148,
-    backgroundColor: '#dbd0bd',
+    backgroundColor: '#eef1ee',
     alignItems: 'flex-start',
     justifyContent: 'flex-end',
     padding: 16,
+  },
+  image: {
+    height: 148,
+    width: '100%',
+    backgroundColor: '#eef1ee',
   },
   imageLabel: {
     color: palette.soil,

@@ -102,22 +102,13 @@ export default function FarmerDashboardScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.hero}>
-          <View style={styles.heroHeader}>
-            <View>
-              <Text style={styles.eyebrow}>Farmer tools</Text>
-              <Text style={styles.title}>
-                {user?.email ? `Welcome, ${user.email}` : 'Welcome back'}
-              </Text>
-            </View>
-            <Pressable onPress={handleSignOut}>
-              <Text style={styles.signOut}>Sign out</Text>
-            </Pressable>
-          </View>
-          <Text style={styles.subtitle}>
-            Listings, inquiry count, and recent buyer interest now load from
-            Supabase instead of placeholders.
+        <View style={styles.accountRow}>
+          <Text numberOfLines={1} style={styles.accountEmail}>
+            {user?.email ?? 'Signed in'}
           </Text>
+          <Pressable onPress={handleSignOut}>
+            <Text style={styles.signOut}>Sign out</Text>
+          </Pressable>
         </View>
 
         <View style={styles.metricRow}>
@@ -217,37 +208,19 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 24,
   },
-  hero: {
-    backgroundColor: palette.soil,
-    borderRadius: radii.lg,
-    padding: 24,
-    gap: 12,
-  },
-  heroHeader: {
+  accountRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 12,
   },
-  eyebrow: {
-    color: palette.harvest,
-    textTransform: 'uppercase',
-    fontWeight: '700',
-    fontSize: 11,
-    letterSpacing: 1.5,
-  },
-  title: {
-    color: palette.cream,
-    fontWeight: '800',
-    fontSize: 27,
-    lineHeight: 33,
-  },
-  subtitle: {
-    color: '#e8dfd1',
-    lineHeight: 22,
+  accountEmail: {
+    flex: 1,
+    color: palette.muted,
+    fontWeight: '600',
   },
   signOut: {
-    color: palette.harvest,
+    color: palette.sageDark,
     fontWeight: '700',
   },
   metricRow: {
@@ -286,7 +259,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   secondaryButton: {
-    backgroundColor: '#efe1c3',
+    backgroundColor: palette.parchment,
     borderRadius: 999,
     alignItems: 'center',
     paddingVertical: 16,

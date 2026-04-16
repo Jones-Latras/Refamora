@@ -149,8 +149,6 @@ export default function EditListingScreen() {
 
   return (
     <ListingEditor
-      heroTitle="Edit listing"
-      heroSubtitle="Update the details, location, image, or fulfillment method for this listing."
       submitLabel="Save Changes"
       submittingLabel="Updating listing..."
       initialValues={initialValues}

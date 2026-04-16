@@ -40,18 +40,10 @@ export default function FeedScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.content}>
-        <View style={styles.hero}>
-          <Text style={styles.title}>Browse available waste listings</Text>
-          <Text style={styles.subtitle}>
-            This feed now pages listings in batches so search can scale without
-            loading everything at once.
-          </Text>
-        </View>
-
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Search waste type or city"
+          placeholder="Search listings, waste type, or city"
           placeholderTextColor="#9e9183"
           style={styles.search}
         />
@@ -64,14 +56,9 @@ export default function FeedScreen() {
             <Text style={styles.filterButtonText}>
               {activeFilterCount > 0
                 ? `Filters (${activeFilterCount})`
-                : 'Open Filters'}
+                : 'Filters'}
             </Text>
           </Pressable>
-          {activeFilterCount > 0 ? (
-            <Text style={styles.filterSummary}>
-              Search stays live while filters are applied to the paginated query.
-            </Text>
-          ) : null}
         </View>
 
         {isLoading ? (
@@ -131,18 +118,6 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 16,
   },
-  hero: {
-    gap: 8,
-  },
-  title: {
-    color: palette.soil,
-    fontSize: 28,
-    fontWeight: '800',
-  },
-  subtitle: {
-    color: palette.muted,
-    lineHeight: 22,
-  },
   search: {
     backgroundColor: palette.surface,
     borderRadius: radii.md,
@@ -158,7 +133,7 @@ const styles = StyleSheet.create({
   },
   filterButton: {
     alignSelf: 'flex-start',
-    backgroundColor: '#efe1c3',
+    backgroundColor: palette.parchment,
     borderRadius: 999,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -167,10 +142,6 @@ const styles = StyleSheet.create({
     color: palette.clay,
     fontWeight: '800',
     fontSize: 13,
-  },
-  filterSummary: {
-    color: palette.muted,
-    lineHeight: 20,
   },
   loading: {
     gap: 16,

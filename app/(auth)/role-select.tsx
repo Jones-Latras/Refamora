@@ -68,12 +68,7 @@ export default function RoleSelectScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.content}>
-        <Text style={styles.eyebrow}>Phase 2</Text>
-        <Text style={styles.title}>Choose the path you need today</Text>
-        <Text style={styles.subtitle}>
-          The app uses this role to decide which route group becomes your home
-          after login.
-        </Text>
+        <Text style={styles.title}>Choose your role</Text>
 
         {roles.map((role) => (
           <Pressable
@@ -100,22 +95,12 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 18,
   },
-  eyebrow: {
-    color: palette.harvest,
-    textTransform: 'uppercase',
-    fontWeight: '700',
-    letterSpacing: 1.4,
-    fontSize: 11,
-  },
   title: {
     color: palette.soil,
     fontWeight: '800',
-    fontSize: 30,
-    lineHeight: 36,
-  },
-  subtitle: {
-    color: palette.muted,
-    lineHeight: 22,
+    fontSize: 32,
+    lineHeight: 38,
+    paddingTop: 24,
   },
   card: {
     backgroundColor: palette.surface,

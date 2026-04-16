@@ -28,6 +28,7 @@ A complete, phase-by-phase construction guide. Each task is checkable. Weaknesse
 ## Master Checklist â€” All 71 Tasks
 
 Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
+Latest note: 2026-04-16 UI polish pass applied across auth, dashboards, listings, and shared surfaces. No checklist statuses changed in this pass.
 ### Phase 0 â€” Project Setup (8 tasks)
 - [x] Initialize Expo project with TypeScript template
 - [x] Configure folder structure (components, services, hooks, utils, types, screens)

@@ -114,7 +114,7 @@ export default function MyListingsScreen() {
         <View style={styles.list}>
           <EmptyState
             title="No listings yet"
-            description="This matches the empty state called out later in the plan. Once you create a listing, it will show up here with its current status."
+            description="Create your first listing to start showing availability, pricing, and status."
             actionLabel="Create your first listing"
             onAction={() => router.push('/(farmer)/create-listing')}
           />

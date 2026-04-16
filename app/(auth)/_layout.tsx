@@ -6,6 +6,7 @@ export default function AuthLayout() {
   return (
     <Stack
       screenOptions={{
+        headerShown: false,
         headerShadowVisible: false,
         headerStyle: { backgroundColor: palette.cream },
         headerTintColor: palette.soil,

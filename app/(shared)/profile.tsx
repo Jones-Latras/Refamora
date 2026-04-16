@@ -1,10 +1,10 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { EmptyState } from '../../components/EmptyState'
 import { useAuth } from '../../hooks/useAuth'
 import { useProfile } from '../../hooks/useProfile'
-import { palette, radii } from '../../utils/theme'
+import { palette, radii, shadow } from '../../utils/theme'
 
 export default function ProfileScreen() {
   const { user, role } = useAuth()
@@ -23,18 +23,17 @@ export default function ProfileScreen() {
             <Text style={styles.name}>{profile.full_name ?? 'AgriWaste user'}</Text>
             <Text style={styles.meta}>{role ?? 'Role not set'}</Text>
             <View style={styles.details}>
-              <Text style={styles.detailLine}>Email: {profile.email ?? user?.email ?? '—'}</Text>
+              <Text style={styles.detailLine}>
+                Email: {profile.email ?? user?.email ?? '—'}
+              </Text>
               <Text style={styles.detailLine}>Phone: {profile.phone ?? '—'}</Text>
               <Text style={styles.detailLine}>City: {profile.city ?? '—'}</Text>
             </View>
-            <Pressable style={styles.button}>
-              <Text style={styles.buttonText}>Edit profile UI next</Text>
-            </Pressable>
           </View>
         ) : (
           <EmptyState
-            title="Profile details are still empty"
-            description="This is ready for the profile form and avatar upload tasks in Phase 3."
+            title="Profile details are empty"
+            description="Add your phone number and city to complete your account."
           />
         )}
       </ScrollView>
@@ -56,8 +55,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: palette.border,
     padding: 24,
-    gap: 12,
+    gap: 14,
     alignItems: 'center',
+    ...shadow,
   },
   avatar: {
     width: 88,
@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
   },
   details: {
     alignSelf: 'stretch',
-    backgroundColor: palette.cream,
+    backgroundColor: palette.parchment,
     borderRadius: radii.md,
     padding: 16,
     gap: 8,
@@ -92,15 +92,5 @@ const styles = StyleSheet.create({
   detailLine: {
     color: palette.clay,
     lineHeight: 22,
-  },
-  button: {
-    backgroundColor: palette.soil,
-    borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-  },
-  buttonText: {
-    color: palette.cream,
-    fontWeight: '700',
   },
 })

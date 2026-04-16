@@ -16,8 +16,8 @@ import { LocationPicker } from './LocationPicker'
 import { WasteSuggestions } from './WasteSuggestions'
 
 type ListingEditorProps = {
-  heroTitle: string
-  heroSubtitle: string
+  heroTitle?: string
+  heroSubtitle?: string
   submitLabel: string
   submittingLabel: string
   initialValues: ListingFormValues
@@ -77,10 +77,14 @@ export function ListingEditor({
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.hero}>
-          <Text style={styles.title}>{heroTitle}</Text>
-          <Text style={styles.subtitle}>{heroSubtitle}</Text>
-        </View>
+        {heroTitle || heroSubtitle ? (
+          <View style={styles.hero}>
+            {heroTitle ? <Text style={styles.title}>{heroTitle}</Text> : null}
+            {heroSubtitle ? (
+              <Text style={styles.subtitle}>{heroSubtitle}</Text>
+            ) : null}
+          </View>
+        ) : null}
 
         <View style={styles.form}>
           <View style={styles.selectorBlock}>
@@ -337,18 +341,15 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   hero: {
-    backgroundColor: '#efe1c3',
-    borderRadius: radii.lg,
-    padding: 22,
-    gap: 8,
+    gap: 6,
   },
   title: {
     color: palette.soil,
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '800',
   },
   subtitle: {
-    color: palette.clay,
+    color: palette.muted,
     lineHeight: 22,
   },
   form: {
@@ -466,7 +467,7 @@ const styles = StyleSheet.create({
   },
   toggleBadge: {
     borderRadius: 999,
-    backgroundColor: '#efe1c3',
+    backgroundColor: palette.parchment,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },

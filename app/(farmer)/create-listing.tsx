@@ -83,8 +83,6 @@ export default function CreateListingScreen() {
 
   return (
     <ListingEditor
-      heroTitle="Create a new listing"
-      heroSubtitle="This form now uses the same waste types and fields defined in the repo schema."
       submitLabel="Publish Listing"
       submittingLabel="Saving listing..."
       initialValues={initialValues}

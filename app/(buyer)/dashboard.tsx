@@ -13,7 +13,7 @@ import { useRecentlyViewedStore } from '../../hooks/useRecentlyViewed'
 import { getBuyerContactRequests } from '../../services/contactService'
 import { getListingPreviewsByIds } from '../../services/listingService'
 import type { ContactRequestSummary, ListingPreview } from '../../types/app'
-import { palette, radii } from '../../utils/theme'
+import { palette } from '../../utils/theme'
 
 export default function BuyerDashboardScreen() {
   const { user } = useAuth()
@@ -68,14 +68,6 @@ export default function BuyerDashboardScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.hero}>
-          <Text style={styles.title}>Buyer dashboard</Text>
-          <Text style={styles.subtitle}>
-            Sent requests and recently viewed listings now stay available as you
-            move around the buyer flow.
-          </Text>
-        </View>
-
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View>
@@ -153,23 +145,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 24,
     gap: 18,
-  },
-  hero: {
-    backgroundColor: palette.surface,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: palette.border,
-    padding: 24,
-    gap: 8,
-  },
-  title: {
-    color: palette.soil,
-    fontSize: 28,
-    fontWeight: '800',
-  },
-  subtitle: {
-    color: palette.muted,
-    lineHeight: 22,
   },
   section: {
     gap: 14,
