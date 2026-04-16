@@ -71,7 +71,7 @@ export default function LoginScreen() {
                 />
                 <Text style={styles.brand}>Refamora</Text>
                 <Text style={styles.brandMeaning}>
-                  Where farm waste becomes more value.
+                  Where farm waste becomes more valuable.
                 </Text>
               </View>
 

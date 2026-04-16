@@ -51,11 +51,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
 
+      setIsLoading(true)
       setSession(currentSession)
       setUser(currentSession?.user ?? null)
 
       if (currentSession?.user) {
         await loadRole(currentSession.user.id)
+      } else {
+        setRole(null)
       }
 
       if (isMounted) {
@@ -78,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
 
+      setIsLoading(true)
       setSession(nextSession)
       setUser(nextSession?.user ?? null)
 
