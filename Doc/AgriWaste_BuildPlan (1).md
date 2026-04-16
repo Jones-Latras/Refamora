@@ -79,8 +79,8 @@ Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
 - [x] Listing card component
 - [x] Listing feed screen with infinite scroll (FlatList + onEndReached)
 - [x] Search bar with debounce (hooks/useDebounce.ts)
-- [ ] Filter bottom sheet (waste type, fulfillment, price range)
-- [~] Connect search + filters to paginated listing query
+- [x] Filter bottom sheet (waste type, fulfillment, price range)
+- [x] Connect search + filters to paginated listing query
 
 ### Phase 6 â€” Map Screen (6 tasks)
 - [ ] Full-screen map setup with react-native-maps (MapView)

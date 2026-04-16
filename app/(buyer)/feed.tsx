@@ -3,6 +3,7 @@ import { useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -11,18 +12,30 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { EmptyState } from '../../components/EmptyState'
+import { FeedFilterSheet } from '../../components/FeedFilterSheet'
 import { ListingCard } from '../../components/ListingCard'
 import { SkeletonCard } from '../../components/SkeletonCard'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useBuyerListings } from '../../hooks/useListings'
+import type { ListingFilters } from '../../types/app'
 import { palette, radii } from '../../utils/theme'
 
 export default function FeedScreen() {
   const [query, setQuery] = useState('')
+  const [filters, setFilters] = useState<ListingFilters>({})
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
   const debouncedQuery = useDebounce(query)
   const { data, isLoading, isFetchingMore, loadMore } = useBuyerListings({
+    ...filters,
     search: debouncedQuery.trim() || undefined,
   })
+
+  const activeFilterCount = [
+    filters.wasteType,
+    filters.fulfillmentType,
+    filters.minPrice,
+    filters.maxPrice,
+  ].filter((value) => value != null && value !== '').length
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -42,6 +55,24 @@ export default function FeedScreen() {
           placeholderTextColor="#9e9183"
           style={styles.search}
         />
+
+        <View style={styles.filterRow}>
+          <Pressable
+            onPress={() => setIsFilterOpen(true)}
+            style={styles.filterButton}
+          >
+            <Text style={styles.filterButtonText}>
+              {activeFilterCount > 0
+                ? `Filters (${activeFilterCount})`
+                : 'Open Filters'}
+            </Text>
+          </Pressable>
+          {activeFilterCount > 0 ? (
+            <Text style={styles.filterSummary}>
+              Search stays live while filters are applied to the paginated query.
+            </Text>
+          ) : null}
+        </View>
 
         {isLoading ? (
           <View style={styles.loading}>
@@ -79,6 +110,13 @@ export default function FeedScreen() {
           />
         )}
       </View>
+
+      <FeedFilterSheet
+        open={isFilterOpen}
+        filters={filters}
+        onClose={() => setIsFilterOpen(false)}
+        onApply={setFilters}
+      />
     </SafeAreaView>
   )
 }
@@ -114,6 +152,25 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 15,
     color: palette.ink,
+  },
+  filterRow: {
+    gap: 8,
+  },
+  filterButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#efe1c3',
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  filterButtonText: {
+    color: palette.clay,
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  filterSummary: {
+    color: palette.muted,
+    lineHeight: 20,
   },
   loading: {
     gap: 16,
