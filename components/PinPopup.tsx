@@ -1,12 +1,12 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
-import type { Tables } from '../types/database'
+import type { ListingDetail } from '../types/app'
 
-import { formatPrice } from '../utils/formatters'
+import { formatPrice, titleCase } from '../utils/formatters'
 import { palette, radii, shadow } from '../utils/theme'
 
 type PinPopupProps = {
-  listing: Tables<'listings'>
+  listing: ListingDetail
   onClose: () => void
   onViewDetails: () => void
 }
@@ -20,7 +20,7 @@ export function PinPopup({
     <View style={styles.card}>
       <View style={styles.header}>
         <View style={styles.headerText}>
-          <Text style={styles.eyebrow}>{listing.waste_type}</Text>
+          <Text style={styles.eyebrow}>{titleCase(listing.wasteType)}</Text>
           <Text numberOfLines={2} style={styles.title}>
             {listing.title}
           </Text>
@@ -32,10 +32,10 @@ export function PinPopup({
 
       <Text style={styles.price}>{formatPrice(listing.price, listing.unit)}</Text>
       <Text style={styles.meta}>
-        {(listing.city ?? 'Unknown city') + ' • ' + listing.quantity} {listing.unit}
+        {listing.city} | {listing.quantity} {listing.unit}
       </Text>
       <Text style={styles.meta}>
-        {listing.fulfillment_type} • status: {listing.status}
+        {listing.fulfillmentType} | status: {listing.status}
       </Text>
 
       <Pressable onPress={onViewDetails} style={styles.actionButton}>

@@ -1,4 +1,4 @@
-import type { Tables } from '../types/database'
+import type { ListingDetail } from '../types/app'
 
 import { getListingById, getListingPins } from './listingService'
 
@@ -8,7 +8,7 @@ export async function fetchListingPins() {
 
 export async function fetchPinDetails(id: string) {
   return getListingById(id) as Promise<{
-    data: Tables<'listings'> | null
+    data: ListingDetail | null
     error: Error | null
   }>
 }

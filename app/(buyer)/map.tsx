@@ -8,8 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { MapMarker } from '../../components/MapMarker'
 import { PinPopup } from '../../components/PinPopup'
 import { fetchListingPins, fetchPinDetails } from '../../services/mapService'
-import type { ListingPin } from '../../types/app'
-import type { Tables } from '../../types/database'
+import type { ListingDetail, ListingPin } from '../../types/app'
 import { palette } from '../../utils/theme'
 
 const INITIAL_REGION = {
@@ -22,7 +21,7 @@ const INITIAL_REGION = {
 export default function MapScreen() {
   const [pins, setPins] = useState<ListingPin[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [selectedListing, setSelectedListing] = useState<Tables<'listings'> | null>(
+  const [selectedListing, setSelectedListing] = useState<ListingDetail | null>(
     null,
   )
   const [selectedPinId, setSelectedPinId] = useState<string | null>(null)

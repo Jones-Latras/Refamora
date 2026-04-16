@@ -68,3 +68,17 @@ export type ListingPin = {
   longitude: number
   wasteType: string
 }
+
+export type ContactRequestSummary = {
+  id: string
+  listingId: string
+  listingTitle: string
+  buyerId: string
+  sellerId: string
+  counterpartName: string
+  counterpartPhone: string | null
+  counterpartCity: string | null
+  message: string | null
+  status: 'pending' | 'seen'
+  createdAt: string
+}

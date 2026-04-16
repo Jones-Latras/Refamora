@@ -100,15 +100,15 @@ Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
 - [x] Build ContactService: sendContactRequest, getBuyerRequests, getSellerRequests
 - [x] Contact form modal (optional message + send button)
 - [x] Contact info reveal (shows seller phone after request is sent)
-- [ ] Inquiry badge on farmer dashboard (unread count)
-- [ ] Buyer: sent contact request history screen
+- [x] Inquiry badge on farmer dashboard (unread count)
+- [x] Buyer: sent contact request history screen
 
 ### Phase 9 â€” Dashboards & Management (6 tasks)
-- [~] Farmer dashboard: active listings count, sold count, inquiry count
+- [x] Farmer dashboard: active listings count, sold count, inquiry count
 - [~] Buyer dashboard: recently viewed listings, sent contact requests
-- [~] My Listings screen (farmer) with status indicators
-- [ ] Edit Listing screen (pre-populated form + update call)
-- [ ] Mark listing as sold / unavailable (status toggle)
+- [x] My Listings screen (farmer) with status indicators
+- [x] Edit Listing screen (pre-populated form + update call)
+- [x] Mark listing as sold / unavailable (status toggle)
 - [ ] Recently viewed listings stored in local state across tab sessions
 
 ### Phase 10 â€” Polish & QA (8 tasks)

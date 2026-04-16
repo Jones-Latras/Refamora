@@ -16,6 +16,7 @@ export default function BuyerLayout() {
       <Stack.Screen name="feed" options={{ title: 'Buyer Feed' }} />
       <Stack.Screen name="map" options={{ title: 'Map View' }} />
       <Stack.Screen name="dashboard" options={{ title: 'Buyer Dashboard' }} />
+      <Stack.Screen name="requests" options={{ title: 'Sent Requests' }} />
     </Stack>
   )
 }

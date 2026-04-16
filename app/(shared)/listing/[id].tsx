@@ -102,7 +102,7 @@ export default function ListingDetailScreen() {
       }
 
       setHasRequestedContact(
-        (result.data ?? []).some((request) => request.listing_id === listing.id),
+        (result.data ?? []).some((request) => request.listingId === listing.id),
       )
     }
 
