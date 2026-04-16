@@ -68,7 +68,7 @@ Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
 - [~] Build ListingService (farmer): createListing, updateListing, deleteListing, getFarmerListings
 - [~] Waste type constants + suggestions data (utils/wasteTypes.ts)
 - [x] Storage service for listing image upload with compression
-- [~] Map location picker component (tap to pin)
+- [x] Map location picker component (tap to pin)
 - [~] Create Listing form â€” Part 1: title, waste type, description, quantity, price
 - [~] Create Listing form â€” Part 2: photo upload, location pin, fulfillment type
 - [~] Waste-to-Value suggestions panel (shown after waste type selected)

@@ -323,8 +323,17 @@ export default function CreateListingScreen() {
           <LocationPicker
             value={coordinates}
             onChange={(value) => {
-              setValue('latitude', value.latitude)
-              setValue('longitude', value.longitude)
+              setValue('latitude', value.latitude, { shouldValidate: true })
+              setValue('longitude', value.longitude, { shouldValidate: true })
+            }}
+            onResolvedAddress={(value) => {
+              if (value.address) {
+                setValue('address', value.address, { shouldValidate: true })
+              }
+
+              if (value.city) {
+                setValue('city', value.city, { shouldValidate: true })
+              }
             }}
           />
 
