@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router'
 import * as ExpoLinking from 'expo-linking'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import MapView, { Marker } from 'react-native-maps'
 import {
   Image,
@@ -10,6 +10,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -99,7 +100,9 @@ export default function ListingDetailScreen() {
     'inaccurate_details' | 'suspicious_listing' | 'wrong_photo' | 'spam' | 'other'
   >('inaccurate_details')
   const [reportDetails, setReportDetails] = useState('')
+  const [reportDetailsError, setReportDetailsError] = useState<string | null>(null)
   const [isSubmittingReport, setIsSubmittingReport] = useState(false)
+  const reportDetailsRef = useRef<TextInput>(null)
 
   useEffect(() => {
     let isMounted = true
@@ -406,12 +409,20 @@ export default function ListingDetailScreen() {
       return
     }
 
+    setReportDetailsError(null)
     setIsReportModalVisible(true)
   }
 
   const handleSubmitReport = async () => {
     if (!user || !listing) {
       showToast('Sign in before reporting a listing.', 'error')
+      return
+    }
+
+    if (reportReason === 'other' && !reportDetails.trim()) {
+      setReportDetailsError('Add a short note so Refamora knows what needs review.')
+      reportDetailsRef.current?.focus()
+      showToast('Add a short note for the report before submitting.', 'error')
       return
     }
 
@@ -435,6 +446,7 @@ export default function ListingDetailScreen() {
     setIsReportModalVisible(false)
     setReportReason('inaccurate_details')
     setReportDetails('')
+    setReportDetailsError(null)
     showToast('Report submitted. Refamora can review this listing now.', 'success')
   }
 
@@ -816,12 +828,25 @@ export default function ListingDetailScreen() {
         isVisible={isReportModalVisible}
         selectedReason={reportReason}
         details={reportDetails}
+        detailsError={reportDetailsError}
         isSubmitting={isSubmittingReport}
-        onSelectReason={setReportReason}
-        onChangeDetails={setReportDetails}
+        detailsInputRef={reportDetailsRef}
+        onSelectReason={(value) => {
+          setReportReason(value)
+          if (value !== 'other') {
+            setReportDetailsError(null)
+          }
+        }}
+        onChangeDetails={(value) => {
+          setReportDetails(value)
+          if (reportDetailsError && value.trim()) {
+            setReportDetailsError(null)
+          }
+        }}
         onClose={() => {
           if (!isSubmittingReport) {
             setIsReportModalVisible(false)
+            setReportDetailsError(null)
           }
         }}
         onSubmit={() => {

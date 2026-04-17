@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  type TextInputProps,
   View,
 } from 'react-native'
 
@@ -23,11 +24,13 @@ type ListingReportModalProps = {
   isVisible: boolean
   selectedReason: ListingReportReason
   details: string
+  detailsError?: string | null
   isSubmitting: boolean
   onSelectReason: (value: ListingReportReason) => void
   onChangeDetails: (value: string) => void
   onClose: () => void
   onSubmit: () => void
+  detailsInputRef?: TextInputProps['ref']
 }
 
 const reasons: { value: ListingReportReason; label: string }[] = [
@@ -42,11 +45,13 @@ export function ListingReportModal({
   isVisible,
   selectedReason,
   details,
+  detailsError,
   isSubmitting,
   onSelectReason,
   onChangeDetails,
   onClose,
   onSubmit,
+  detailsInputRef,
 }: ListingReportModalProps) {
   return (
     <Modal
@@ -90,16 +95,18 @@ export function ListingReportModal({
           </View>
 
           <TextInput
+            ref={detailsInputRef}
             multiline
             numberOfLines={4}
             editable={!isSubmitting}
             placeholder="Add a short note if you want to explain what looks wrong."
             placeholderTextColor="#9c8c79"
-            style={styles.input}
+            style={[styles.input, detailsError ? styles.inputError : null]}
             textAlignVertical="top"
             value={details}
             onChangeText={onChangeDetails}
           />
+          {detailsError ? <Text style={styles.errorText}>{detailsError}</Text> : null}
 
           <View style={styles.actions}>
             <Pressable
@@ -189,6 +196,15 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     color: palette.ink,
     backgroundColor: '#fffcf6',
+  },
+  inputError: {
+    borderColor: palette.error,
+  },
+  errorText: {
+    marginTop: -4,
+    color: palette.error,
+    fontSize: 12,
+    lineHeight: 17,
   },
   actions: {
     flexDirection: 'row',
