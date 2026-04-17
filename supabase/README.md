@@ -24,6 +24,7 @@ Then apply [migrations/20260417_ai_events_buyer_search_assistant.sql](./migratio
 Then apply [migrations/20260417_ai_events_listing_moderation.sql](./migrations/20260417_ai_events_listing_moderation.sql) to allow listing moderation events in the same analytics table.
 Then apply [migrations/20260417_ai_events_photo_quality_checker.sql](./migrations/20260417_ai_events_photo_quality_checker.sql) to allow photo checker events in the same analytics table.
 Then apply [migrations/20260417_listing_review_queue.sql](./migrations/20260417_listing_review_queue.sql) to create the moderation review queue table for flagged listings.
+Then apply [migrations/20260417_ai_events_messaging_support.sql](./migrations/20260417_ai_events_messaging_support.sql) to allow seller inquiry assistant events in the same analytics table.
 
 ## Regenerate TypeScript types
 
@@ -56,6 +57,7 @@ The repo now also contains a first AI edge function scaffold:
 - `functions/ai-search-assist`
 - `functions/ai-listing-moderation`
 - `functions/ai-photo-check`
+- `functions/ai-inquiry-assist`
 - shared provider layer in `functions/_shared`
 - `localGemmaProvider` as the primary provider
 - `geminiProvider` as the optional fallback
@@ -89,3 +91,4 @@ The buyer feed also includes a Search with AI flow that interprets natural-langu
 The listing editor also runs an automatic AI safety check before publish, reviewing listing text and image content and stopping the submit flow when the result needs review or is blocked.
 The listing editor now also includes an on-demand Photo Check that reviews image clarity, suggests retakes, and can surface a likely waste type when the image is clear enough.
 Flagged moderation results are now persisted to `listing_review_queue`, giving Refamora a basic admin review queue foundation before a dedicated admin dashboard exists.
+The farmer inquiry flow now includes visible AI actions: a `Summarize inquiries` button on the seller inbox screen and a `Draft reply` button on each buyer inquiry card.

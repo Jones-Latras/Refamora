@@ -84,6 +84,16 @@ export const photoCheckInputSchema = z.object({
   wasteType: z.string().nullable(),
 })
 
+const inquiryAssistItemSchema = z.object({
+  id: z.string().min(1),
+  listingTitle: z.string().min(1),
+  counterpartName: z.string().min(1),
+  counterpartCity: z.string().nullable(),
+  message: z.string().nullable(),
+  status: z.enum(['pending', 'seen']),
+  createdAt: z.string().min(1),
+})
+
 export const listingModerationInputSchema = z.object({
   title: z.string().min(1, 'Listing title is required.'),
   description: z.string().min(1, 'Listing description is required.'),
@@ -93,6 +103,14 @@ export const listingModerationInputSchema = z.object({
   unit: z.string().nullable(),
   imageBase64: z.string().nullable().optional(),
   imageMimeType: z.string().nullable().optional(),
+})
+
+export const inquirySummaryInputSchema = z.object({
+  inquiries: z.array(inquiryAssistItemSchema).min(1, 'At least one inquiry is required.'),
+})
+
+export const replyDraftInputSchema = z.object({
+  inquiry: inquiryAssistItemSchema,
 })
 
 export const listingAssistOutputSchema = z.object({
@@ -182,6 +200,36 @@ export const listingModerationResultSchema = z.object({
   result: listingModerationOutputSchema,
 })
 
+export const inquirySummaryOutputSchema = z.object({
+  summary: z.string(),
+  priorityInquiryIds: z.array(z.string()),
+  unansweredQuestions: z.array(z.string()),
+  followUpTips: z.array(z.string()),
+})
+
+export const inquirySummaryResultSchema = z.object({
+  eventId: z.string().uuid().nullable(),
+  latencyMs: z.number().int().nonnegative().nullable(),
+  provider: z.enum(['local_gemma', 'gemini']),
+  fallbackUsed: z.boolean(),
+  result: inquirySummaryOutputSchema,
+})
+
+export const replyDraftOutputSchema = z.object({
+  draftReply: z.string(),
+  tone: z.enum(['warm', 'direct', 'follow_up']),
+  unansweredQuestions: z.array(z.string()),
+  keyPoints: z.array(z.string()),
+})
+
+export const replyDraftResultSchema = z.object({
+  eventId: z.string().uuid().nullable(),
+  latencyMs: z.number().int().nonnegative().nullable(),
+  provider: z.enum(['local_gemma', 'gemini']),
+  fallbackUsed: z.boolean(),
+  result: replyDraftOutputSchema,
+})
+
 export const aiFeedbackInputSchema = z.object({
   eventId: z.string().uuid(),
   feature: z.enum([
@@ -190,6 +238,7 @@ export const aiFeedbackInputSchema = z.object({
     'buyer_search_assistant',
     'listing_moderation',
     'photo_quality_checker',
+    'messaging_support',
   ]),
   helpful: z.boolean(),
 })
@@ -202,6 +251,7 @@ export const aiFeedbackResultSchema = z.object({
     'buyer_search_assistant',
     'listing_moderation',
     'photo_quality_checker',
+    'messaging_support',
   ]),
   helpful: z.boolean(),
 })
@@ -232,3 +282,5 @@ export type PhotoCheckFormValues = z.infer<typeof photoCheckInputSchema>
 export type ListingModerationFormValues = z.infer<
   typeof listingModerationInputSchema
 >
+export type InquirySummaryFormValues = z.infer<typeof inquirySummaryInputSchema>
+export type ReplyDraftFormValues = z.infer<typeof replyDraftInputSchema>

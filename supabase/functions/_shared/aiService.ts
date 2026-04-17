@@ -3,12 +3,16 @@ import type {
   BuyerSearchAssistInput,
   BuyerSearchAssistResult,
   AIHealthResult,
+  InquirySummaryInput,
+  InquirySummaryResult,
   ListingAssistInput,
   ListingAssistResult,
   ListingModerationInput,
   ListingModerationResult,
   PhotoCheckInput,
   PhotoCheckResult,
+  ReplyDraftInput,
+  ReplyDraftResult,
   WasteValueAdviceInput,
   WasteValueAdviceResult,
 } from './aiTypes.ts'
@@ -222,6 +226,80 @@ export async function checkListingPhoto(
         provider === 'local_gemma'
           ? await localGemmaProvider.checkListingPhoto(input)
           : await geminiProvider.checkListingPhoto(input)
+
+      return {
+        eventId: null,
+        latencyMs: null,
+        provider,
+        fallbackUsed: index > 0,
+        result,
+      }
+    } catch (error) {
+      errors.push(
+        `${provider}: ${error instanceof Error ? error.message : 'Unknown provider error.'}`,
+      )
+    }
+  }
+
+  throw new Error(errors.join(' | '))
+}
+
+export async function summarizeInquiries(
+  input: InquirySummaryInput,
+): Promise<InquirySummaryResult> {
+  const order = getProviderOrder()
+
+  if (order.length === 0) {
+    throw new Error('No AI providers are enabled.')
+  }
+
+  const errors: string[] = []
+
+  for (let index = 0; index < order.length; index += 1) {
+    const provider = order[index]
+
+    try {
+      const result =
+        provider === 'local_gemma'
+          ? await localGemmaProvider.summarizeInquiries(input)
+          : await geminiProvider.summarizeInquiries(input)
+
+      return {
+        eventId: null,
+        latencyMs: null,
+        provider,
+        fallbackUsed: index > 0,
+        result,
+      }
+    } catch (error) {
+      errors.push(
+        `${provider}: ${error instanceof Error ? error.message : 'Unknown provider error.'}`,
+      )
+    }
+  }
+
+  throw new Error(errors.join(' | '))
+}
+
+export async function draftInquiryReply(
+  input: ReplyDraftInput,
+): Promise<ReplyDraftResult> {
+  const order = getProviderOrder()
+
+  if (order.length === 0) {
+    throw new Error('No AI providers are enabled.')
+  }
+
+  const errors: string[] = []
+
+  for (let index = 0; index < order.length; index += 1) {
+    const provider = order[index]
+
+    try {
+      const result =
+        provider === 'local_gemma'
+          ? await localGemmaProvider.draftInquiryReply(input)
+          : await geminiProvider.draftInquiryReply(input)
 
       return {
         eventId: null,

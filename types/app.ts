@@ -83,6 +83,16 @@ export type ContactRequestSummary = {
   createdAt: string
 }
 
+export type InquiryAssistItem = {
+  id: string
+  listingTitle: string
+  counterpartName: string
+  counterpartCity: string | null
+  message: string | null
+  status: 'pending' | 'seen'
+  createdAt: string
+}
+
 export type AIProvider = 'local_gemma' | 'gemini'
 export type AIFeature =
   | 'listing_copilot'
@@ -90,6 +100,7 @@ export type AIFeature =
   | 'buyer_search_assistant'
   | 'listing_moderation'
   | 'photo_quality_checker'
+  | 'messaging_support'
 
 export type ListingAssistInput = {
   title: string
@@ -180,6 +191,14 @@ export type ListingModerationInput = {
   imageMimeType?: string | null
 }
 
+export type InquirySummaryInput = {
+  inquiries: InquiryAssistItem[]
+}
+
+export type ReplyDraftInput = {
+  inquiry: InquiryAssistItem
+}
+
 export type PhotoCheckOutput = {
   qualityScore: number
   readiness: 'good' | 'needs_review' | 'retake'
@@ -198,6 +217,20 @@ export type ListingModerationOutput = {
   imageWarnings: string[]
 }
 
+export type InquirySummaryOutput = {
+  summary: string
+  priorityInquiryIds: string[]
+  unansweredQuestions: string[]
+  followUpTips: string[]
+}
+
+export type ReplyDraftOutput = {
+  draftReply: string
+  tone: 'warm' | 'direct' | 'follow_up'
+  unansweredQuestions: string[]
+  keyPoints: string[]
+}
+
 export type PhotoCheckResult = {
   eventId: string | null
   latencyMs: number | null
@@ -214,6 +247,22 @@ export type ListingModerationResult = {
   queuedForReview: boolean
   reviewQueueId: string | null
   result: ListingModerationOutput
+}
+
+export type InquirySummaryResult = {
+  eventId: string | null
+  latencyMs: number | null
+  provider: AIProvider
+  fallbackUsed: boolean
+  result: InquirySummaryOutput
+}
+
+export type ReplyDraftResult = {
+  eventId: string | null
+  latencyMs: number | null
+  provider: AIProvider
+  fallbackUsed: boolean
+  result: ReplyDraftOutput
 }
 
 export type AIFeedbackInput = {

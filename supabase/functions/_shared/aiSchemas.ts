@@ -1,5 +1,7 @@
 import type {
   BuyerSearchAssistOutput,
+  InquirySummaryOutput,
+  ReplyDraftOutput,
   ListingModerationOutput,
   ListingAssistOutput,
   PhotoCheckOutput,
@@ -201,6 +203,60 @@ export const listingModerationOutputJsonSchema = {
   ],
 } as const
 
+export const inquirySummaryOutputJsonSchema = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    summary: {
+      type: 'string',
+      description: 'Short overview of the seller inquiry inbox.',
+    },
+    priorityInquiryIds: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Inquiry ids that should be prioritized first.',
+    },
+    unansweredQuestions: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Buyer questions or concerns that still need a reply.',
+    },
+    followUpTips: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Short practical follow-up tips for the seller.',
+    },
+  },
+  required: ['summary', 'priorityInquiryIds', 'unansweredQuestions', 'followUpTips'],
+} as const
+
+export const replyDraftOutputJsonSchema = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    draftReply: {
+      type: 'string',
+      description: 'Editable seller reply draft.',
+    },
+    tone: {
+      type: 'string',
+      enum: ['warm', 'direct', 'follow_up'],
+      description: 'Primary tone used in the reply.',
+    },
+    unansweredQuestions: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Buyer questions that the draft should answer.',
+    },
+    keyPoints: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Key points included in the reply draft.',
+    },
+  },
+  required: ['draftReply', 'tone', 'unansweredQuestions', 'keyPoints'],
+} as const
+
 function asString(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value.trim() : fallback
 }
@@ -336,5 +392,46 @@ export function normalizeListingModerationOutput(
     reasons: asStringArray(Reflect.get(raw, 'reasons')).slice(0, 3),
     fieldWarnings: asStringArray(Reflect.get(raw, 'fieldWarnings')).slice(0, 4),
     imageWarnings: asStringArray(Reflect.get(raw, 'imageWarnings')).slice(0, 4),
+  }
+}
+
+export function normalizeInquirySummaryOutput(
+  value: unknown,
+): InquirySummaryOutput {
+  const raw = typeof value === 'object' && value ? value : {}
+
+  return {
+    summary: asString(
+      Reflect.get(raw, 'summary'),
+      'No AI summary is available for these inquiries right now.',
+    ),
+    priorityInquiryIds: asStringArray(Reflect.get(raw, 'priorityInquiryIds')).slice(
+      0,
+      5,
+    ),
+    unansweredQuestions: asStringArray(
+      Reflect.get(raw, 'unansweredQuestions'),
+    ).slice(0, 4),
+    followUpTips: asStringArray(Reflect.get(raw, 'followUpTips')).slice(0, 4),
+  }
+}
+
+export function normalizeReplyDraftOutput(value: unknown): ReplyDraftOutput {
+  const raw = typeof value === 'object' && value ? value : {}
+  const tone = Reflect.get(raw, 'tone')
+
+  return {
+    draftReply: asString(
+      Reflect.get(raw, 'draftReply'),
+      'Hello, thank you for your inquiry. This is still available. Let me know your preferred pickup or delivery timing.',
+    ),
+    tone:
+      tone === 'direct' || tone === 'follow_up'
+        ? tone
+        : 'warm',
+    unansweredQuestions: asStringArray(
+      Reflect.get(raw, 'unansweredQuestions'),
+    ).slice(0, 4),
+    keyPoints: asStringArray(Reflect.get(raw, 'keyPoints')).slice(0, 4),
   }
 }

@@ -1,22 +1,28 @@
 import type {
   AIService,
   BuyerSearchAssistInput,
+  InquirySummaryInput,
   ListingAssistInput,
   ListingModerationInput,
   PhotoCheckInput,
+  ReplyDraftInput,
   WasteValueAdviceInput,
 } from '../aiTypes.ts'
 
 import {
   buyerSearchAssistOutputJsonSchema,
+  inquirySummaryOutputJsonSchema,
   listingModerationOutputJsonSchema,
   listingAssistOutputJsonSchema,
   normalizeBuyerSearchAssistOutput,
+  normalizeInquirySummaryOutput,
   normalizeListingModerationOutput,
   normalizeListingAssistOutput,
   normalizePhotoCheckOutput,
+  normalizeReplyDraftOutput,
   normalizeWasteValueAdviceOutput,
   photoCheckOutputJsonSchema,
+  replyDraftOutputJsonSchema,
   wasteValueAdviceOutputJsonSchema,
 } from '../aiSchemas.ts'
 import { getWasteKnowledge } from '../wasteKnowledge.ts'
@@ -120,6 +126,48 @@ function buildListingModerationPrompt(input: ListingModerationInput) {
     input.imageBase64
       ? 'Image attached: yes'
       : 'Image attached: no, review text fields only',
+  ].join('\n')
+}
+
+function buildInquirySummaryPrompt(input: InquirySummaryInput) {
+  const inquiryLines = input.inquiries.map((inquiry, index) =>
+    [
+      `Inquiry ${index + 1} id: ${inquiry.id}`,
+      `Listing: ${inquiry.listingTitle}`,
+      `Buyer: ${inquiry.counterpartName}`,
+      `City: ${inquiry.counterpartCity ?? 'unknown'}`,
+      `Status: ${inquiry.status}`,
+      `Message: ${inquiry.message ?? 'no message provided'}`,
+      `Created: ${inquiry.createdAt}`,
+    ].join('\n'),
+  )
+
+  return [
+    'You are Refamora seller inquiry assistant.',
+    'Summarize the current seller inquiries in a short, practical way.',
+    'Prioritize the inquiries that look most urgent, recent, or still unanswered.',
+    'List buyer questions or concerns that still need a reply.',
+    'Return only JSON that matches the schema.',
+    '',
+    ...inquiryLines,
+  ].join('\n\n')
+}
+
+function buildReplyDraftPrompt(input: ReplyDraftInput) {
+  const inquiry = input.inquiry
+
+  return [
+    'You are Refamora seller reply assistant.',
+    'Write a short, professional, friendly reply draft to the buyer.',
+    'Do not invent prices, dates, delivery promises, or facts not present in the inquiry.',
+    'If the buyer asks a question, acknowledge it and request the missing detail when needed.',
+    'Return only JSON that matches the schema.',
+    '',
+    `Listing: ${inquiry.listingTitle}`,
+    `Buyer: ${inquiry.counterpartName}`,
+    `City: ${inquiry.counterpartCity ?? 'unknown'}`,
+    `Status: ${inquiry.status}`,
+    `Message: ${inquiry.message ?? 'no message provided'}`,
   ].join('\n')
 }
 
@@ -374,6 +422,90 @@ export const geminiProvider: AIService = {
     }
 
     return normalizeListingModerationOutput(JSON.parse(text))
+  },
+  async summarizeInquiries(input) {
+    const config = getGeminiConfig()
+
+    if (!config.apiKey) {
+      throw new Error('Missing GEMINI_API_KEY.')
+    }
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(config.timeoutMs),
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: buildInquirySummaryPrompt(input) }],
+            },
+          ],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            responseJsonSchema: inquirySummaryOutputJsonSchema,
+          },
+        }),
+      },
+    )
+
+    if (!response.ok) {
+      throw new Error(`Gemini request failed with ${response.status}.`)
+    }
+
+    const payload = await response.json()
+    const text = payload?.candidates?.[0]?.content?.parts?.[0]?.text
+
+    if (typeof text !== 'string' || !text.trim()) {
+      throw new Error('Gemini returned an empty response.')
+    }
+
+    return normalizeInquirySummaryOutput(JSON.parse(text))
+  },
+  async draftInquiryReply(input) {
+    const config = getGeminiConfig()
+
+    if (!config.apiKey) {
+      throw new Error('Missing GEMINI_API_KEY.')
+    }
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(config.timeoutMs),
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: buildReplyDraftPrompt(input) }],
+            },
+          ],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            responseJsonSchema: replyDraftOutputJsonSchema,
+          },
+        }),
+      },
+    )
+
+    if (!response.ok) {
+      throw new Error(`Gemini request failed with ${response.status}.`)
+    }
+
+    const payload = await response.json()
+    const text = payload?.candidates?.[0]?.content?.parts?.[0]?.text
+
+    if (typeof text !== 'string' || !text.trim()) {
+      throw new Error('Gemini returned an empty response.')
+    }
+
+    return normalizeReplyDraftOutput(JSON.parse(text))
   },
 }
 

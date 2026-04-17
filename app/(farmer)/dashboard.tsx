@@ -373,11 +373,16 @@ export default function FarmerDashboardScreen() {
                 {pendingInquiryCount === 1 ? '' : 's'}
               </Text>
             </View>
-            {pendingInquiryCount > 0 ? (
-              <Pressable onPress={() => void handleMarkAllSeen()}>
-                <Text style={styles.linkText}>Mark all seen</Text>
+            <View style={styles.sectionActions}>
+              <Pressable onPress={() => router.push('/(farmer)/requests')}>
+                <Text style={styles.linkText}>View all</Text>
               </Pressable>
-            ) : null}
+              {pendingInquiryCount > 0 ? (
+                <Pressable onPress={() => void handleMarkAllSeen()}>
+                  <Text style={styles.linkText}>Mark all seen</Text>
+                </Pressable>
+              ) : null}
+            </View>
           </View>
 
           {inquiries.length > 0 ? (
@@ -728,6 +733,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     gap: 12,
+  },
+  sectionActions: {
+    alignItems: 'flex-end',
+    gap: 8,
   },
   sectionTitle: {
     color: palette.soil,

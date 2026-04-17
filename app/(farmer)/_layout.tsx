@@ -15,6 +15,7 @@ export default function FarmerLayout() {
       }}
     >
       <Stack.Screen name="dashboard" options={{ headerShown: false }} />
+      <Stack.Screen name="requests" options={{ title: 'Buyer Inquiries' }} />
       <Stack.Screen name="my-listings" options={{ title: 'My Listings' }} />
       <Stack.Screen name="create-listing" options={{ title: 'Create Listing' }} />
       <Stack.Screen name="edit-listing/[id]" options={{ title: 'Edit Listing' }} />

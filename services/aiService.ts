@@ -5,12 +5,16 @@ import type {
   BuyerSearchAssistInput,
   BuyerSearchAssistResult,
   AIHealthResult,
+  InquirySummaryInput,
+  InquirySummaryResult,
   ListingAssistInput,
   ListingAssistResult,
   ListingModerationInput,
   ListingModerationResult,
   PhotoCheckInput,
   PhotoCheckResult,
+  ReplyDraftInput,
+  ReplyDraftResult,
   ServiceResult,
   WasteValueAdviceInput,
   WasteValueAdviceResult,
@@ -23,12 +27,16 @@ import {
   aiHealthResultSchema,
   buyerSearchAssistInputSchema,
   buyerSearchAssistResultSchema,
+  inquirySummaryInputSchema,
+  inquirySummaryResultSchema,
   listingAssistInputSchema,
   listingAssistResultSchema,
   listingModerationInputSchema,
   listingModerationResultSchema,
   photoCheckInputSchema,
   photoCheckResultSchema,
+  replyDraftInputSchema,
+  replyDraftResultSchema,
   wasteValueAdviceInputSchema,
   wasteValueAdviceResultSchema,
 } from '../utils/schemas'
@@ -281,6 +289,100 @@ export async function moderateListing(
       error: new Error(
         'Listing moderation response did not match the expected format.',
       ),
+    }
+  }
+
+  return { data: parsedResult.data, error: null }
+}
+
+export async function getInquirySummary(
+  input: InquirySummaryInput,
+): Promise<ServiceResult<InquirySummaryResult>> {
+  const parsedInput = inquirySummaryInputSchema.safeParse(input)
+
+  if (!parsedInput.success) {
+    return {
+      data: null,
+      error: new Error(
+        parsedInput.error.issues[0]?.message ?? 'Invalid inquiry summary input.',
+      ),
+    }
+  }
+
+  if (!hasSupabaseEnv) {
+    return {
+      data: null,
+      error: new Error('Supabase is not configured yet.'),
+    }
+  }
+
+  const { data, error } = await getSupabaseClient().functions.invoke(
+    'ai-inquiry-assist',
+    {
+      body: {
+        action: 'summary',
+        ...parsedInput.data,
+      },
+    },
+  )
+
+  if (error) {
+    return { data: null, error }
+  }
+
+  const parsedResult = inquirySummaryResultSchema.safeParse(data)
+
+  if (!parsedResult.success) {
+    return {
+      data: null,
+      error: new Error('Inquiry summary response did not match the expected format.'),
+    }
+  }
+
+  return { data: parsedResult.data, error: null }
+}
+
+export async function getReplyDraft(
+  input: ReplyDraftInput,
+): Promise<ServiceResult<ReplyDraftResult>> {
+  const parsedInput = replyDraftInputSchema.safeParse(input)
+
+  if (!parsedInput.success) {
+    return {
+      data: null,
+      error: new Error(
+        parsedInput.error.issues[0]?.message ?? 'Invalid reply draft input.',
+      ),
+    }
+  }
+
+  if (!hasSupabaseEnv) {
+    return {
+      data: null,
+      error: new Error('Supabase is not configured yet.'),
+    }
+  }
+
+  const { data, error } = await getSupabaseClient().functions.invoke(
+    'ai-inquiry-assist',
+    {
+      body: {
+        action: 'reply',
+        ...parsedInput.data,
+      },
+    },
+  )
+
+  if (error) {
+    return { data: null, error }
+  }
+
+  const parsedResult = replyDraftResultSchema.safeParse(data)
+
+  if (!parsedResult.success) {
+    return {
+      data: null,
+      error: new Error('Reply draft response did not match the expected format.'),
     }
   }
 

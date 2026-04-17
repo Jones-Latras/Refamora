@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import type { ContactRequestSummary } from '../types/app'
 
@@ -8,11 +8,15 @@ import { palette, radii } from '../utils/theme'
 type ContactRequestCardProps = {
   request: ContactRequestSummary
   role: 'buyer' | 'seller'
+  actionLabel?: string
+  onActionPress?: () => void
 }
 
 export function ContactRequestCard({
   request,
   role,
+  actionLabel,
+  onActionPress,
 }: ContactRequestCardProps) {
   return (
     <View style={styles.card}>
@@ -43,6 +47,12 @@ export function ContactRequestCard({
       ) : null}
 
       {request.message ? <Text style={styles.message}>{request.message}</Text> : null}
+
+      {actionLabel && onActionPress ? (
+        <Pressable onPress={onActionPress} style={styles.actionButton}>
+          <Text style={styles.actionButtonText}>{actionLabel}</Text>
+        </Pressable>
+      ) : null}
     </View>
   )
 }
@@ -82,6 +92,20 @@ const styles = StyleSheet.create({
   message: {
     color: palette.ink,
     lineHeight: 21,
+  },
+  actionButton: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    backgroundColor: '#eef6ed',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderWidth: 1,
+    borderColor: 'rgba(58, 102, 72, 0.12)',
+  },
+  actionButtonText: {
+    color: palette.sageDark,
+    fontSize: 12,
+    fontWeight: '800',
   },
   statusPill: {
     borderRadius: 999,

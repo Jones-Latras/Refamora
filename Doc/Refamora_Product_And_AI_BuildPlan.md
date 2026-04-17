@@ -17,7 +17,7 @@ The goal is simple: keep Refamora useful as a real marketplace first, then use A
 ## Master Checklist
 
 Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
-Latest note: 2026-04-17 the listing flow now includes an automatic AI safety moderation pass, an on-demand AI Photo Check, and a persisted `listing_review_queue` for flagged moderation results. AI Phase 4 is now complete at the backend and listing-flow level, with future admin dashboard work still tracked separately under product priorities.
+Latest note: 2026-04-17 the farmer inquiry flow now includes a visible seller AI inbox with `Summarize inquiries` and `Draft reply` actions. AI Phase 5 is now implemented in the user-facing farmer request flow, and the build plan has been updated so the checklist matches what users can actually access in-app.
 
 ### AI Phase 0 - Foundations
 
@@ -68,9 +68,9 @@ Latest note: 2026-04-17 the listing flow now includes an automatic AI safety mod
 
 ### AI Phase 5 - Messaging Support
 
-- [ ] Summarize inquiry threads for sellers
-- [ ] Draft editable reply suggestions
-- [ ] Highlight unanswered buyer questions
+- [x] Summarize inquiry threads for sellers
+- [x] Draft editable reply suggestions
+- [x] Highlight unanswered buyer questions
 
 ## Current Snapshot
 
@@ -571,9 +571,9 @@ Implementation note:
 
 ### AI Phase 5: Messaging Support
 
-- [ ] Summarize inquiry threads for sellers
-- [ ] Draft editable reply suggestions
-- [ ] Highlight unanswered buyer questions
+- [x] Summarize inquiry threads for sellers
+- [x] Draft editable reply suggestions
+- [x] Highlight unanswered buyer questions
 
 ## Suggested AI Schemas
 

@@ -1,22 +1,28 @@
 import type {
   AIService,
   BuyerSearchAssistInput,
+  InquirySummaryInput,
   ListingAssistInput,
   ListingModerationInput,
   PhotoCheckInput,
+  ReplyDraftInput,
   WasteValueAdviceInput,
 } from '../aiTypes.ts'
 
 import {
   buyerSearchAssistOutputJsonSchema,
+  inquirySummaryOutputJsonSchema,
   listingModerationOutputJsonSchema,
   listingAssistOutputJsonSchema,
   normalizeBuyerSearchAssistOutput,
+  normalizeInquirySummaryOutput,
   normalizeListingModerationOutput,
   normalizeListingAssistOutput,
   normalizePhotoCheckOutput,
+  normalizeReplyDraftOutput,
   normalizeWasteValueAdviceOutput,
   photoCheckOutputJsonSchema,
+  replyDraftOutputJsonSchema,
   wasteValueAdviceOutputJsonSchema,
 } from '../aiSchemas.ts'
 import { getWasteKnowledge } from '../wasteKnowledge.ts'
@@ -121,6 +127,48 @@ function buildListingModerationPrompt(input: ListingModerationInput) {
     input.imageBase64
       ? 'Image attached: yes'
       : 'Image attached: no, review text fields only',
+  ].join('\n')
+}
+
+function buildInquirySummaryPrompt(input: InquirySummaryInput) {
+  const inquiryLines = input.inquiries.map((inquiry, index) =>
+    [
+      `Inquiry ${index + 1} id: ${inquiry.id}`,
+      `Listing: ${inquiry.listingTitle}`,
+      `Buyer: ${inquiry.counterpartName}`,
+      `City: ${inquiry.counterpartCity ?? 'unknown'}`,
+      `Status: ${inquiry.status}`,
+      `Message: ${inquiry.message ?? 'no message provided'}`,
+      `Created: ${inquiry.createdAt}`,
+    ].join('\n'),
+  )
+
+  return [
+    'You are Refamora seller inquiry assistant.',
+    'Summarize the current seller inquiries in a short, practical way.',
+    'Prioritize the inquiries that look most urgent, recent, or still unanswered.',
+    'List buyer questions or concerns that still need a reply.',
+    'Return only JSON that matches the provided schema.',
+    '',
+    ...inquiryLines,
+  ].join('\n\n')
+}
+
+function buildReplyDraftPrompt(input: ReplyDraftInput) {
+  const inquiry = input.inquiry
+
+  return [
+    'You are Refamora seller reply assistant.',
+    'Write a short, professional, friendly reply draft to the buyer.',
+    'Do not invent prices, dates, delivery promises, or facts not present in the inquiry.',
+    'If the buyer asks a question, acknowledge it and request the missing detail when needed.',
+    'Return only JSON that matches the provided schema.',
+    '',
+    `Listing: ${inquiry.listingTitle}`,
+    `Buyer: ${inquiry.counterpartName}`,
+    `City: ${inquiry.counterpartCity ?? 'unknown'}`,
+    `Status: ${inquiry.status}`,
+    `Message: ${inquiry.message ?? 'no message provided'}`,
   ].join('\n')
 }
 
@@ -296,6 +344,66 @@ export const localGemmaProvider: AIService = {
     }
 
     return normalizeListingModerationOutput(JSON.parse(text))
+  },
+  async summarizeInquiries(input) {
+    const config = getLocalGemmaConfig()
+    const response = await fetch(`${config.baseUrl}/api/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(config.timeoutMs),
+      body: JSON.stringify({
+        model: config.model,
+        prompt: buildInquirySummaryPrompt(input),
+        format: inquirySummaryOutputJsonSchema,
+        stream: false,
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Local Gemma request failed with ${response.status}.`)
+    }
+
+    const payload = await response.json()
+    const text =
+      typeof payload?.response === 'string' ? payload.response.trim() : ''
+
+    if (!text) {
+      throw new Error('Local Gemma returned an empty response.')
+    }
+
+    return normalizeInquirySummaryOutput(JSON.parse(text))
+  },
+  async draftInquiryReply(input) {
+    const config = getLocalGemmaConfig()
+    const response = await fetch(`${config.baseUrl}/api/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(config.timeoutMs),
+      body: JSON.stringify({
+        model: config.model,
+        prompt: buildReplyDraftPrompt(input),
+        format: replyDraftOutputJsonSchema,
+        stream: false,
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Local Gemma request failed with ${response.status}.`)
+    }
+
+    const payload = await response.json()
+    const text =
+      typeof payload?.response === 'string' ? payload.response.trim() : ''
+
+    if (!text) {
+      throw new Error('Local Gemma returned an empty response.')
+    }
+
+    return normalizeReplyDraftOutput(JSON.parse(text))
   },
 }
 

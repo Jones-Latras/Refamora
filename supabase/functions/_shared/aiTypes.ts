@@ -5,6 +5,7 @@ export type AIFeature =
   | 'buyer_search_assistant'
   | 'listing_moderation'
   | 'photo_quality_checker'
+  | 'messaging_support'
 
 export type ListingAssistInput = {
   title: string
@@ -34,6 +35,16 @@ export type PhotoCheckInput = {
   wasteType: string | null
 }
 
+export type InquiryAssistItem = {
+  id: string
+  listingTitle: string
+  counterpartName: string
+  counterpartCity: string | null
+  message: string | null
+  status: 'pending' | 'seen'
+  createdAt: string
+}
+
 export type ListingModerationInput = {
   title: string
   description: string
@@ -43,6 +54,14 @@ export type ListingModerationInput = {
   unit: string | null
   imageBase64?: string | null
   imageMimeType?: string | null
+}
+
+export type InquirySummaryInput = {
+  inquiries: InquiryAssistItem[]
+}
+
+export type ReplyDraftInput = {
+  inquiry: InquiryAssistItem
 }
 
 export type ListingAssistOutput = {
@@ -89,6 +108,20 @@ export type ListingModerationOutput = {
   imageWarnings: string[]
 }
 
+export type InquirySummaryOutput = {
+  summary: string
+  priorityInquiryIds: string[]
+  unansweredQuestions: string[]
+  followUpTips: string[]
+}
+
+export type ReplyDraftOutput = {
+  draftReply: string
+  tone: 'warm' | 'direct' | 'follow_up'
+  unansweredQuestions: string[]
+  keyPoints: string[]
+}
+
 export type ListingAssistResult = {
   eventId: string | null
   latencyMs: number | null
@@ -131,6 +164,22 @@ export type ListingModerationResult = {
   result: ListingModerationOutput
 }
 
+export type InquirySummaryResult = {
+  eventId: string | null
+  latencyMs: number | null
+  provider: AIProvider
+  fallbackUsed: boolean
+  result: InquirySummaryOutput
+}
+
+export type ReplyDraftResult = {
+  eventId: string | null
+  latencyMs: number | null
+  provider: AIProvider
+  fallbackUsed: boolean
+  result: ReplyDraftOutput
+}
+
 export type AIFeedbackInput = {
   eventId: string
   feature: AIFeature
@@ -153,6 +202,8 @@ export type AIService = {
     input: ListingModerationInput,
   ): Promise<ListingModerationOutput>
   checkListingPhoto(input: PhotoCheckInput): Promise<PhotoCheckOutput>
+  summarizeInquiries(input: InquirySummaryInput): Promise<InquirySummaryOutput>
+  draftInquiryReply(input: ReplyDraftInput): Promise<ReplyDraftOutput>
 }
 
 export type AIProviderHealth = {

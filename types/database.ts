@@ -21,6 +21,7 @@ export type Database = {
             | 'buyer_search_assistant'
             | 'listing_moderation'
             | 'photo_quality_checker'
+            | 'messaging_support'
           provider: 'local_gemma' | 'gemini' | null
           fallback_used: boolean
           request_status: 'success' | 'error'
@@ -38,6 +39,7 @@ export type Database = {
             | 'buyer_search_assistant'
             | 'listing_moderation'
             | 'photo_quality_checker'
+            | 'messaging_support'
           provider?: 'local_gemma' | 'gemini' | null
           fallback_used?: boolean
           request_status?: 'success' | 'error'
@@ -54,6 +56,7 @@ export type Database = {
             | 'buyer_search_assistant'
             | 'listing_moderation'
             | 'photo_quality_checker'
+            | 'messaging_support'
           provider?: 'local_gemma' | 'gemini' | null
           fallback_used?: boolean
           request_status?: 'success' | 'error'
