@@ -17,7 +17,7 @@ The goal is simple: keep Refamora useful as a real marketplace first, then use A
 ## Master Checklist
 
 Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
-Latest note: 2026-04-17 listing shares now preserve the intended listing route through login and role selection, so shared item links can return users to the exact listing after authentication.
+Latest note: 2026-04-17 buyer feed now shows a direct recently viewed strip, and listing shares preserve the intended route through login and role selection so users can jump back into specific items more easily.
 
 ### AI Phase 0 - Foundations
 
@@ -116,7 +116,7 @@ The app now has the right screens, but the movement between them still needs to 
 - [~] Replace one-off action buttons with clearer persistent navigation where possible
 - [x] Add deep linking for listings so shared links open directly to the item
 - [x] Add a share action on listing details
-- [ ] Add a recently viewed pathway for buyers that is easy to revisit
+- [x] Add a recently viewed pathway for buyers that is easy to revisit
 - [ ] Reduce repeated headers and duplicated page titles across remaining screens
 
 ### Priority 3: Marketplace Trust And Profile Quality

@@ -1,10 +1,12 @@
+import { useFocusEffect } from '@react-navigation/native'
 import { router } from 'expo-router'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
   Image,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -21,7 +23,9 @@ import { useAuth } from '../../hooks/useAuth'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useBuyerListings } from '../../hooks/useListings'
 import { useProfile } from '../../hooks/useProfile'
+import { useRecentlyViewedStore } from '../../hooks/useRecentlyViewed'
 import { getBuyerSearchAssist } from '../../services/aiService'
+import { getListingPreviewsByIds } from '../../services/listingService'
 import type { BuyerSearchAssistResult, ListingFilters } from '../../types/app'
 import { palette, radii } from '../../utils/theme'
 import { WASTE_TYPES } from '../../utils/wasteTypes'
@@ -70,16 +74,57 @@ function formatAiSearchLabels(result: BuyerSearchAssistResult | null) {
   return labels
 }
 
+function RecentListingChip({
+  title,
+  city,
+  imageUrl,
+  onPress,
+}: {
+  title: string
+  city: string
+  imageUrl: string | null
+  onPress: () => void
+}) {
+  return (
+    <Pressable onPress={onPress} style={styles.recentCard}>
+      {imageUrl ? (
+        <Image source={{ uri: imageUrl }} style={styles.recentImage} />
+      ) : (
+        <View style={styles.recentImageFallback}>
+          <Text style={styles.recentImageFallbackText}>Viewed</Text>
+        </View>
+      )}
+      <View style={styles.recentText}>
+        <Text numberOfLines={1} style={styles.recentTitle}>
+          {title}
+        </Text>
+        <Text numberOfLines={1} style={styles.recentMeta}>
+          {city}
+        </Text>
+      </View>
+    </Pressable>
+  )
+}
+
 export default function FeedScreen() {
   const { user } = useAuth()
   const { profile } = useProfile(user?.id)
   const { showToast } = useToast()
+  const recentlyViewedIds = useRecentlyViewedStore((state) => state.listingIds)
   const [query, setQuery] = useState('')
   const [filters, setFilters] = useState<ListingFilters>({})
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [isAiSearchLoading, setIsAiSearchLoading] = useState(false)
   const [aiSearchResult, setAiSearchResult] =
     useState<BuyerSearchAssistResult | null>(null)
+  const [recentListings, setRecentListings] = useState<
+    {
+      id: string
+      title: string
+      city: string
+      imageUrl: string | null
+    }[]
+  >([])
   const debouncedQuery = useDebounce(query)
   const { data, isLoading, isFetchingMore, loadMore } = useBuyerListings({
     ...filters,
@@ -95,6 +140,36 @@ export default function FeedScreen() {
   const interpretedLabels = useMemo(
     () => formatAiSearchLabels(aiSearchResult),
     [aiSearchResult],
+  )
+
+  const loadRecentListings = useCallback(async () => {
+    if (recentlyViewedIds.length === 0) {
+      setRecentListings([])
+      return
+    }
+
+    const result = await getListingPreviewsByIds(recentlyViewedIds)
+
+    if (result.error) {
+      showToast(result.error.message, 'error')
+      setRecentListings([])
+      return
+    }
+
+    setRecentListings(
+      (result.data ?? []).slice(0, 5).map((listing) => ({
+        id: listing.id,
+        title: listing.title,
+        city: listing.city,
+        imageUrl: listing.imageUrl,
+      })),
+    )
+  }, [recentlyViewedIds, showToast])
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadRecentListings()
+    }, [loadRecentListings]),
   )
 
   const handleAiSearch = async () => {
@@ -270,6 +345,38 @@ export default function FeedScreen() {
                   <Text style={styles.aiDismissButtonText}>Dismiss</Text>
                 </Pressable>
               </View>
+            </View>
+          ) : null}
+
+          {recentListings.length > 0 ? (
+            <View style={styles.recentSection}>
+              <View style={styles.recentSectionHeader}>
+                <View>
+                  <Text style={styles.recentSectionTitle}>Recently viewed</Text>
+                  <Text style={styles.recentSectionSubtitle}>
+                    Jump back into the listings you opened most recently.
+                  </Text>
+                </View>
+                <Pressable onPress={() => router.push('/(buyer)/dashboard')}>
+                  <Text style={styles.recentSectionLink}>See all</Text>
+                </Pressable>
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.recentScroll}
+              >
+                {recentListings.map((listing) => (
+                  <RecentListingChip
+                    key={listing.id}
+                    title={listing.title}
+                    city={listing.city}
+                    imageUrl={listing.imageUrl}
+                    onPress={() => router.push(`/(shared)/listing/${listing.id}`)}
+                  />
+                ))}
+              </ScrollView>
             </View>
           ) : null}
         </View>
@@ -534,6 +641,74 @@ const styles = StyleSheet.create({
     color: palette.clay,
     fontWeight: '800',
     fontSize: 13,
+  },
+  recentSection: {
+    gap: 12,
+  },
+  recentSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  recentSectionTitle: {
+    color: palette.soil,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  recentSectionSubtitle: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 2,
+  },
+  recentSectionLink: {
+    color: palette.sageDark,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  recentScroll: {
+    gap: 10,
+    paddingRight: 8,
+  },
+  recentCard: {
+    width: 156,
+    backgroundColor: palette.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: palette.border,
+    overflow: 'hidden',
+  },
+  recentImage: {
+    width: '100%',
+    height: 92,
+    backgroundColor: '#e6ece4',
+  },
+  recentImageFallback: {
+    width: '100%',
+    height: 92,
+    backgroundColor: '#e6ece4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recentImageFallbackText: {
+    color: palette.clay,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  recentText: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 4,
+  },
+  recentTitle: {
+    color: palette.soil,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  recentMeta: {
+    color: palette.muted,
+    fontSize: 12,
   },
   loading: {
     gap: 16,
