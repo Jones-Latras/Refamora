@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 
 import { EmptyState } from '../../components/EmptyState'
+import { ErrorState } from '../../components/ErrorState'
 import { FormField } from '../../components/FormField'
 import { ProfileScreenSkeleton } from '../../components/ScreenSkeleton'
 import { useToast } from '../../components/Toast'
@@ -52,7 +53,7 @@ export default function ProfileScreen() {
   const { user, role } = useAuth()
   const { isOffline } = useConnectivity()
   const { showToast } = useToast()
-  const { profile, isLoading, refetch } = useProfile(user?.id)
+  const { profile, isLoading, error, refetch } = useProfile(user?.id)
   const scrollViewRef = useRef<ScrollView>(null)
   const fullNameRef = useRef<TextInput>(null)
   const phoneRef = useRef<TextInput>(null)
@@ -333,6 +334,22 @@ export default function ProfileScreen() {
     return (
       <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
         <ProfileScreenSkeleton />
+      </SafeAreaView>
+    )
+  }
+
+  if (error && !profile) {
+    return (
+      <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
+        <View style={styles.emptyWrapper}>
+          <ErrorState
+            title="Profile could not be loaded"
+            description="Refamora could not load your account details right now. Try again to refresh your profile."
+            onAction={() => {
+              void refetch()
+            }}
+          />
+        </View>
       </SafeAreaView>
     )
   }

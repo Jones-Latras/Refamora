@@ -6,6 +6,7 @@ import { Marker } from 'react-native-maps'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { EmptyState } from '../../components/EmptyState'
+import { ErrorState } from '../../components/ErrorState'
 import { MapMarker } from '../../components/MapMarker'
 import { PinPopup } from '../../components/PinPopup'
 import { useToast } from '../../components/Toast'
@@ -37,15 +38,25 @@ export default function MapScreen() {
   )
   const [selectedPinId, setSelectedPinId] = useState<string | null>(null)
   const [mapRegion, setMapRegion] = useState(INITIAL_REGION)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const loadPins = async () => {
-      setIsLoading(true)
-      const result = await fetchListingPins()
-      setPins(result.data ?? [])
+  const loadPins = async () => {
+    setIsLoading(true)
+    setLoadError(null)
+    const result = await fetchListingPins()
+
+    if (result.error) {
+      setPins([])
+      setLoadError(result.error.message)
       setIsLoading(false)
+      return
     }
 
+    setPins(result.data ?? [])
+    setIsLoading(false)
+  }
+
+  useEffect(() => {
     void loadPins()
   }, [])
 
@@ -190,6 +201,16 @@ export default function MapScreen() {
           <View style={styles.loadingState}>
             <ActivityIndicator color={palette.sage} size="small" />
             <Text style={styles.loadingText}>Loading map pins...</Text>
+          </View>
+        ) : loadError && pins.length === 0 ? (
+          <View style={styles.emptyWrapper}>
+            <ErrorState
+              title="Map pins could not be loaded"
+              description="Refamora could not load listing pins right now. Try again to refresh the map."
+              onAction={() => {
+                void loadPins()
+              }}
+            />
           </View>
         ) : isOffline && pins.length === 0 ? (
           <View style={styles.emptyWrapper}>

@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { ContactRequestCard } from '../../components/ContactRequestCard'
 import { EmptyState } from '../../components/EmptyState'
+import { ErrorState } from '../../components/ErrorState'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
 import { getBuyerContactRequests } from '../../services/contactService'
@@ -17,6 +18,7 @@ export default function BuyerRequestsScreen() {
   const { showToast } = useToast()
   const [requests, setRequests] = useState<ContactRequestSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const loadRequests = useCallback(async () => {
     if (!user) {
@@ -26,11 +28,13 @@ export default function BuyerRequestsScreen() {
     }
 
     setIsLoading(true)
+    setLoadError(null)
     const result = await getBuyerContactRequests(user.id)
 
     if (result.error) {
       showToast(result.error.message, 'error')
       setRequests([])
+      setLoadError('Buyer requests could not be loaded right now.')
       setIsLoading(false)
       return
     }
@@ -58,6 +62,16 @@ export default function BuyerRequestsScreen() {
           contentContainerStyle={styles.list}
           renderItem={({ item }) => <ContactRequestCard request={item} role="buyer" />}
         />
+      ) : loadError ? (
+        <View style={styles.list}>
+          <ErrorState
+            title="Requests could not be loaded"
+            description="Refamora could not refresh your sent requests right now. Try again to load them."
+            onAction={() => {
+              void loadRequests()
+            }}
+          />
+        </View>
       ) : (
         <View style={styles.list}>
           <EmptyState

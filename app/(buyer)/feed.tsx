@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { EmptyState } from '../../components/EmptyState'
+import { ErrorState } from '../../components/ErrorState'
 import { FeedFilterSheet } from '../../components/FeedFilterSheet'
 import { ListingCard } from '../../components/ListingCard'
 import { SkeletonCard } from '../../components/SkeletonCard'
@@ -139,7 +140,7 @@ export default function FeedScreen() {
     }[]
   >([])
   const debouncedQuery = useDebounce(query)
-  const { data, isLoading, isFetchingMore, loadMore } = useBuyerListings(
+  const { data, isLoading, isFetchingMore, loadMore, error, retry } = useBuyerListings(
     {
       ...filters,
       search: debouncedQuery.trim() || undefined,
@@ -522,6 +523,12 @@ export default function FeedScreen() {
             <SkeletonCard />
             <SkeletonCard />
           </View>
+        ) : error && listingsWithDistance.length === 0 ? (
+          <ErrorState
+            title="Feed could not be loaded"
+            description="Refamora could not load the latest listings right now. Try again to refresh the marketplace feed."
+            onAction={retry}
+          />
         ) : listingsWithDistance.length > 0 ? (
           <FlatList
             data={listingsWithDistance}

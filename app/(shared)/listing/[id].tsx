@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { ContactSellerModal } from '../../../components/ContactSellerModal'
 import { EmptyState } from '../../../components/EmptyState'
+import { ErrorState } from '../../../components/ErrorState'
 import { FulfillmentLabel } from '../../../components/FulfillmentLabel'
 import { ListingCard } from '../../../components/ListingCard'
 import { ListingReportModal } from '../../../components/ListingReportModal'
@@ -103,20 +104,46 @@ export default function ListingDetailScreen() {
   const [reportDetailsError, setReportDetailsError] = useState<string | null>(null)
   const [isSubmittingReport, setIsSubmittingReport] = useState(false)
   const reportDetailsRef = useRef<TextInput>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  const loadListing = async () => {
+    if (!id) {
+      setListing(null)
+      setLoadError(null)
+      setIsLoading(false)
+      return
+    }
+
+    setIsLoading(true)
+    setLoadError(null)
+    const result = await getListingById(id)
+
+    if (result.error) {
+      setListing(null)
+      setLoadError(result.error.message)
+      setIsLoading(false)
+      return
+    }
+
+    setListing(result.data)
+    setIsLoading(false)
+  }
 
   useEffect(() => {
     let isMounted = true
 
-    const loadListing = async () => {
+    const loadCurrentListing = async () => {
       if (!id) {
         if (isMounted) {
           setListing(null)
+          setLoadError(null)
           setIsLoading(false)
         }
         return
       }
 
       setIsLoading(true)
+      setLoadError(null)
       const result = await getListingById(id)
 
       if (!isMounted) {
@@ -124,19 +151,22 @@ export default function ListingDetailScreen() {
       }
 
       if (result.error) {
-        showToast(result.error.message, 'error')
+        setListing(null)
+        setLoadError(result.error.message)
+        setIsLoading(false)
+        return
       }
 
       setListing(result.data)
       setIsLoading(false)
     }
 
-    void loadListing()
+    void loadCurrentListing()
 
     return () => {
       isMounted = false
     }
-  }, [id, showToast])
+  }, [id])
 
   useEffect(() => {
     let isMounted = true
@@ -454,6 +484,22 @@ export default function ListingDetailScreen() {
     return (
       <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
         <ListingDetailScreenSkeleton />
+      </SafeAreaView>
+    )
+  }
+
+  if (loadError && !listing) {
+    return (
+      <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
+        <View style={styles.emptyWrapper}>
+          <ErrorState
+            title="Listing could not be loaded"
+            description="Refamora could not load this listing right now. Try again to refresh the page."
+            onAction={() => {
+              void loadListing()
+            }}
+          />
+        </View>
       </SafeAreaView>
     )
   }

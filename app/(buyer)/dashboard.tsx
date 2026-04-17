@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { ContactRequestCard } from '../../components/ContactRequestCard'
 import { EmptyState } from '../../components/EmptyState'
+import { ErrorState } from '../../components/ErrorState'
 import { ListingCard } from '../../components/ListingCard'
 import { DashboardScreenSkeleton } from '../../components/ScreenSkeleton'
 import { useToast } from '../../components/Toast'
@@ -29,12 +30,13 @@ export default function BuyerDashboardScreen() {
   const [recentListings, setRecentListings] = useState<ListingPreview[]>([])
   const [savedListings, setSavedListings] = useState<ListingPreview[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const profileCompletion = useMemo(() => getProfileCompletion(profile, 'buyer'), [profile])
 
   const loadRequests = useCallback(async () => {
     if (!user) {
       setRequests([])
-      return
+      return true
     }
 
     const result = await getBuyerContactRequests(user.id)
@@ -42,16 +44,17 @@ export default function BuyerDashboardScreen() {
     if (result.error) {
       showToast(result.error.message, 'error')
       setRequests([])
-      return
+      return false
     }
 
     setRequests(result.data ?? [])
+    return true
   }, [showToast, user])
 
   const loadRecentListings = useCallback(async () => {
     if (recentlyViewedIds.length === 0) {
       setRecentListings([])
-      return
+      return true
     }
 
     const result = await getListingPreviewsByIds(recentlyViewedIds)
@@ -59,16 +62,17 @@ export default function BuyerDashboardScreen() {
     if (result.error) {
       showToast(result.error.message, 'error')
       setRecentListings([])
-      return
+      return false
     }
 
     setRecentListings(result.data ?? [])
+    return true
   }, [recentlyViewedIds, showToast])
 
   const loadSavedListings = useCallback(async () => {
     if (savedListingIds.length === 0) {
       setSavedListings([])
-      return
+      return true
     }
 
     const result = await getListingPreviewsByIds(savedListingIds)
@@ -76,15 +80,27 @@ export default function BuyerDashboardScreen() {
     if (result.error) {
       showToast(result.error.message, 'error')
       setSavedListings([])
-      return
+      return false
     }
 
     setSavedListings(result.data ?? [])
+    return true
   }, [savedListingIds, showToast])
 
   const loadDashboard = useCallback(async () => {
     setIsLoading(true)
-    await Promise.all([loadRequests(), loadRecentListings(), loadSavedListings()])
+    setLoadError(null)
+    const results = await Promise.all([
+      loadRequests(),
+      loadRecentListings(),
+      loadSavedListings(),
+    ])
+    const failedCount = results.filter((result) => !result).length
+
+    if (failedCount === results.length && results.length > 0) {
+      setLoadError('Buyer activity could not be loaded right now.')
+    }
+
     setIsLoading(false)
   }, [loadRecentListings, loadRequests, loadSavedListings])
 
@@ -106,6 +122,22 @@ export default function BuyerDashboardScreen() {
     return (
       <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
         <DashboardScreenSkeleton />
+      </SafeAreaView>
+    )
+  }
+
+  if (loadError && requests.length === 0 && recentListings.length === 0 && savedListings.length === 0) {
+    return (
+      <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
+        <View style={styles.errorWrapper}>
+          <ErrorState
+            title="Dashboard could not be loaded"
+            description="Refamora could not load your buyer activity right now. Try again to refresh your dashboard."
+            onAction={() => {
+              void loadDashboard()
+            }}
+          />
+        </View>
       </SafeAreaView>
     )
   }
@@ -245,6 +277,11 @@ const styles = StyleSheet.create({
   content: {
     padding: 24,
     gap: 18,
+  },
+  errorWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24,
   },
   tipCard: {
     backgroundColor: '#eef6ed',

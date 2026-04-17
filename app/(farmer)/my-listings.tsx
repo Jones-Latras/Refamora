@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { EmptyState } from '../../components/EmptyState'
+import { ErrorState } from '../../components/ErrorState'
 import { ListingCard } from '../../components/ListingCard'
 import { ListingStatusBadge } from '../../components/ListingStatusBadge'
 import { useToast } from '../../components/Toast'
@@ -40,7 +41,7 @@ function getListingAgeInDays(createdAt: string) {
 export default function MyListingsScreen() {
   const { user } = useAuth()
   const { showToast } = useToast()
-  const { data, isLoading, refetch } = useFarmerListings(user?.id)
+  const { data, isLoading, error, refetch } = useFarmerListings(user?.id)
   const savedDraft = useListingDraftStore((state) =>
     user?.id ? state.draftsByUser[user.id] ?? null : null,
   )
@@ -211,6 +212,17 @@ export default function MyListingsScreen() {
       {isLoading && data === null ? (
         <View style={styles.center}>
           <Text style={styles.helper}>Loading your listings...</Text>
+        </View>
+      ) : error && (!data || data.length === 0) ? (
+        <View style={styles.list}>
+          <ErrorState
+            title="Listings could not be loaded"
+            description="Refamora could not load your seller listings right now. Try again to refresh them."
+            onAction={() => {
+              void refetch()
+              void refreshSupportingData()
+            }}
+          />
         </View>
       ) : data && data.length > 0 ? (
         <FlatList

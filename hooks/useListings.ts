@@ -13,6 +13,7 @@ export function useBuyerListings(filters: ListingFilters = {}, enabled = true) {
   const [isFetchingMore, setIsFetchingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
   const [error, setError] = useState<Error | null>(null)
+  const [reloadNonce, setReloadNonce] = useState(0)
   const requestFilters = useMemo(
     () => ({
       fulfillmentType: filters.fulfillmentType,
@@ -66,7 +67,7 @@ export function useBuyerListings(filters: ListingFilters = {}, enabled = true) {
     return () => {
       isMounted = false
     }
-  }, [enabled, requestFilters])
+  }, [enabled, reloadNonce, requestFilters])
 
   const loadMore = async () => {
     if (!enabled || isLoading || isFetchingMore || !hasMore) {
@@ -97,6 +98,7 @@ export function useBuyerListings(filters: ListingFilters = {}, enabled = true) {
     hasMore,
     error,
     loadMore,
+    retry: () => setReloadNonce((current) => current + 1),
   }
 }
 

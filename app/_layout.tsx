@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
+import { AppErrorBoundary } from '../components/AppErrorBoundary'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { ToastProvider, useToast } from '../components/Toast'
 import { AuthProvider, useAuth } from '../hooks/useAuth'
@@ -100,11 +101,13 @@ function SplashGate() {
 }
 
 function AppChrome() {
+  const pathname = usePathname()
+
   return (
-    <>
+    <AppErrorBoundary resetKey={pathname}>
       <SplashGate />
       <OfflineBanner />
-    </>
+    </AppErrorBoundary>
   )
 }
 

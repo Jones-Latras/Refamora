@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { ContactRequestCard } from '../../components/ContactRequestCard'
 import { EmptyState } from '../../components/EmptyState'
+import { ErrorState } from '../../components/ErrorState'
 import { InquiryAiModal } from '../../components/InquiryAiModal'
 import { RequestsScreenSkeleton } from '../../components/ScreenSkeleton'
 import { useToast } from '../../components/Toast'
@@ -60,6 +61,7 @@ export default function FarmerRequestsScreen() {
   const [isSummaryModalVisible, setIsSummaryModalVisible] = useState(false)
   const [isReplyModalVisible, setIsReplyModalVisible] = useState(false)
   const [summaryTitle, setSummaryTitle] = useState('AI inquiry summary')
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const loadRequests = useCallback(async () => {
     if (!user) {
@@ -69,11 +71,13 @@ export default function FarmerRequestsScreen() {
     }
 
     setIsLoading(true)
+    setLoadError(null)
     const result = await getSellerInquiries(user.id)
 
     if (result.error) {
       showToast(result.error.message, 'error')
       setRequests([])
+      setLoadError('Seller inquiries could not be loaded right now.')
       setIsLoading(false)
       return
     }
@@ -251,6 +255,16 @@ export default function FarmerRequestsScreen() {
 
       {isLoading ? (
         <RequestsScreenSkeleton />
+      ) : loadError && requests.length === 0 ? (
+        <View style={styles.list}>
+          <ErrorState
+            title="Inquiries could not be loaded"
+            description="Refamora could not refresh your buyer inquiries right now. Try again to reload the inbox."
+            onAction={() => {
+              void loadRequests()
+            }}
+          />
+        </View>
       ) : requests.length > 0 ? (
         <ScrollView contentContainerStyle={styles.list}>
           {groupedRequests.map((group) => (

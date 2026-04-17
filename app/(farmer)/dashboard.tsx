@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { ContactRequestCard } from '../../components/ContactRequestCard'
 import { EmptyState } from '../../components/EmptyState'
+import { ErrorState } from '../../components/ErrorState'
 import { ListingStatusBadge } from '../../components/ListingStatusBadge'
 import { DashboardScreenSkeleton } from '../../components/ScreenSkeleton'
 import { useToast } from '../../components/Toast'
@@ -191,6 +192,7 @@ export default function FarmerDashboardScreen() {
     ListingPerformanceSummary[]
   >([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const loadDashboard = useCallback(async () => {
     if (!user) {
@@ -203,6 +205,7 @@ export default function FarmerDashboardScreen() {
     }
 
     setIsLoading(true)
+    setLoadError(null)
     const [listingsResult, inquiriesResult, analyticsResult, performanceResult] =
       await Promise.all([
       getFarmerListings(user.id),
@@ -225,6 +228,15 @@ export default function FarmerDashboardScreen() {
 
     if (performanceResult.error) {
       showToast(performanceResult.error.message, 'error')
+    }
+
+    if (
+      listingsResult.error &&
+      inquiriesResult.error &&
+      analyticsResult.error &&
+      performanceResult.error
+    ) {
+      setLoadError('Seller dashboard could not be loaded right now.')
     }
 
     setListings(listingsResult.data ?? [])
@@ -413,6 +425,28 @@ export default function FarmerDashboardScreen() {
     return (
       <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={styles.safeArea}>
         <DashboardScreenSkeleton />
+      </SafeAreaView>
+    )
+  }
+
+  if (
+    loadError &&
+    listings.length === 0 &&
+    inquiries.length === 0 &&
+    aiAnalytics == null &&
+    listingPerformance.length === 0
+  ) {
+    return (
+      <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={styles.safeArea}>
+        <View style={styles.errorWrapper}>
+          <ErrorState
+            title="Dashboard could not be loaded"
+            description="Refamora could not load your seller activity right now. Try again to refresh the dashboard."
+            onAction={() => {
+              void loadDashboard()
+            }}
+          />
+        </View>
       </SafeAreaView>
     )
   }
@@ -722,6 +756,11 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     gap: 20,
+  },
+  errorWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24,
   },
   header: {
     gap: 16,
