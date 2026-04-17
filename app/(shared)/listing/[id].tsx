@@ -19,6 +19,7 @@ import { ContactSellerModal } from '../../../components/ContactSellerModal'
 import { EmptyState } from '../../../components/EmptyState'
 import { FulfillmentLabel } from '../../../components/FulfillmentLabel'
 import { ListingCard } from '../../../components/ListingCard'
+import { ListingStatusBadge } from '../../../components/ListingStatusBadge'
 import { useToast } from '../../../components/Toast'
 import { useAuth } from '../../../hooks/useAuth'
 import { useBuyerLocationStore } from '../../../hooks/useBuyerLocation'
@@ -489,7 +490,7 @@ export default function ListingDetailScreen() {
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Status</Text>
-            <Text style={styles.detailValue}>{titleCase(listing.status)}</Text>
+            <ListingStatusBadge status={listing.status} />
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Address</Text>
@@ -626,6 +627,10 @@ export default function ListingDetailScreen() {
                   </Text>
                   <Text style={styles.sellerTrustSummaryText}>
                     {sellerTrustSummary.description}
+                  </Text>
+                  <Text style={styles.sellerVerificationHint}>
+                    Optional seller verification is coming in a later update after manual admin
+                    review is added.
                   </Text>
                 </View>
               ) : null}
@@ -1023,6 +1028,12 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontSize: 13,
     lineHeight: 18,
+  },
+  sellerVerificationHint: {
+    color: palette.sageDark,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '700',
   },
   sellerTrustGrid: {
     flexDirection: 'row',

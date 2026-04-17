@@ -3,6 +3,7 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import type { ListingPreview } from '../types/app'
 
 import { FulfillmentLabel } from './FulfillmentLabel'
+import { ListingStatusBadge } from './ListingStatusBadge'
 import { formatDate, formatPrice } from '../utils/formatters'
 import { palette, radii, shadow } from '../utils/theme'
 
@@ -29,18 +30,7 @@ export function ListingCard({
       <View style={styles.content}>
         <View style={styles.row}>
           <Text style={styles.title}>{listing.title}</Text>
-          <View
-            style={[
-              styles.statusPill,
-              listing.status === 'active'
-                ? styles.statusActive
-                : listing.status === 'sold'
-                  ? styles.statusSold
-                  : styles.statusPaused,
-            ]}
-          >
-            <Text style={styles.statusText}>{listing.status}</Text>
-          </View>
+          <ListingStatusBadge status={listing.status} />
         </View>
         <Text style={styles.meta}>
           {listing.city} • {listing.quantity} {listing.unit}
@@ -119,26 +109,6 @@ const styles = StyleSheet.create({
   footerText: {
     color: palette.clay,
     fontSize: 13,
-    textTransform: 'capitalize',
-  },
-  statusPill: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  statusActive: {
-    backgroundColor: '#dbe7de',
-  },
-  statusSold: {
-    backgroundColor: '#dedad4',
-  },
-  statusPaused: {
-    backgroundColor: '#efe1c3',
-  },
-  statusText: {
-    color: palette.soil,
-    fontSize: 12,
-    fontWeight: '700',
     textTransform: 'capitalize',
   },
 })

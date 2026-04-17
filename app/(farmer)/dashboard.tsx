@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { ContactRequestCard } from '../../components/ContactRequestCard'
 import { EmptyState } from '../../components/EmptyState'
+import { ListingStatusBadge } from '../../components/ListingStatusBadge'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
 import { useListingDraftStore } from '../../hooks/useListingDrafts'
@@ -140,18 +141,7 @@ function ListingPreviewCard({
             </Text>
           </View>
 
-          <View
-            style={[
-              styles.statusPill,
-              listing.status === 'active'
-                ? styles.statusActive
-                : listing.status === 'sold'
-                  ? styles.statusSold
-                  : styles.statusUnavailable,
-            ]}
-          >
-            <Text style={styles.statusText}>{listing.status}</Text>
-          </View>
+          <ListingStatusBadge status={listing.status} />
         </View>
 
         <View style={styles.listingPerformanceRow}>
@@ -1229,26 +1219,6 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontSize: 12,
     fontWeight: '700',
-  },
-  statusPill: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  statusActive: {
-    backgroundColor: '#dcebdc',
-  },
-  statusSold: {
-    backgroundColor: '#e8e8e8',
-  },
-  statusUnavailable: {
-    backgroundColor: '#f3ead1',
-  },
-  statusText: {
-    color: palette.soil,
-    fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'capitalize',
   },
   listingFooter: {
     flexDirection: 'row',

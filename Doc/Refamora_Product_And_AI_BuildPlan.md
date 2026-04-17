@@ -17,7 +17,7 @@ The goal is simple: keep Refamora useful as a real marketplace first, then use A
 ## Master Checklist
 
 Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
-Latest note: 2026-04-17 buyer discovery now includes save, distance, map improvements, and richer seller trust details on listing pages, while farmer operations now show listing performance, grouped inquiry inboxes, per-listing activity timelines, seller reminders, bulk status cleanup, duplicate listing support, resumable listing drafts, shared profile completion prompts across the app, a visible publish-readiness panel that stops weak listings before publish, and stronger validation for phone, city, quantity, and price formats.
+Latest note: 2026-04-17 buyer discovery now includes save, distance, map improvements, richer seller trust details on listing pages, and a visible seller-verification placeholder, while farmer operations now show listing performance, grouped inquiry inboxes, per-listing activity timelines, seller reminders, bulk status cleanup, duplicate listing support, resumable listing drafts, shared profile completion prompts across the app, a visible publish-readiness panel that stops weak listings before publish, stronger validation for phone, city, quantity, and price formats, and clearer listing status badges for active, sold, unavailable, and draft states.
 
 ### AI Phase 0 - Foundations
 
@@ -127,8 +127,8 @@ Refamora will feel more credible when seller identity and listing quality are st
 - [x] Add public-facing seller trust indicators such as location, avatar, listing count, and response activity
 - [x] Add listing quality checks before publish
 - [x] Add stronger validation for phone, city, quantity, and price formats
-- [ ] Add clear listing status chips: `active`, `sold`, `unavailable`, `draft`
-- [ ] Add optional seller verification flow placeholder for future admin review
+- [x] Add clear listing status chips: `active`, `sold`, `unavailable`, `draft`
+- [x] Add optional seller verification flow placeholder for future admin review
 - [ ] Add reporting flow for suspicious or inaccurate listings
 
 ### Priority 4: Buyer Discovery And Conversion

@@ -203,6 +203,25 @@ export default function ProfileScreen() {
     router.replace('/(auth)/login')
   }
 
+  const handleVerificationPress = () => {
+    if (normalizedRole !== 'farmer') {
+      return
+    }
+
+    if (!profileCompletion.isComplete) {
+      showToast(
+        'Complete your seller profile first. Verification requests will open after that flow is ready.',
+        'info',
+      )
+      return
+    }
+
+    showToast(
+      'Seller verification requests are coming soon. Your profile is ready for future admin review.',
+      'info',
+    )
+  }
+
   if (isLoading) {
     return (
       <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
@@ -364,6 +383,49 @@ export default function ProfileScreen() {
             </Text>
           </Pressable>
         </View>
+
+        {normalizedRole === 'farmer' ? (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Seller verification</Text>
+            <View style={styles.verificationHeader}>
+              <View
+                style={[
+                  styles.verificationBadge,
+                  profileCompletion.isComplete
+                    ? styles.verificationBadgeReady
+                    : styles.verificationBadgeLocked,
+                ]}
+              >
+                <Text style={styles.verificationBadgeText}>
+                  {profileCompletion.isComplete ? 'Coming soon' : 'Finish profile first'}
+                </Text>
+              </View>
+              <Text style={styles.verificationMeta}>
+                Future admin review placeholder
+              </Text>
+            </View>
+            <Text style={styles.verificationText}>
+              Refamora will later support optional seller verification so buyers can see which
+              accounts passed a manual review.
+            </Text>
+            <View style={styles.verificationChecklist}>
+              <Text style={styles.verificationChecklistItem}>
+                {profileCompletion.isComplete ? 'Done' : 'Pending'} Complete seller profile
+              </Text>
+              <Text style={styles.verificationChecklistItem}>
+                Coming next: submit your account for manual review
+              </Text>
+              <Text style={styles.verificationChecklistItem}>
+                Future badge: visible on listing trust cards after approval
+              </Text>
+            </View>
+            <Pressable onPress={handleVerificationPress} style={styles.verificationAction}>
+              <Text style={styles.verificationActionText}>
+                {profileCompletion.isComplete ? 'Ready for future review' : 'See requirements'}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Change password</Text>
@@ -632,6 +694,59 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontSize: 12,
     lineHeight: 17,
+  },
+  verificationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  verificationBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  verificationBadgeReady: {
+    backgroundColor: '#eef6ed',
+  },
+  verificationBadgeLocked: {
+    backgroundColor: '#f5f0e3',
+  },
+  verificationBadgeText: {
+    color: palette.soil,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  verificationMeta: {
+    color: palette.muted,
+    fontSize: 12,
+  },
+  verificationText: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  verificationChecklist: {
+    gap: 6,
+  },
+  verificationChecklistItem: {
+    color: palette.soil,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  verificationAction: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    backgroundColor: palette.parchment,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  verificationActionText: {
+    color: palette.clay,
+    fontSize: 13,
+    fontWeight: '800',
   },
   card: {
     marginTop: 16,

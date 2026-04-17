@@ -13,8 +13,10 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { EmptyState } from '../../components/EmptyState'
 import { ListingCard } from '../../components/ListingCard'
+import { ListingStatusBadge } from '../../components/ListingStatusBadge'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
+import { useListingDraftStore } from '../../hooks/useListingDrafts'
 import { useFarmerListings } from '../../hooks/useListings'
 import type {
   ListingActivityItem,
@@ -39,6 +41,9 @@ export default function MyListingsScreen() {
   const { user } = useAuth()
   const { showToast } = useToast()
   const { data, isLoading, refetch } = useFarmerListings(user?.id)
+  const savedDraft = useListingDraftStore((state) =>
+    user?.id ? state.draftsByUser[user.id] ?? null : null,
+  )
   const [performance, setPerformance] = useState<ListingPerformanceSummary[]>([])
   const [activity, setActivity] = useState<ListingActivityItem[]>([])
   const [expandedListingId, setExpandedListingId] = useState<string | null>(null)
@@ -213,21 +218,50 @@ export default function MyListingsScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           ListHeaderComponent={
-            olderActiveListings.length > 0 ? (
-              <View style={styles.bulkCard}>
-                <View style={styles.bulkHeader}>
-                  <View style={styles.bulkText}>
-                    <Text style={styles.bulkTitle}>Older active listings</Text>
-                    <Text style={styles.bulkDescription}>
-                      {olderActiveListings.length} listing
-                      {olderActiveListings.length === 1 ? '' : 's'} have been live
-                      for 30+ days and may need a status cleanup.
-                    </Text>
+            savedDraft || olderActiveListings.length > 0 ? (
+              <View style={styles.headerStack}>
+                {savedDraft ? (
+                  <View style={styles.draftCard}>
+                    <View style={styles.draftHeader}>
+                      <View style={styles.draftText}>
+                        <View style={styles.draftTitleRow}>
+                          <Text style={styles.draftTitle}>
+                            {savedDraft.values.title.trim() || 'Untitled draft listing'}
+                          </Text>
+                          <ListingStatusBadge status="draft" />
+                        </View>
+                        <Text style={styles.draftDescription}>
+                          Last updated {formatDateTime(savedDraft.updatedAt)}. Resume this draft
+                          to finish and publish it.
+                        </Text>
+                      </View>
+                      <Pressable
+                        onPress={() => router.push('/(farmer)/create-listing')}
+                        style={styles.draftAction}
+                      >
+                        <Text style={styles.draftActionText}>Resume draft</Text>
+                      </Pressable>
+                    </View>
                   </View>
-                  <Pressable onPress={openBulkStatusMenu} style={styles.bulkAction}>
-                    <Text style={styles.bulkActionText}>Bulk update</Text>
-                  </Pressable>
-                </View>
+                ) : null}
+
+                {olderActiveListings.length > 0 ? (
+                  <View style={styles.bulkCard}>
+                    <View style={styles.bulkHeader}>
+                      <View style={styles.bulkText}>
+                        <Text style={styles.bulkTitle}>Older active listings</Text>
+                        <Text style={styles.bulkDescription}>
+                          {olderActiveListings.length} listing
+                          {olderActiveListings.length === 1 ? '' : 's'} have been live
+                          for 30+ days and may need a status cleanup.
+                        </Text>
+                      </View>
+                      <Pressable onPress={openBulkStatusMenu} style={styles.bulkAction}>
+                        <Text style={styles.bulkActionText}>Bulk update</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ) : null}
               </View>
             ) : null
           }
@@ -375,8 +409,59 @@ const styles = StyleSheet.create({
   item: {
     gap: 10,
   },
-  bulkCard: {
+  headerStack: {
+    gap: 14,
     marginBottom: 16,
+  },
+  draftCard: {
+    gap: 10,
+    backgroundColor: '#eef4fb',
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(66, 113, 163, 0.16)',
+    padding: 14,
+  },
+  draftHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  draftText: {
+    flex: 1,
+    gap: 6,
+  },
+  draftTitleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+  },
+  draftTitle: {
+    color: palette.soil,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  draftDescription: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  draftAction: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    backgroundColor: palette.surface,
+    borderWidth: 1,
+    borderColor: palette.border,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  draftActionText: {
+    color: palette.clay,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  bulkCard: {
     gap: 10,
     backgroundColor: '#fff7ea',
     borderRadius: radii.md,
