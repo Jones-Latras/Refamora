@@ -742,13 +742,6 @@ export function ListingEditor({
         waste_type: selectedWasteType,
         unit: watch('unit'),
       }
-      let imageBase64: string | null = null
-      let imageMimeType: string | null = null
-
-      if (selectedImage && !selectedImage.startsWith('http')) {
-        imageBase64 = await readImageAsBase64(selectedImage)
-        imageMimeType = 'image/jpeg'
-      }
 
       const result = await assistListing({
         title,
@@ -761,8 +754,6 @@ export function ListingEditor({
         city: watch('city')?.trim() || null,
         fulfillmentType: watch('fulfillment_type') ?? null,
         price: Number.isFinite(Number(watch('price'))) ? Number(watch('price')) : null,
-        imageBase64,
-        imageMimeType,
       })
 
       if (result.error || !result.data) {

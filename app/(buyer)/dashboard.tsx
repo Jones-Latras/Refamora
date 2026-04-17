@@ -23,7 +23,11 @@ import { palette } from '../../utils/theme'
 export default function BuyerDashboardScreen() {
   const { user } = useAuth()
   const { showToast } = useToast()
-  const { profile, isLoading: isProfileLoading } = useProfile(user?.id)
+  const {
+    profile,
+    isLoading: isProfileLoading,
+    refetch: refetchProfile,
+  } = useProfile(user?.id)
   const recentlyViewedIds = useRecentlyViewedStore((state) => state.listingIds)
   const savedListingIds = useSavedListingsStore((state) => state.listingIds)
   const [requests, setRequests] = useState<ContactRequestSummary[]>([])
@@ -106,13 +110,14 @@ export default function BuyerDashboardScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      void refetchProfile().catch(() => undefined)
       void loadDashboard()
-    }, [loadDashboard]),
+    }, [loadDashboard, refetchProfile]),
   )
 
   const recentRequests = requests.slice(0, 3)
   const shouldShowSkeleton =
-    isProfileLoading ||
+    (!profile && isProfileLoading) ||
     (isLoading &&
       requests.length === 0 &&
       recentListings.length === 0 &&

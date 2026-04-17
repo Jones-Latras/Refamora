@@ -74,7 +74,7 @@ Set these in Supabase before deploying AI functions:
 - `LOCAL_GEMMA_ENABLED=true`
 - `LOCAL_GEMMA_BASE_URL=http://host.docker.internal:11434`
 - `LOCAL_GEMMA_MODEL=gemma`
-- `LOCAL_GEMMA_TIMEOUT_MS=20000`
+- `LOCAL_GEMMA_TIMEOUT_MS=60000`
 - `GEMINI_ENABLED=false`
 - `GEMINI_API_KEY=<your-key-if-used>`
 - `GEMINI_MODEL=gemini-2.5-flash`

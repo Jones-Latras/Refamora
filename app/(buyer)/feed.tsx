@@ -114,7 +114,7 @@ function RecentListingChip({
 
 export default function FeedScreen() {
   const { user } = useAuth()
-  const { profile } = useProfile(user?.id)
+  const { profile, refetch: refetchProfile } = useProfile(user?.id)
   const { isOffline } = useConnectivity()
   const { showToast } = useToast()
   const recentlyViewedIds = useRecentlyViewedStore((state) => state.listingIds)
@@ -219,6 +219,12 @@ export default function FeedScreen() {
       })),
     )
   }, [recentlyViewedIds, showToast])
+
+  useFocusEffect(
+    useCallback(() => {
+      void refetchProfile().catch(() => undefined)
+    }, [refetchProfile]),
+  )
 
   useFocusEffect(
     useCallback(() => {

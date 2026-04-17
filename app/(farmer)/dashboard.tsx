@@ -180,7 +180,11 @@ function ListingPreviewCard({
 
 export default function FarmerDashboardScreen() {
   const { user } = useAuth()
-  const { profile, isLoading: isProfileLoading } = useProfile(user?.id)
+  const {
+    profile,
+    isLoading: isProfileLoading,
+    refetch: refetchProfile,
+  } = useProfile(user?.id)
   const { showToast } = useToast()
   const savedDraft = useListingDraftStore((state) =>
     user?.id ? state.draftsByUser[user.id] ?? null : null,
@@ -248,8 +252,9 @@ export default function FarmerDashboardScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      void refetchProfile().catch(() => undefined)
       void loadDashboard()
-    }, [loadDashboard]),
+    }, [loadDashboard, refetchProfile]),
   )
 
   const handleMarkAllSeen = async () => {
@@ -414,7 +419,7 @@ export default function FarmerDashboardScreen() {
   ])
 
   const shouldShowSkeleton =
-    isProfileLoading ||
+    (!profile && isProfileLoading) ||
     (isLoading &&
       listings.length === 0 &&
       inquiries.length === 0 &&
@@ -588,9 +593,9 @@ export default function FarmerDashboardScreen() {
         <View style={styles.aiCard}>
           <View style={styles.aiCardHeader}>
             <View>
-              <Text style={styles.aiCardTitle}>Listing copilot</Text>
+              <Text style={styles.aiCardTitle}>Listing copilot activity</Text>
               <Text style={styles.aiCardSubtitle}>
-                Last {aiAnalytics?.periodDays ?? 7} days
+                Last {aiAnalytics?.periodDays ?? 7} days of AI assist attempts
               </Text>
             </View>
             <View style={styles.aiCardBadge}>
@@ -605,7 +610,7 @@ export default function FarmerDashboardScreen() {
                   <Text style={styles.aiStatValue}>
                     {aiAnalytics.totalRequests}
                   </Text>
-                  <Text style={styles.aiStatLabel}>Requests</Text>
+                  <Text style={styles.aiStatLabel}>AI runs</Text>
                 </View>
                 <View style={styles.aiStatCell}>
                   <Text style={styles.aiStatValue}>
@@ -630,7 +635,8 @@ export default function FarmerDashboardScreen() {
               </View>
 
               <Text style={styles.aiCardMeta}>
-                Local Gemma {aiAnalytics.localGemmaRequests} | Gemini{' '}
+                Counts include successful and failed taps on Improve with AI.
+                {'\n'}Local Gemma {aiAnalytics.localGemmaRequests} | Gemini{' '}
                 {aiAnalytics.geminiRequests} | Feedback {aiAnalytics.feedbackCount}
               </Text>
             </>
@@ -639,7 +645,7 @@ export default function FarmerDashboardScreen() {
               <Text style={styles.aiEmptyTitle}>No AI activity yet</Text>
               <Text style={styles.aiEmptyText}>
                 Use Improve with AI while creating a listing to start tracking
-                request volume, speed, and helpfulness.
+                AI assist usage, speed, and helpfulness.
               </Text>
             </View>
           )}

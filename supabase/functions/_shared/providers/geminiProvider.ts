@@ -38,8 +38,15 @@ function getGeminiConfig() {
 function buildListingAssistPrompt(input: ListingAssistInput) {
   return [
     'You are Refamora listing assistant.',
-    'Improve the farmer listing while staying factual.',
-    'Do not invent unavailable details.',
+    'Rewrite only the facts already present in the input.',
+    'Improve grammar, clarity, and marketplace wording.',
+    'Make the title short, specific, and easier to scan.',
+    'Make the description cleaner and more buyer-friendly.',
+    'Never invent missing details.',
+    'If a detail is missing, leave it missing.',
+    'Keep output short and marketplace-ready.',
+    'The title should usually be 4 to 8 words.',
+    'The description should usually be 1 to 3 short sentences.',
     'Return only JSON that matches the schema.',
     '',
     `Title: ${input.title}`,
@@ -50,6 +57,9 @@ function buildListingAssistPrompt(input: ListingAssistInput) {
     `City: ${input.city ?? 'unknown'}`,
     `Fulfillment type: ${input.fulfillmentType ?? 'unknown'}`,
     `Price: ${input.price ?? 'unknown'}`,
+    '',
+    'Do polish the wording.',
+    'Do not add new facts.',
   ].join('\n')
 }
 

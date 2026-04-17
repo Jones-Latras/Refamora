@@ -6,6 +6,7 @@ import type {
   InquirySummaryInput,
   InquirySummaryResult,
   ListingAssistInput,
+  ListingAssistOutput,
   ListingAssistResult,
   ListingModerationInput,
   ListingModerationResult,
@@ -59,6 +60,60 @@ export function isProviderEnabled(provider: AIProvider) {
   return isEnabled(Deno.env.get('GEMINI_ENABLED'), false)
 }
 
+function hasText(value: string | null | undefined) {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
+function deriveListingAssistOutput(
+  input: ListingAssistInput,
+  output: ListingAssistOutput,
+): ListingAssistOutput {
+  const missingFields: string[] = []
+
+  if (!hasText(input.title)) {
+    missingFields.push('Add a listing title')
+  }
+
+  if (!hasText(input.description)) {
+    missingFields.push('Add a clear listing description')
+  }
+
+  if (!hasText(input.wasteType)) {
+    missingFields.push('Choose the correct waste type')
+  }
+
+  if (input.quantity == null || Number.isNaN(input.quantity) || input.quantity <= 0) {
+    missingFields.push('Enter the available quantity')
+  }
+
+  if (!hasText(input.unit)) {
+    missingFields.push('Choose a selling unit')
+  }
+
+  if (input.price == null || Number.isNaN(input.price) || input.price < 0) {
+    missingFields.push('Set a listing price')
+  }
+
+  if (!hasText(input.city)) {
+    missingFields.push('Add the listing city')
+  }
+
+  if (!hasText(input.fulfillmentType)) {
+    missingFields.push('Select pickup, delivery, or both')
+  }
+
+  const normalizedMissingFields = Array.from(
+    new Set([...missingFields, ...output.missingFields.filter(Boolean)]),
+  )
+
+  return {
+    ...output,
+    missingFields: normalizedMissingFields,
+    publishReadiness: normalizedMissingFields.length === 0 ? 'ready' : 'needs_review',
+    notes: Array.from(new Set(output.notes.filter(Boolean))).slice(0, 4),
+  }
+}
+
 export async function assistListing(
   input: ListingAssistInput,
 ): Promise<ListingAssistResult> {
@@ -82,7 +137,7 @@ export async function assistListing(
       return {
         provider,
         fallbackUsed: index > 0,
-        result,
+        result: deriveListingAssistOutput(input, result),
       }
     } catch (error) {
       errors.push(
