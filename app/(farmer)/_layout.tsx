@@ -1,24 +1,71 @@
-import { Stack } from 'expo-router'
+import { Tabs } from 'expo-router'
 
 import { palette } from '../../utils/theme'
 
 export default function FarmerLayout() {
   return (
-    <Stack
+    <Tabs
       screenOptions={{
+        tabBarActiveTintColor: palette.sageDark,
+        tabBarInactiveTintColor: palette.muted,
+        tabBarHideOnKeyboard: true,
+        tabBarStyle: {
+          backgroundColor: palette.surface,
+          borderTopColor: palette.border,
+          height: 68,
+          paddingTop: 8,
+          paddingBottom: 8,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '700',
+        },
         headerShadowVisible: false,
         headerTintColor: palette.soil,
         headerStyle: { backgroundColor: palette.cream },
         headerBackTitleVisible: false,
         headerTitleStyle: { fontWeight: '700', fontSize: 17 },
-        contentStyle: { backgroundColor: palette.cream },
+        sceneStyle: { backgroundColor: palette.cream },
       }}
     >
-      <Stack.Screen name="dashboard" options={{ headerShown: false }} />
-      <Stack.Screen name="requests" options={{ title: 'Buyer Inquiries' }} />
-      <Stack.Screen name="my-listings" options={{ title: 'My Listings' }} />
-      <Stack.Screen name="create-listing" options={{ title: 'Create Listing' }} />
-      <Stack.Screen name="edit-listing/[id]" options={{ title: 'Edit Listing' }} />
-    </Stack>
+      <Tabs.Screen
+        name="dashboard"
+        options={{
+          title: 'Home',
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
+        name="create-listing"
+        options={{
+          title: 'Create',
+        }}
+      />
+      <Tabs.Screen
+        name="my-listings"
+        options={{
+          title: 'Listings',
+        }}
+      />
+      <Tabs.Screen
+        name="requests"
+        options={{
+          title: 'Requests',
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+        }}
+      />
+      <Tabs.Screen
+        name="edit-listing/[id]"
+        options={{
+          href: null,
+          title: 'Edit Listing',
+        }}
+      />
+    </Tabs>
   )
 }

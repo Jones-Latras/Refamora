@@ -76,7 +76,7 @@ export default function BuyerDashboardScreen() {
             <Text style={styles.secondaryButtonText}>Open map</Text>
           </Pressable>
           <Pressable
-            onPress={() => router.push('/(shared)/profile')}
+            onPress={() => router.push('/(buyer)/profile')}
             style={styles.profileButton}
           >
             <Text style={styles.profileButtonText}>Edit profile</Text>

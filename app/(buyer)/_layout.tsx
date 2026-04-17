@@ -1,23 +1,65 @@
-import { Stack } from 'expo-router'
+import { Tabs } from 'expo-router'
 
 import { palette } from '../../utils/theme'
 
 export default function BuyerLayout() {
   return (
-    <Stack
+    <Tabs
       screenOptions={{
+        tabBarActiveTintColor: palette.sageDark,
+        tabBarInactiveTintColor: palette.muted,
+        tabBarHideOnKeyboard: true,
+        tabBarStyle: {
+          backgroundColor: palette.surface,
+          borderTopColor: palette.border,
+          height: 68,
+          paddingTop: 8,
+          paddingBottom: 8,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '700',
+        },
         headerShadowVisible: false,
         headerTintColor: palette.soil,
         headerStyle: { backgroundColor: palette.cream },
         headerBackTitleVisible: false,
         headerTitleStyle: { fontWeight: '700', fontSize: 17 },
-        contentStyle: { backgroundColor: palette.cream },
+        sceneStyle: { backgroundColor: palette.cream },
       }}
     >
-      <Stack.Screen name="feed" options={{ headerShown: false }} />
-      <Stack.Screen name="map" options={{ title: 'Map View' }} />
-      <Stack.Screen name="dashboard" options={{ title: 'Buyer Dashboard' }} />
-      <Stack.Screen name="requests" options={{ title: 'Sent Requests' }} />
-    </Stack>
+      <Tabs.Screen
+        name="feed"
+        options={{
+          title: 'Home',
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
+        name="map"
+        options={{
+          title: 'Map',
+        }}
+      />
+      <Tabs.Screen
+        name="requests"
+        options={{
+          title: 'Requests',
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+        }}
+      />
+      <Tabs.Screen
+        name="dashboard"
+        options={{
+          href: null,
+          title: 'Buyer Dashboard',
+        }}
+      />
+    </Tabs>
   )
 }

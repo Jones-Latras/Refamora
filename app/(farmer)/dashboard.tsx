@@ -231,7 +231,7 @@ export default function FarmerDashboardScreen() {
           <View style={styles.identityRow}>
             <Pressable
               accessibilityLabel="Open profile"
-              onPress={() => router.push('/(shared)/profile')}
+              onPress={() => router.push('/(farmer)/profile')}
               style={styles.avatarPressable}
             >
               {profile?.avatar_url ? (
@@ -270,7 +270,7 @@ export default function FarmerDashboardScreen() {
                 listings faster.
               </Text>
               <Pressable
-                onPress={() => router.push('/(shared)/profile')}
+                onPress={() => router.push('/(farmer)/profile')}
                 style={styles.tipAction}
               >
                 <Text style={styles.tipActionText}>Finish profile</Text>

@@ -150,12 +150,12 @@ export default function FeedScreen() {
         <View style={styles.headerShell}>
           <View style={styles.identityRow}>
             {profile?.avatar_url ? (
-              <Pressable onPress={() => router.push('/(shared)/profile')}>
+              <Pressable onPress={() => router.push('/(buyer)/profile')}>
                 <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
               </Pressable>
             ) : (
               <Pressable
-                onPress={() => router.push('/(shared)/profile')}
+                onPress={() => router.push('/(buyer)/profile')}
                 style={styles.avatarFallback}
               >
                 <Text style={styles.avatarText}>
@@ -165,7 +165,7 @@ export default function FeedScreen() {
             )}
 
             <Pressable
-              onPress={() => router.push('/(shared)/profile')}
+              onPress={() => router.push('/(buyer)/profile')}
               style={styles.identityText}
             >
               <Text style={styles.identityTitle}>{profile?.full_name ?? 'Buyer'}</Text>
@@ -184,7 +184,7 @@ export default function FeedScreen() {
               </Pressable>
               <Pressable
                 accessibilityLabel="Edit profile"
-                onPress={() => router.push('/(shared)/profile')}
+                onPress={() => router.push('/(buyer)/profile')}
                 style={styles.iconButton}
               >
                 <Text style={styles.iconGlyph}>✎</Text>
