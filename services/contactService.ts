@@ -151,3 +151,22 @@ export async function markSellerInquiriesSeen(
 
   return { data: data ?? [], error }
 }
+
+export async function markInquiryResponded(
+  requestId: string,
+  sellerId: string,
+): Promise<ServiceResult<ContactRequest>> {
+  if (!hasSupabaseEnv) {
+    return { data: null, error: new Error('Supabase is not configured yet.') }
+  }
+
+  const { data, error } = await getSupabaseClient()
+    .from('contact_requests')
+    .update({ status: 'responded' })
+    .eq('id', requestId)
+    .eq('seller_id', sellerId)
+    .select()
+    .single()
+
+  return { data, error }
+}

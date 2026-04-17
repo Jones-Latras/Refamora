@@ -25,6 +25,7 @@ Then apply [migrations/20260417_ai_events_listing_moderation.sql](./migrations/2
 Then apply [migrations/20260417_ai_events_photo_quality_checker.sql](./migrations/20260417_ai_events_photo_quality_checker.sql) to allow photo checker events in the same analytics table.
 Then apply [migrations/20260417_listing_review_queue.sql](./migrations/20260417_listing_review_queue.sql) to create the moderation review queue table for flagged listings.
 Then apply [migrations/20260417_ai_events_messaging_support.sql](./migrations/20260417_ai_events_messaging_support.sql) to allow seller inquiry assistant events in the same analytics table.
+Then apply [migrations/20260417_contact_requests_responded.sql](./migrations/20260417_contact_requests_responded.sql) to allow seller inquiry updates to `responded`.
 
 ## Regenerate TypeScript types
 
@@ -92,3 +93,4 @@ The listing editor also runs an automatic AI safety check before publish, review
 The listing editor now also includes an on-demand Photo Check that reviews image clarity, suggests retakes, and can surface a likely waste type when the image is clear enough.
 Flagged moderation results are now persisted to `listing_review_queue`, giving Refamora a basic admin review queue foundation before a dedicated admin dashboard exists.
 The farmer inquiry flow now includes visible AI actions: a `Summarize inquiries` button on the seller inbox screen and a `Draft reply` button on each buyer inquiry card.
+The inquiry flow also now supports a user-visible `responded` state so sellers can mark an inquiry as handled and buyers can see that status in their sent requests.

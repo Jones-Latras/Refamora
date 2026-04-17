@@ -192,6 +192,34 @@ export default function FeedScreen() {
             </View>
           </View>
 
+          <View style={styles.quickNavRow}>
+            <Pressable
+              onPress={() => router.push('/(buyer)/dashboard')}
+              style={styles.quickNavButton}
+            >
+              <Text style={styles.quickNavButtonText}>Dashboard</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/(buyer)/requests')}
+              style={styles.quickNavButton}
+            >
+              <Text style={styles.quickNavButtonText}>Requests</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/(buyer)/map')}
+              style={[styles.quickNavButton, styles.quickNavButtonAccent]}
+            >
+              <Text
+                style={[
+                  styles.quickNavButtonText,
+                  styles.quickNavButtonTextAccent,
+                ]}
+              >
+                Map
+              </Text>
+            </Pressable>
+          </View>
+
           <TextInput
             value={query}
             onChangeText={setQuery}
@@ -396,6 +424,32 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
     color: palette.ink,
+  },
+  quickNavRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  quickNavButton: {
+    flex: 1,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: palette.surface,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickNavButtonAccent: {
+    backgroundColor: '#e4efe6',
+    borderColor: 'rgba(58, 102, 72, 0.14)',
+  },
+  quickNavButtonText: {
+    color: palette.clay,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  quickNavButtonTextAccent: {
+    color: palette.sageDark,
   },
   filterRow: {
     flexDirection: 'row',

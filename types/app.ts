@@ -79,7 +79,7 @@ export type ContactRequestSummary = {
   counterpartPhone: string | null
   counterpartCity: string | null
   message: string | null
-  status: 'pending' | 'seen'
+  status: 'pending' | 'seen' | 'responded'
   createdAt: string
 }
 
@@ -89,7 +89,7 @@ export type InquiryAssistItem = {
   counterpartName: string
   counterpartCity: string | null
   message: string | null
-  status: 'pending' | 'seen'
+  status: 'pending' | 'seen' | 'responded'
   createdAt: string
 }
 

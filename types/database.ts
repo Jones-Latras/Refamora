@@ -218,7 +218,7 @@ export type Database = {
           buyer_id: string
           seller_id: string
           message: string | null
-          status: 'pending' | 'seen'
+          status: 'pending' | 'seen' | 'responded'
           created_at: string
         }
         Insert: {
@@ -227,7 +227,7 @@ export type Database = {
           buyer_id: string
           seller_id: string
           message?: string | null
-          status?: 'pending' | 'seen'
+          status?: 'pending' | 'seen' | 'responded'
           created_at?: string
         }
         Update: {
@@ -235,7 +235,7 @@ export type Database = {
           buyer_id?: string
           seller_id?: string
           message?: string | null
-          status?: 'pending' | 'seen'
+          status?: 'pending' | 'seen' | 'responded'
           created_at?: string
         }
         Relationships: []

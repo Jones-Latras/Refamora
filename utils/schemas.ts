@@ -90,7 +90,7 @@ const inquiryAssistItemSchema = z.object({
   counterpartName: z.string().min(1),
   counterpartCity: z.string().nullable(),
   message: z.string().nullable(),
-  status: z.enum(['pending', 'seen']),
+  status: z.enum(['pending', 'seen', 'responded']),
   createdAt: z.string().min(1),
 })
 

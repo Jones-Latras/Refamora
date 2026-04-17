@@ -10,6 +10,7 @@ import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
 import {
   getSellerInquiries,
+  markInquiryResponded,
   markSellerInquiriesSeen,
 } from '../../services/contactService'
 import {
@@ -148,6 +149,31 @@ export default function FarmerRequestsScreen() {
     }
   }
 
+  const handleMarkResponded = async (request: ContactRequestSummary) => {
+    if (!user) {
+      return
+    }
+
+    const result = await markInquiryResponded(request.id, user.id)
+
+    if (result.error) {
+      showToast(result.error.message, 'error')
+      return
+    }
+
+    setRequests((current) =>
+      current.map((item) =>
+        item.id === request.id
+          ? {
+              ...item,
+              status: 'responded',
+            }
+          : item,
+      ),
+    )
+    showToast('Inquiry marked as responded.', 'success')
+  }
+
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
       <View style={styles.headerCard}>
@@ -191,6 +217,14 @@ export default function FarmerRequestsScreen() {
               role="seller"
               actionLabel={isReplyLoading ? 'Generating reply...' : 'Draft reply'}
               onActionPress={() => void handleDraftReply(item)}
+              secondaryActionLabel={
+                item.status === 'responded' ? undefined : 'Mark responded'
+              }
+              onSecondaryActionPress={
+                item.status === 'responded'
+                  ? undefined
+                  : () => void handleMarkResponded(item)
+              }
             />
           )}
         />

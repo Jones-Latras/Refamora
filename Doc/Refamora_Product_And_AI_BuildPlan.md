@@ -17,7 +17,7 @@ The goal is simple: keep Refamora useful as a real marketplace first, then use A
 ## Master Checklist
 
 Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
-Latest note: 2026-04-17 the farmer inquiry flow now includes a visible seller AI inbox with `Summarize inquiries` and `Draft reply` actions. AI Phase 5 is now implemented in the user-facing farmer request flow, and the build plan has been updated so the checklist matches what users can actually access in-app.
+Latest note: 2026-04-17 the inquiry flow now includes visible seller AI actions, a user-facing `responded` status, and clearer in-app entry points from the farmer dashboard and buyer feed so the new screens are easier to find during demos and testing.
 
 ### AI Phase 0 - Foundations
 
@@ -139,7 +139,7 @@ The buyer side works, but it can become much more useful.
 - [ ] Add distance-aware browsing from buyer location
 - [ ] Add a clearer `List / Map` browsing toggle
 - [ ] Add saved filters or favorites
-- [ ] Add contact request status states such as `sent`, `seen`, `responded`
+- [x] Add contact request status states such as `sent`, `seen`, `responded`
 - [ ] Add richer listing details: distance, posted age, seller activity, clearer map preview
 - [ ] Add related listings section on listing details
 

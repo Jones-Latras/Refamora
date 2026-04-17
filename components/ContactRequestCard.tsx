@@ -10,6 +10,27 @@ type ContactRequestCardProps = {
   role: 'buyer' | 'seller'
   actionLabel?: string
   onActionPress?: () => void
+  secondaryActionLabel?: string
+  onSecondaryActionPress?: () => void
+}
+
+function getStatusLabel(
+  status: ContactRequestSummary['status'],
+  role: 'buyer' | 'seller',
+) {
+  if (role === 'buyer') {
+    if (status === 'pending') {
+      return 'sent'
+    }
+
+    return status
+  }
+
+  if (status === 'pending') {
+    return 'new'
+  }
+
+  return status
 }
 
 export function ContactRequestCard({
@@ -17,6 +38,8 @@ export function ContactRequestCard({
   role,
   actionLabel,
   onActionPress,
+  secondaryActionLabel,
+  onSecondaryActionPress,
 }: ContactRequestCardProps) {
   return (
     <View style={styles.card}>
@@ -30,10 +53,14 @@ export function ContactRequestCard({
         <View
           style={[
             styles.statusPill,
-            request.status === 'pending' ? styles.pendingPill : styles.seenPill,
+            request.status === 'pending'
+              ? styles.pendingPill
+              : request.status === 'responded'
+                ? styles.respondedPill
+                : styles.seenPill,
           ]}
         >
-          <Text style={styles.statusText}>{request.status}</Text>
+          <Text style={styles.statusText}>{getStatusLabel(request.status, role)}</Text>
         </View>
       </View>
 
@@ -49,9 +76,21 @@ export function ContactRequestCard({
       {request.message ? <Text style={styles.message}>{request.message}</Text> : null}
 
       {actionLabel && onActionPress ? (
-        <Pressable onPress={onActionPress} style={styles.actionButton}>
-          <Text style={styles.actionButtonText}>{actionLabel}</Text>
-        </Pressable>
+        <View style={styles.actionRow}>
+          <Pressable onPress={onActionPress} style={styles.actionButton}>
+            <Text style={styles.actionButtonText}>{actionLabel}</Text>
+          </Pressable>
+          {secondaryActionLabel && onSecondaryActionPress ? (
+            <Pressable
+              onPress={onSecondaryActionPress}
+              style={styles.secondaryActionButton}
+            >
+              <Text style={styles.secondaryActionButtonText}>
+                {secondaryActionLabel}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
       ) : null}
     </View>
   )
@@ -107,6 +146,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
   },
+  actionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  secondaryActionButton: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    backgroundColor: palette.surface,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  secondaryActionButtonText: {
+    color: palette.clay,
+    fontSize: 12,
+    fontWeight: '800',
+  },
   statusPill: {
     borderRadius: 999,
     paddingHorizontal: 10,
@@ -117,6 +175,9 @@ const styles = StyleSheet.create({
   },
   seenPill: {
     backgroundColor: '#dbe7de',
+  },
+  respondedPill: {
+    backgroundColor: '#d8ecf4',
   },
   statusText: {
     color: palette.soil,
