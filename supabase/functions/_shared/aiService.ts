@@ -3,6 +3,8 @@ import type {
   AIHealthResult,
   ListingAssistInput,
   ListingAssistResult,
+  WasteValueAdviceInput,
+  WasteValueAdviceResult,
 } from './aiTypes.ts'
 
 import {
@@ -68,6 +70,43 @@ export async function assistListing(
           : await geminiProvider.assistListing(input)
 
       return {
+        provider,
+        fallbackUsed: index > 0,
+        result,
+      }
+    } catch (error) {
+      errors.push(
+        `${provider}: ${error instanceof Error ? error.message : 'Unknown provider error.'}`,
+      )
+    }
+  }
+
+  throw new Error(errors.join(' | '))
+}
+
+export async function adviseWasteValue(
+  input: WasteValueAdviceInput,
+): Promise<WasteValueAdviceResult> {
+  const order = getProviderOrder()
+
+  if (order.length === 0) {
+    throw new Error('No AI providers are enabled.')
+  }
+
+  const errors: string[] = []
+
+  for (let index = 0; index < order.length; index += 1) {
+    const provider = order[index]
+
+    try {
+      const result =
+        provider === 'local_gemma'
+          ? await localGemmaProvider.adviseWasteValue(input)
+          : await geminiProvider.adviseWasteValue(input)
+
+      return {
+        eventId: null,
+        latencyMs: null,
         provider,
         fallbackUsed: index > 0,
         result,

@@ -6,6 +6,8 @@ import type {
   ListingAssistInput,
   ListingAssistResult,
   ServiceResult,
+  WasteValueAdviceInput,
+  WasteValueAdviceResult,
 } from '../types/app'
 import type { Tables } from '../types/database'
 
@@ -15,6 +17,8 @@ import {
   aiHealthResultSchema,
   listingAssistInputSchema,
   listingAssistResultSchema,
+  wasteValueAdviceInputSchema,
+  wasteValueAdviceResultSchema,
 } from '../utils/schemas'
 
 import { getSupabaseClient, hasSupabaseEnv } from './supabase'
@@ -85,6 +89,50 @@ export async function getAIHealth(): Promise<ServiceResult<AIHealthResult>> {
     return {
       data: null,
       error: new Error('AI health response did not match the expected format.'),
+    }
+  }
+
+  return { data: parsedResult.data, error: null }
+}
+
+export async function getWasteValueAdvice(
+  input: WasteValueAdviceInput,
+): Promise<ServiceResult<WasteValueAdviceResult>> {
+  const parsedInput = wasteValueAdviceInputSchema.safeParse(input)
+
+  if (!parsedInput.success) {
+    return {
+      data: null,
+      error: new Error(
+        parsedInput.error.issues[0]?.message ?? 'Invalid waste advice input.',
+      ),
+    }
+  }
+
+  if (!hasSupabaseEnv) {
+    return {
+      data: null,
+      error: new Error('Supabase is not configured yet.'),
+    }
+  }
+
+  const { data, error } = await getSupabaseClient().functions.invoke(
+    'ai-waste-advice',
+    {
+      body: parsedInput.data,
+    },
+  )
+
+  if (error) {
+    return { data: null, error }
+  }
+
+  const parsedResult = wasteValueAdviceResultSchema.safeParse(data)
+
+  if (!parsedResult.success) {
+    return {
+      data: null,
+      error: new Error('Waste advice response did not match the expected format.'),
     }
   }
 

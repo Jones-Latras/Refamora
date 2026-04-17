@@ -1,8 +1,14 @@
-import type { AIService, ListingAssistInput } from '../aiTypes.ts'
+import type {
+  AIService,
+  ListingAssistInput,
+  WasteValueAdviceInput,
+} from '../aiTypes.ts'
 
 import {
   listingAssistOutputJsonSchema,
   normalizeListingAssistOutput,
+  normalizeWasteValueAdviceOutput,
+  wasteValueAdviceOutputJsonSchema,
 } from '../aiSchemas.ts'
 
 function getLocalGemmaConfig() {
@@ -29,6 +35,19 @@ function buildListingAssistPrompt(input: ListingAssistInput) {
     `City: ${input.city ?? 'unknown'}`,
     `Fulfillment type: ${input.fulfillmentType ?? 'unknown'}`,
     `Price: ${input.price ?? 'unknown'}`,
+  ].join('\n')
+}
+
+function buildWasteValueAdvicePrompt(input: WasteValueAdviceInput) {
+  return [
+    'You are Refamora waste-to-value advisor.',
+    'Suggest short, practical, realistic ways a farmer can understand the value of this agricultural waste.',
+    'Do not overclaim prices, demand, or scientific certainty.',
+    'Keep the response educational and concise.',
+    'Return only JSON that matches the provided schema.',
+    '',
+    `Waste type: ${input.wasteType}`,
+    `City: ${input.city ?? 'unknown'}`,
   ].join('\n')
 }
 
@@ -63,6 +82,36 @@ export const localGemmaProvider: AIService = {
     }
 
     return normalizeListingAssistOutput(JSON.parse(text))
+  },
+  async adviseWasteValue(input) {
+    const config = getLocalGemmaConfig()
+    const response = await fetch(`${config.baseUrl}/api/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(config.timeoutMs),
+      body: JSON.stringify({
+        model: config.model,
+        prompt: buildWasteValueAdvicePrompt(input),
+        format: wasteValueAdviceOutputJsonSchema,
+        stream: false,
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Local Gemma request failed with ${response.status}.`)
+    }
+
+    const payload = await response.json()
+    const text =
+      typeof payload?.response === 'string' ? payload.response.trim() : ''
+
+    if (!text) {
+      throw new Error('Local Gemma returned an empty response.')
+    }
+
+    return normalizeWasteValueAdviceOutput(JSON.parse(text))
   },
 }
 

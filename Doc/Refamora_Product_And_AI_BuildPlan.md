@@ -17,7 +17,7 @@ The goal is simple: keep Refamora useful as a real marketplace first, then use A
 ## Master Checklist
 
 Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
-Latest note: 2026-04-17 the farmer dashboard now includes a listing copilot analytics card powered by `ai_events`, showing request volume, average latency, helpful rate, and provider usage for recent AI activity. The copilot is now guarded by availability checks, feedback capture, request logging, and per-user throttling.
+Latest note: 2026-04-17 the listing flow now includes a Waste-To-Value Advisor beside waste type selection. Farmers can request short AI-generated downstream uses, cautions, and a market tip for the selected waste material while still keeping the form fully manual and editable.
 
 ### AI Phase 0 - Foundations
 
@@ -45,9 +45,9 @@ Latest note: 2026-04-17 the farmer dashboard now includes a listing copilot anal
 
 ### AI Phase 2 - Waste-To-Value Advisor
 
-- [ ] Add AI-generated value suggestions beside waste type selection
-- [ ] Show practical downstream uses and cautions
-- [ ] Keep suggestions short and educational
+- [x] Add AI-generated value suggestions beside waste type selection
+- [x] Show practical downstream uses and cautions
+- [x] Keep suggestions short and educational
 - [ ] Add source strategy if later tied to curated domain content
 
 ### AI Phase 3 - Buyer Search Assistant
@@ -247,6 +247,8 @@ Why it fits:
 ### 2. Waste-To-Value Advisor
 
 This is a strong brand-fit feature for Refamora.
+
+Current status: the first version is live in the listing editor as an on-demand advisor beside waste type selection. It returns short uses, cautions, and a market tip through the shared provider layer.
 
 What it does:
 
@@ -537,9 +539,9 @@ Implementation note:
 
 ### AI Phase 2: Waste-To-Value Advisor
 
-- [ ] Add AI-generated value suggestions beside waste type selection
-- [ ] Show practical downstream uses and cautions
-- [ ] Keep suggestions short and educational
+- [x] Add AI-generated value suggestions beside waste type selection
+- [x] Show practical downstream uses and cautions
+- [x] Keep suggestions short and educational
 - [ ] Add source strategy if later tied to curated domain content
 
 ### AI Phase 3: Buyer Search Assistant

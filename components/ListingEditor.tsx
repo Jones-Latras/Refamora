@@ -5,13 +5,18 @@ import { Controller, useForm } from 'react-hook-form'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import type { AIHealthResult, ListingAssistResult } from '../types/app'
+import type {
+  AIHealthResult,
+  ListingAssistResult,
+  WasteValueAdviceResult,
+} from '../types/app'
 import type { ListingFormValues } from '../utils/schemas'
 import type { WasteTypeValue } from '../utils/wasteTypes'
 
 import {
   assistListing,
   getAIHealth,
+  getWasteValueAdvice,
   submitAIFeedback,
 } from '../services/aiService'
 import { pickAndCompressImage, readImageAsBase64 } from '../utils/imageUtils'
@@ -65,9 +70,12 @@ export function ListingEditor({
   const [isCheckingAIHealth, setIsCheckingAIHealth] =
     useState(aiListingAssistEnabled)
   const [isAiApplying, setIsAiApplying] = useState(false)
+  const [isWasteAdviceLoading, setIsWasteAdviceLoading] = useState(false)
   const [isSubmittingAiFeedback, setIsSubmittingAiFeedback] = useState(false)
   const [aiAssistResult, setAiAssistResult] =
     useState<ListingAssistResult | null>(null)
+  const [wasteAdviceResult, setWasteAdviceResult] =
+    useState<WasteValueAdviceResult | null>(null)
   const [aiDraftSnapshot, setAiDraftSnapshot] =
     useState<ListingDraftSnapshot | null>(null)
   const [aiFeedbackStatus, setAiFeedbackStatus] = useState<
@@ -133,6 +141,10 @@ export function ListingEditor({
     void checkAiHealth()
   }, [])
 
+  useEffect(() => {
+    setWasteAdviceResult(null)
+  }, [selectedWasteType])
+
   const selectedWasteType = watch('waste_type')
   const coordinates = {
     latitude: watch('latitude') as number | null,
@@ -153,6 +165,8 @@ export function ListingEditor({
     aiHealth?.providers.some(
       (provider) => provider.provider === 'gemini' && provider.enabled,
     ) ?? false
+  const selectedWasteTypeLabel =
+    WASTE_TYPES.find((item) => item.value === selectedWasteType)?.label ?? null
   const fieldOrder = useMemo<(keyof ListingFormValues)[]>(
     () => [
       'title',
@@ -216,6 +230,36 @@ export function ListingEditor({
 
     setValue('image_url', imageUri, { shouldValidate: true })
     onInfo('Image ready for upload.')
+  }
+
+  const handleWasteValueAdvice = async () => {
+    if (isCheckingAIHealth || !selectedWasteTypeLabel) {
+      return
+    }
+
+    if (!aiHealth?.available) {
+      onError('AI is unavailable right now. You can continue manually.')
+      return
+    }
+
+    setIsWasteAdviceLoading(true)
+
+    try {
+      const result = await getWasteValueAdvice({
+        wasteType: selectedWasteTypeLabel,
+        city: watch('city')?.trim() || null,
+      })
+
+      if (result.error || !result.data) {
+        onError(result.error?.message ?? 'Waste value advice is unavailable right now.')
+        return
+      }
+
+      setWasteAdviceResult(result.data)
+      onInfo('Waste value ideas are ready to review.')
+    } finally {
+      setIsWasteAdviceLoading(false)
+    }
   }
 
   const recordAiFeedback = async (helpful: boolean) => {
@@ -416,6 +460,79 @@ export function ListingEditor({
               suggestions={wasteSuggestions}
               onSelect={(value) => setValue('title', value)}
             />
+          ) : null}
+
+          {aiListingAssistEnabled && selectedWasteTypeLabel ? (
+            <View style={styles.valueAdvisorCard}>
+              <View style={styles.valueAdvisorHeader}>
+                <View style={styles.valueAdvisorTextBlock}>
+                  <Text style={styles.valueAdvisorTitle}>
+                    Waste-to-value advisor
+                  </Text>
+                  <Text style={styles.valueAdvisorSubtitle}>
+                    See short AI ideas for making {selectedWasteTypeLabel.toLowerCase()}{' '}
+                    more valuable.
+                  </Text>
+                </View>
+                <Pressable
+                  disabled={isWasteAdviceLoading || isCheckingAIHealth}
+                  onPress={handleWasteValueAdvice}
+                  style={[
+                    styles.valueAdvisorButton,
+                    isWasteAdviceLoading || isCheckingAIHealth
+                      ? styles.aiButtonDisabled
+                      : null,
+                  ]}
+                >
+                  <Text style={styles.valueAdvisorButtonText}>
+                    {isCheckingAIHealth
+                      ? 'Checking...'
+                      : isWasteAdviceLoading
+                        ? 'Loading...'
+                        : 'See value ideas'}
+                  </Text>
+                </Pressable>
+              </View>
+
+              {wasteAdviceResult ? (
+                <View style={styles.valueAdvisorContent}>
+                  <Text style={styles.valueAdvisorMeta}>
+                    Provider:{' '}
+                    {wasteAdviceResult.provider === 'local_gemma'
+                      ? 'Local Gemma'
+                      : 'Gemini'}
+                    {wasteAdviceResult.fallbackUsed ? ' | fallback used' : ''}
+                  </Text>
+                  {wasteAdviceResult.result.marketTip ? (
+                    <Text style={styles.valueAdvisorTip}>
+                      {wasteAdviceResult.result.marketTip}
+                    </Text>
+                  ) : null}
+                  {wasteAdviceResult.result.uses.length > 0 ? (
+                    <View style={styles.valueAdvisorListBlock}>
+                      <Text style={styles.valueAdvisorListLabel}>
+                        Possible uses
+                      </Text>
+                      {wasteAdviceResult.result.uses.map((item) => (
+                        <Text key={item} style={styles.valueAdvisorListItem}>
+                          - {item}
+                        </Text>
+                      ))}
+                    </View>
+                  ) : null}
+                  {wasteAdviceResult.result.cautions.length > 0 ? (
+                    <View style={styles.valueAdvisorListBlock}>
+                      <Text style={styles.valueAdvisorListLabel}>Cautions</Text>
+                      {wasteAdviceResult.result.cautions.map((item) => (
+                        <Text key={item} style={styles.valueAdvisorListItem}>
+                          - {item}
+                        </Text>
+                      ))}
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
+            </View>
           ) : null}
 
           <View onLayout={registerFieldPosition('title')}>
@@ -941,6 +1058,75 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   aiListItem: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  valueAdvisorCard: {
+    gap: 12,
+    backgroundColor: '#eef6ed',
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(58, 102, 72, 0.12)',
+    padding: 14,
+  },
+  valueAdvisorHeader: {
+    gap: 10,
+  },
+  valueAdvisorTextBlock: {
+    gap: 4,
+  },
+  valueAdvisorTitle: {
+    color: palette.sageDark,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  valueAdvisorSubtitle: {
+    color: '#5f7166',
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  valueAdvisorButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: palette.surface,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(58, 102, 72, 0.12)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  valueAdvisorButtonText: {
+    color: palette.sageDark,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  valueAdvisorContent: {
+    gap: 10,
+    backgroundColor: palette.surface,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(58, 102, 72, 0.08)',
+    padding: 14,
+  },
+  valueAdvisorMeta: {
+    color: palette.muted,
+    fontSize: 12,
+  },
+  valueAdvisorTip: {
+    color: palette.soil,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '700',
+  },
+  valueAdvisorListBlock: {
+    gap: 6,
+  },
+  valueAdvisorListLabel: {
+    color: palette.sageDark,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  valueAdvisorListItem: {
     color: palette.muted,
     fontSize: 13,
     lineHeight: 19,

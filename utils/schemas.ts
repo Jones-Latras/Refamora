@@ -69,6 +69,11 @@ export const listingAssistInputSchema = z.object({
   imageMimeType: z.string().nullable().optional(),
 })
 
+export const wasteValueAdviceInputSchema = z.object({
+  wasteType: z.string().min(1, 'Waste type is required.'),
+  city: z.string().nullable(),
+})
+
 export const listingAssistOutputSchema = z.object({
   improvedTitle: z.string(),
   improvedDescription: z.string(),
@@ -87,15 +92,29 @@ export const listingAssistResultSchema = z.object({
   result: listingAssistOutputSchema,
 })
 
+export const wasteValueAdviceOutputSchema = z.object({
+  uses: z.array(z.string()),
+  cautions: z.array(z.string()),
+  marketTip: z.string().nullable(),
+})
+
+export const wasteValueAdviceResultSchema = z.object({
+  eventId: z.string().uuid().nullable(),
+  latencyMs: z.number().int().nonnegative().nullable(),
+  provider: z.enum(['local_gemma', 'gemini']),
+  fallbackUsed: z.boolean(),
+  result: wasteValueAdviceOutputSchema,
+})
+
 export const aiFeedbackInputSchema = z.object({
   eventId: z.string().uuid(),
-  feature: z.enum(['listing_copilot']),
+  feature: z.enum(['listing_copilot', 'waste_value_advisor']),
   helpful: z.boolean(),
 })
 
 export const aiFeedbackResultSchema = z.object({
   eventId: z.string().uuid(),
-  feature: z.enum(['listing_copilot']),
+  feature: z.enum(['listing_copilot', 'waste_value_advisor']),
   helpful: z.boolean(),
 })
 
@@ -119,3 +138,4 @@ export type PasswordChangeFormValues = z.infer<typeof passwordChangeSchema>
 export type ListingFormValues = z.input<typeof listingSchema>
 export type ListingAssistFormValues = z.infer<typeof listingAssistInputSchema>
 export type AIFeedbackFormValues = z.infer<typeof aiFeedbackInputSchema>
+export type WasteValueAdviceFormValues = z.infer<typeof wasteValueAdviceInputSchema>

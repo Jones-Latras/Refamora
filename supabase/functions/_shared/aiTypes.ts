@@ -1,5 +1,5 @@
 export type AIProvider = 'local_gemma' | 'gemini'
-export type AIFeature = 'listing_copilot'
+export type AIFeature = 'listing_copilot' | 'waste_value_advisor'
 
 export type ListingAssistInput = {
   title: string
@@ -14,6 +14,11 @@ export type ListingAssistInput = {
   imageMimeType?: string | null
 }
 
+export type WasteValueAdviceInput = {
+  wasteType: string
+  city: string | null
+}
+
 export type ListingAssistOutput = {
   improvedTitle: string
   improvedDescription: string
@@ -24,12 +29,26 @@ export type ListingAssistOutput = {
   notes: string[]
 }
 
+export type WasteValueAdviceOutput = {
+  uses: string[]
+  cautions: string[]
+  marketTip: string | null
+}
+
 export type ListingAssistResult = {
   eventId: string | null
   latencyMs: number | null
   provider: AIProvider
   fallbackUsed: boolean
   result: ListingAssistOutput
+}
+
+export type WasteValueAdviceResult = {
+  eventId: string | null
+  latencyMs: number | null
+  provider: AIProvider
+  fallbackUsed: boolean
+  result: WasteValueAdviceOutput
 }
 
 export type AIFeedbackInput = {
@@ -46,6 +65,7 @@ export type AIFeedbackResult = {
 
 export type AIService = {
   assistListing(input: ListingAssistInput): Promise<ListingAssistOutput>
+  adviseWasteValue(input: WasteValueAdviceInput): Promise<WasteValueAdviceOutput>
 }
 
 export type AIProviderHealth = {

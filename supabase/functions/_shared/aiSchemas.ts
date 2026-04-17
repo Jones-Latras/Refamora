@@ -1,4 +1,7 @@
-import type { ListingAssistOutput } from './aiTypes.ts'
+import type {
+  ListingAssistOutput,
+  WasteValueAdviceOutput,
+} from './aiTypes.ts'
 
 export const listingAssistOutputJsonSchema = {
   type: 'object',
@@ -47,6 +50,28 @@ export const listingAssistOutputJsonSchema = {
   ],
 } as const
 
+export const wasteValueAdviceOutputJsonSchema = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    uses: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Short practical downstream uses for this waste type.',
+    },
+    cautions: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Short cautions or handling reminders.',
+    },
+    marketTip: {
+      type: ['string', 'null'],
+      description: 'A short note about what makes this waste valuable.',
+    },
+  },
+  required: ['uses', 'cautions', 'marketTip'],
+} as const
+
 function asString(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value.trim() : fallback
 }
@@ -87,5 +112,17 @@ export function normalizeListingAssistOutput(
     publishReadiness:
       Reflect.get(raw, 'publishReadiness') === 'ready' ? 'ready' : 'needs_review',
     notes: asStringArray(Reflect.get(raw, 'notes')),
+  }
+}
+
+export function normalizeWasteValueAdviceOutput(
+  value: unknown,
+): WasteValueAdviceOutput {
+  const raw = typeof value === 'object' && value ? value : {}
+
+  return {
+    uses: asStringArray(Reflect.get(raw, 'uses')).slice(0, 3),
+    cautions: asStringArray(Reflect.get(raw, 'cautions')).slice(0, 2),
+    marketTip: asNullableString(Reflect.get(raw, 'marketTip')),
   }
 }

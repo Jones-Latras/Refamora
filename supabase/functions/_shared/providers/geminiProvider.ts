@@ -1,8 +1,14 @@
-import type { AIService, ListingAssistInput } from '../aiTypes.ts'
+import type {
+  AIService,
+  ListingAssistInput,
+  WasteValueAdviceInput,
+} from '../aiTypes.ts'
 
 import {
   listingAssistOutputJsonSchema,
   normalizeListingAssistOutput,
+  normalizeWasteValueAdviceOutput,
+  wasteValueAdviceOutputJsonSchema,
 } from '../aiSchemas.ts'
 
 function getGeminiConfig() {
@@ -28,6 +34,19 @@ function buildListingAssistPrompt(input: ListingAssistInput) {
     `City: ${input.city ?? 'unknown'}`,
     `Fulfillment type: ${input.fulfillmentType ?? 'unknown'}`,
     `Price: ${input.price ?? 'unknown'}`,
+  ].join('\n')
+}
+
+function buildWasteValueAdvicePrompt(input: WasteValueAdviceInput) {
+  return [
+    'You are Refamora waste-to-value advisor.',
+    'Suggest short, practical, realistic downstream uses and cautions for agricultural waste.',
+    'Do not invent demand or guarantee profit.',
+    'Keep the response educational and concise.',
+    'Return only JSON that matches the schema.',
+    '',
+    `Waste type: ${input.wasteType}`,
+    `City: ${input.city ?? 'unknown'}`,
   ].join('\n')
 }
 
@@ -73,6 +92,48 @@ export const geminiProvider: AIService = {
     }
 
     return normalizeListingAssistOutput(JSON.parse(text))
+  },
+  async adviseWasteValue(input) {
+    const config = getGeminiConfig()
+
+    if (!config.apiKey) {
+      throw new Error('Missing GEMINI_API_KEY.')
+    }
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(config.timeoutMs),
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: buildWasteValueAdvicePrompt(input) }],
+            },
+          ],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            responseJsonSchema: wasteValueAdviceOutputJsonSchema,
+          },
+        }),
+      },
+    )
+
+    if (!response.ok) {
+      throw new Error(`Gemini request failed with ${response.status}.`)
+    }
+
+    const payload = await response.json()
+    const text = payload?.candidates?.[0]?.content?.parts?.[0]?.text
+
+    if (typeof text !== 'string' || !text.trim()) {
+      throw new Error('Gemini returned an empty response.')
+    }
+
+    return normalizeWasteValueAdviceOutput(JSON.parse(text))
   },
 }
 

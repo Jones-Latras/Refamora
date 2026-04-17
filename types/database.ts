@@ -15,7 +15,7 @@ export type Database = {
         Row: {
           id: string
           user_id: string
-          feature: 'listing_copilot'
+          feature: 'listing_copilot' | 'waste_value_advisor'
           provider: 'local_gemma' | 'gemini' | null
           fallback_used: boolean
           request_status: 'success' | 'error'
@@ -27,7 +27,7 @@ export type Database = {
         Insert: {
           id?: string
           user_id: string
-          feature: 'listing_copilot'
+          feature: 'listing_copilot' | 'waste_value_advisor'
           provider?: 'local_gemma' | 'gemini' | null
           fallback_used?: boolean
           request_status?: 'success' | 'error'
@@ -38,7 +38,7 @@ export type Database = {
         }
         Update: {
           user_id?: string
-          feature?: 'listing_copilot'
+          feature?: 'listing_copilot' | 'waste_value_advisor'
           provider?: 'local_gemma' | 'gemini' | null
           fallback_used?: boolean
           request_status?: 'success' | 'error'
