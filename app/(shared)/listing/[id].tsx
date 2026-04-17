@@ -19,6 +19,7 @@ import { ContactSellerModal } from '../../../components/ContactSellerModal'
 import { EmptyState } from '../../../components/EmptyState'
 import { FulfillmentLabel } from '../../../components/FulfillmentLabel'
 import { ListingCard } from '../../../components/ListingCard'
+import { ListingReportModal } from '../../../components/ListingReportModal'
 import { ListingStatusBadge } from '../../../components/ListingStatusBadge'
 import { useToast } from '../../../components/Toast'
 import { useAuth } from '../../../hooks/useAuth'
@@ -35,6 +36,7 @@ import {
   getRelatedListings,
   recordListingView,
 } from '../../../services/listingService'
+import { submitListingReport } from '../../../services/listingReportService'
 import type { ListingDetail, ListingPreview } from '../../../types/app'
 import { formatDate, formatPrice, titleCase } from '../../../utils/formatters'
 import { formatDistanceAway, getDistanceKm } from '../../../utils/location'
@@ -92,6 +94,12 @@ export default function ListingDetailScreen() {
   const [isSubmittingContact, setIsSubmittingContact] = useState(false)
   const [hasRequestedContact, setHasRequestedContact] = useState(false)
   const [relatedListings, setRelatedListings] = useState<ListingPreview[]>([])
+  const [isReportModalVisible, setIsReportModalVisible] = useState(false)
+  const [reportReason, setReportReason] = useState<
+    'inaccurate_details' | 'suspicious_listing' | 'wrong_photo' | 'spam' | 'other'
+  >('inaccurate_details')
+  const [reportDetails, setReportDetails] = useState('')
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -349,11 +357,19 @@ export default function ListingDetailScreen() {
     setIsContactModalVisible(false)
 
     if (listing.seller?.phone) {
-      showToast('Request sent. Seller phone is now visible below.', 'success')
+      showToast({
+        title: 'Inquiry sent',
+        message: 'Your request reached the seller. Their phone number is now visible below.',
+        variant: 'success',
+      })
       return
     }
 
-    showToast('Request sent. The seller has not added a phone number yet.', 'info')
+    showToast({
+      title: 'Inquiry sent',
+      message: 'Your request reached the seller. They have not added a phone number yet.',
+      variant: 'info',
+    })
   }
 
   const handleContactPress = async () => {
@@ -370,6 +386,56 @@ export default function ListingDetailScreen() {
     }
 
     await Linking.openURL(`tel:${listing.seller.phone}`)
+  }
+
+  const handleOpenReport = () => {
+    if (!listing) {
+      return
+    }
+
+    if (!user) {
+      router.push({
+        pathname: '/(auth)/login',
+        params: { redirect: `/(shared)/listing/${listing.id}` },
+      })
+      return
+    }
+
+    if (user.id === listing.sellerId) {
+      showToast('You cannot report your own listing.', 'info')
+      return
+    }
+
+    setIsReportModalVisible(true)
+  }
+
+  const handleSubmitReport = async () => {
+    if (!user || !listing) {
+      showToast('Sign in before reporting a listing.', 'error')
+      return
+    }
+
+    setIsSubmittingReport(true)
+
+    const result = await submitListingReport({
+      listing_id: listing.id,
+      reporter_id: user.id,
+      seller_id: listing.sellerId,
+      reason: reportReason,
+      details: reportDetails.trim() || null,
+    })
+
+    setIsSubmittingReport(false)
+
+    if (result.error) {
+      showToast(result.error.message, 'error')
+      return
+    }
+
+    setIsReportModalVisible(false)
+    setReportReason('inaccurate_details')
+    setReportDetails('')
+    showToast('Report submitted. Refamora can review this listing now.', 'success')
   }
 
   if (isLoading) {
@@ -674,6 +740,21 @@ export default function ListingDetailScreen() {
           </View>
         ) : null}
 
+        {user?.id !== listing.sellerId ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Report this listing</Text>
+            <Text style={styles.sectionText}>
+              If something looks inaccurate, suspicious, or misleading, you can flag it for
+              review.
+            </Text>
+            <Pressable onPress={handleOpenReport} style={styles.reportButton}>
+              <Text style={styles.reportButtonText}>
+                {user ? 'Report listing' : 'Sign in to report'}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         {relatedListings.length > 0 ? (
           <View style={styles.relatedSection}>
             <View style={styles.relatedHeader}>
@@ -723,6 +804,22 @@ export default function ListingDetailScreen() {
         }}
         onSubmit={() => {
           void handleSubmitContactRequest()
+        }}
+      />
+      <ListingReportModal
+        isVisible={isReportModalVisible}
+        selectedReason={reportReason}
+        details={reportDetails}
+        isSubmitting={isSubmittingReport}
+        onSelectReason={setReportReason}
+        onChangeDetails={setReportDetails}
+        onClose={() => {
+          if (!isSubmittingReport) {
+            setIsReportModalVisible(false)
+          }
+        }}
+        onSubmit={() => {
+          void handleSubmitReport()
         }}
       />
     </SafeAreaView>
@@ -1088,6 +1185,18 @@ const styles = StyleSheet.create({
   footerButtonText: {
     color: palette.cream,
     fontSize: 16,
+    fontWeight: '800',
+  },
+  reportButton: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    backgroundColor: '#f9e4df',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  reportButtonText: {
+    color: palette.error,
+    fontSize: 13,
     fontWeight: '800',
   },
 })

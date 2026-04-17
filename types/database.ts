@@ -234,6 +234,53 @@ export type Database = {
         }
         Relationships: []
       }
+      listing_reports: {
+        Row: {
+          id: string
+          listing_id: string
+          reporter_id: string
+          seller_id: string
+          reason:
+            | 'inaccurate_details'
+            | 'suspicious_listing'
+            | 'wrong_photo'
+            | 'spam'
+            | 'other'
+          details: string | null
+          status: 'pending' | 'reviewed' | 'dismissed'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          listing_id: string
+          reporter_id: string
+          seller_id: string
+          reason:
+            | 'inaccurate_details'
+            | 'suspicious_listing'
+            | 'wrong_photo'
+            | 'spam'
+            | 'other'
+          details?: string | null
+          status?: 'pending' | 'reviewed' | 'dismissed'
+          created_at?: string
+        }
+        Update: {
+          listing_id?: string
+          reporter_id?: string
+          seller_id?: string
+          reason?:
+            | 'inaccurate_details'
+            | 'suspicious_listing'
+            | 'wrong_photo'
+            | 'spam'
+            | 'other'
+          details?: string | null
+          status?: 'pending' | 'reviewed' | 'dismissed'
+          created_at?: string
+        }
+        Relationships: []
+      }
       contact_requests: {
         Row: {
           id: string

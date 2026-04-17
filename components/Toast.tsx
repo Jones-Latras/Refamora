@@ -12,14 +12,24 @@ import { palette, radii, shadow } from '../utils/theme'
 
 type ToastVariant = 'success' | 'error' | 'info'
 
+type ToastInput =
+  | string
+  | {
+      title?: string
+      message: string
+      variant?: ToastVariant
+      durationMs?: number
+    }
+
 type ToastState = {
   id: number
+  title?: string
   message: string
   variant: ToastVariant
 }
 
 type ToastContextValue = {
-  showToast: (message: string, variant?: ToastVariant) => void
+  showToast: (input: ToastInput, variant?: ToastVariant) => void
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null)
@@ -36,11 +46,27 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({
-      showToast: (message: string, variant: ToastVariant = 'info') => {
+      showToast: (input: ToastInput, variant: ToastVariant = 'info') => {
+        const nextPayload =
+          typeof input === 'string'
+            ? {
+                title: undefined,
+                message: input,
+                variant,
+                durationMs: 3000,
+              }
+            : {
+                title: input.title,
+                message: input.message,
+                variant: input.variant ?? 'info',
+                durationMs: input.durationMs ?? 3200,
+              }
+
         const nextToast = {
           id: Date.now(),
-          message,
-          variant,
+          title: nextPayload.title,
+          message: nextPayload.message,
+          variant: nextPayload.variant,
         }
 
         setToast(nextToast)
@@ -53,7 +79,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           setToast((currentToast) =>
             currentToast?.id === nextToast.id ? null : currentToast,
           )
-        }, 3000)
+        }, nextPayload.durationMs)
       },
     }),
     [],
@@ -65,6 +91,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {toast ? (
         <View pointerEvents="none" style={styles.viewport}>
           <View style={[styles.toast, variantStyles[toast.variant]]}>
+            {toast.title ? <Text style={styles.toastTitle}>{toast.title}</Text> : null}
             <Text style={styles.toastText}>{toast.message}</Text>
           </View>
         </View>
@@ -96,11 +123,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 14,
     borderRadius: radii.md,
+    gap: 3,
     ...shadow,
+  },
+  toastTitle: {
+    color: palette.cream,
+    fontSize: 14,
+    fontWeight: '800',
   },
   toastText: {
     color: palette.cream,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
+    lineHeight: 18,
   },
 })

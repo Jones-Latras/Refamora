@@ -119,7 +119,11 @@ export default function EditListingScreen() {
       return
     }
 
-    showToast('Listing updated successfully.', 'success')
+    showToast({
+      title: 'Listing updated',
+      message: 'Your changes are saved and buyers will now see the latest details.',
+      variant: 'success',
+    })
     router.replace('/(farmer)/my-listings')
   }
 

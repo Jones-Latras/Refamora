@@ -148,7 +148,11 @@ export default function CreateListingScreen() {
     }
 
     clearDraft(user.id)
-    showToast('Listing created successfully.', 'success')
+    showToast({
+      title: 'Listing published',
+      message: 'Your listing is now live in Refamora and ready for buyers to discover.',
+      variant: 'success',
+    })
     router.replace('/(farmer)/my-listings')
   }
 
@@ -159,7 +163,11 @@ export default function CreateListingScreen() {
     }
 
     saveDraft(user.id, values)
-    showToast('Draft saved. You can come back and finish it later.', 'success')
+    showToast({
+      title: 'Draft saved',
+      message: 'You can come back anytime and finish this listing from My Listings.',
+      variant: 'success',
+    })
   }
 
   if (isLoadingDuplicate) {

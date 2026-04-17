@@ -162,7 +162,11 @@ export default function ProfileScreen() {
     }
 
     await refetch()
-    showToast('Profile photo updated.', 'success')
+    showToast({
+      title: 'Photo updated',
+      message: 'Your new profile photo is now visible across Refamora.',
+      variant: 'success',
+    })
   }
 
   const handleSaveProfile = handleSubmit(async (values) => {
@@ -183,7 +187,11 @@ export default function ProfileScreen() {
     }
 
     await refetch()
-    showToast('Changes saved.', 'success')
+    showToast({
+      title: 'Profile saved',
+      message: 'Your updated details are now reflected across your account.',
+      variant: 'success',
+    })
   })
 
   const handleSavePassword = handlePasswordSubmit(async (values) => {
@@ -195,7 +203,11 @@ export default function ProfileScreen() {
     }
 
     resetPasswordForm()
-    showToast('Password updated successfully.', 'success')
+    showToast({
+      title: 'Password updated',
+      message: 'Your account security has been refreshed successfully.',
+      variant: 'success',
+    })
   })
 
   const handleLogout = async () => {
