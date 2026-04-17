@@ -148,7 +148,13 @@ export default function ProfileScreen() {
     setIsUploadingAvatar(false)
 
     if (uploadResult.error || !uploadResult.data) {
-      showToast(uploadResult.error?.message ?? 'Unable to upload photo.', 'error')
+      showToast({
+        title: 'Photo upload failed',
+        message:
+          uploadResult.error?.message ??
+          'Unable to upload photo. Check the image size, format, or connection and try again.',
+        variant: 'error',
+      })
       return
     }
 

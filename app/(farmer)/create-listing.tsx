@@ -117,7 +117,13 @@ export default function CreateListingScreen() {
       const uploadResult = await uploadListingImage(values.image_url, user.id)
 
       if (uploadResult.error) {
-        showToast(uploadResult.error.message, 'error')
+        showToast({
+          title: 'Image upload failed',
+          message:
+            uploadResult.error.message ??
+            'Check the image size, format, or connection, then try again.',
+          variant: 'error',
+        })
         return
       }
 

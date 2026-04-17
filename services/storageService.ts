@@ -7,6 +7,20 @@ import { getSupabaseClient, hasSupabaseEnv } from './supabase'
 
 type StorageBucket = 'avatars' | 'listing-images'
 const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024
+const SUPPORTED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
+
+function formatFileSize(bytes: number) {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  return `${Math.round(bytes / 1024)} KB`
+}
+
+function getFileExtension(uri: string) {
+  const match = uri.toLowerCase().match(/\.([a-z0-9]+)(?:\?|$)/)
+  return match?.[1] ?? null
+}
 
 function getStorageSetupHint(bucket: StorageBucket) {
   return `Supabase Storage for "${bucket}" is not fully configured. Re-run the storage SQL in supabase/seeds/20260416_storage_repair.sql.`
@@ -53,6 +67,17 @@ function toStorageError(
     )
   }
 
+  if (
+    normalizedMessage.includes('mime') ||
+    normalizedMessage.includes('content type') ||
+    normalizedMessage.includes('invalid file type') ||
+    normalizedMessage.includes('unsupported')
+  ) {
+    return new Error(
+      'This image format is not supported. Use a JPG, PNG, or WEBP image instead.',
+    )
+  }
+
   return new Error(message || fallbackMessage)
 }
 
@@ -72,12 +97,25 @@ export async function uploadImage(
       return { data: null, error: new Error('Selected image could not be found.') }
     }
 
+    const extension = getFileExtension(fileUri)
+
+    if (extension && !SUPPORTED_IMAGE_EXTENSIONS.includes(extension)) {
+      return {
+        data: null,
+        error: new Error(
+          'This image format is not supported. Use a JPG, PNG, or WEBP image instead.',
+        ),
+      }
+    }
+
     if ('size' in fileInfo && typeof fileInfo.size === 'number') {
       if (fileInfo.size > MAX_UPLOAD_SIZE_BYTES) {
         return {
           data: null,
           error: new Error(
-            'This image is too large for upload. Choose a smaller photo or crop it before uploading.',
+            `This image is ${formatFileSize(
+              fileInfo.size,
+            )}, which is above the 5 MB upload limit. Crop or compress it, then try again.`,
           ),
         }
       }
@@ -90,7 +128,12 @@ export async function uploadImage(
     const { data, error } = await getSupabaseClient().storage
       .from(bucket)
       .upload(filePath, decode(base64), {
-        contentType: 'image/jpeg',
+        contentType:
+          extension === 'png'
+            ? 'image/png'
+            : extension === 'webp'
+              ? 'image/webp'
+              : 'image/jpeg',
         upsert: true,
       })
 
