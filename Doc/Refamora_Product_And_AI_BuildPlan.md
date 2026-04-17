@@ -17,7 +17,7 @@ The goal is simple: keep Refamora useful as a real marketplace first, then use A
 ## Master Checklist
 
 Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
-Latest note: 2026-04-17 provider-layer scaffolding added and the first `Improve with AI` UI was connected to the reusable listing editor. Farmers can now request AI help from the listing flow, receive provider-backed suggestions, and keep editing the fields before publishing.
+Latest note: 2026-04-17 listing copilot feedback, `ai_events` logging, and provider/latency tracking are now connected. Farmers can request AI help, see availability before using it, keep or reject a suggestion, and send feedback without leaving the listing flow.
 
 ### AI Phase 0 - Foundations
 
@@ -27,13 +27,13 @@ Latest note: 2026-04-17 provider-layer scaffolding added and the first `Improve 
 - [x] Add `geminiProvider` implementation
 - [x] Add provider resolution logic with Local Gemma as primary
 - [x] Add Gemini fallback toggle
-- [~] Add provider health check and timeout handling
+- [x] Add provider health check and timeout handling
 - [x] Add request auth checks by role
-- [ ] Add rate limiting and request logging
-- [ ] Add schemas for AI outputs using Zod
-- [~] Add feature flagging so AI can be turned off safely
-- [ ] Add analytics for AI request volume, latency, and acceptance rate
-- [ ] Log which provider served each AI response
+- [~] Add rate limiting and request logging
+- [x] Add schemas for AI outputs using Zod
+- [x] Add feature flagging so AI can be turned off safely
+- [~] Add analytics for AI request volume, latency, and acceptance rate
+- [x] Log which provider served each AI response
 
 ### AI Phase 1 - Listing Copilot
 
@@ -41,7 +41,7 @@ Latest note: 2026-04-17 provider-layer scaffolding added and the first `Improve 
 - [x] Accept title, description, waste type, quantity, and optional photo
 - [x] Return structured suggestions
 - [x] Keep all AI output editable before save
-- [ ] Add feedback buttons such as `use suggestion` and `not helpful`
+- [x] Add feedback buttons such as `use suggestion` and `not helpful`
 
 ### AI Phase 2 - Waste-To-Value Advisor
 
@@ -508,13 +508,13 @@ Refamora impact:
 - [x] Add `geminiProvider` implementation
 - [x] Add provider resolution logic with Local Gemma as primary
 - [x] Add Gemini fallback toggle
-- [~] Add provider health check and timeout handling
+- [x] Add provider health check and timeout handling
 - [x] Add request auth checks by role
-- [ ] Add rate limiting and request logging
+- [~] Add rate limiting and request logging
 - [x] Add schemas for AI outputs using Zod
-- [~] Add feature flagging so AI can be turned off safely
-- [ ] Add analytics for AI request volume, latency, and acceptance rate
-- [ ] Log which provider served each AI response
+- [x] Add feature flagging so AI can be turned off safely
+- [~] Add analytics for AI request volume, latency, and acceptance rate
+- [x] Log which provider served each AI response
 
 ### AI Phase 1: Listing Copilot
 
@@ -528,7 +528,7 @@ Refamora impact:
   - [ ] suggested units
   - [ ] short publish-readiness notes
 - [x] Keep all AI output editable before save
-- [ ] Add feedback buttons such as `use suggestion` and `not helpful`
+- [x] Add feedback buttons such as `use suggestion` and `not helpful`
 
 Implementation note:
 

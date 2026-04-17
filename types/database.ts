@@ -11,6 +11,44 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      ai_events: {
+        Row: {
+          id: string
+          user_id: string
+          feature: 'listing_copilot'
+          provider: 'local_gemma' | 'gemini' | null
+          fallback_used: boolean
+          request_status: 'success' | 'error'
+          latency_ms: number | null
+          helpful: boolean | null
+          metadata: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          feature: 'listing_copilot'
+          provider?: 'local_gemma' | 'gemini' | null
+          fallback_used?: boolean
+          request_status?: 'success' | 'error'
+          latency_ms?: number | null
+          helpful?: boolean | null
+          metadata?: Json
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          feature?: 'listing_copilot'
+          provider?: 'local_gemma' | 'gemini' | null
+          fallback_used?: boolean
+          request_status?: 'success' | 'error'
+          latency_ms?: number | null
+          helpful?: boolean | null
+          metadata?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           id: string

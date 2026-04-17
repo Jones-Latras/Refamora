@@ -75,3 +75,23 @@ export const geminiProvider: AIService = {
     return normalizeListingAssistOutput(JSON.parse(text))
   },
 }
+
+export async function checkGeminiHealth() {
+  const config = getGeminiConfig()
+
+  if (!config.apiKey) {
+    return {
+      provider: 'gemini' as const,
+      enabled: false,
+      available: false,
+      message: 'Gemini is not configured.',
+    }
+  }
+
+  return {
+    provider: 'gemini' as const,
+    enabled: true,
+    available: true,
+    message: `Gemini fallback is configured with model ${config.model}.`,
+  }
+}

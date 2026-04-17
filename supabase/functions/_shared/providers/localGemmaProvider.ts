@@ -65,3 +65,37 @@ export const localGemmaProvider: AIService = {
     return normalizeListingAssistOutput(JSON.parse(text))
   },
 }
+
+export async function checkLocalGemmaHealth() {
+  const config = getLocalGemmaConfig()
+
+  try {
+    const response = await fetch(`${config.baseUrl}/api/tags`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(Math.min(config.timeoutMs, 4000)),
+    })
+
+    if (!response.ok) {
+      return {
+        provider: 'local_gemma' as const,
+        enabled: true,
+        available: false,
+        message: `Local Gemma returned ${response.status}.`,
+      }
+    }
+
+    return {
+      provider: 'local_gemma' as const,
+      enabled: true,
+      available: true,
+      message: `Local Gemma is reachable at ${config.baseUrl}.`,
+    }
+  } catch {
+    return {
+      provider: 'local_gemma' as const,
+      enabled: true,
+      available: false,
+      message: 'Local Gemma is not reachable right now.',
+    }
+  }
+}

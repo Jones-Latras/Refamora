@@ -18,6 +18,8 @@ npx supabase link --project-ref <your-project-ref>
 npx supabase db push
 ```
 
+After the base schema is in place, also apply [migrations/20260417_ai_events.sql](./migrations/20260417_ai_events.sql) to enable AI event logging and feedback capture.
+
 ## Regenerate TypeScript types
 
 After the schema is applied, regenerate `types/database.ts`:
@@ -43,9 +45,13 @@ Those Phase 1 checklist items should remain partial until the SQL is applied to 
 The repo now also contains a first AI edge function scaffold:
 
 - `functions/ai-listing-assist`
+- `functions/ai-health`
+- `functions/ai-feedback`
 - shared provider layer in `functions/_shared`
 - `localGemmaProvider` as the primary provider
 - `geminiProvider` as the optional fallback
+
+The AI event migration adds `public.ai_events`, which stores provider, latency, success/error state, and user feedback for the listing copilot.
 
 ### Suggested function secrets
 

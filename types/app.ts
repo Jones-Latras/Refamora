@@ -84,6 +84,7 @@ export type ContactRequestSummary = {
 }
 
 export type AIProvider = 'local_gemma' | 'gemini'
+export type AIFeature = 'listing_copilot'
 
 export type ListingAssistInput = {
   title: string
@@ -109,7 +110,34 @@ export type ListingAssistOutput = {
 }
 
 export type ListingAssistResult = {
+  eventId: string | null
+  latencyMs: number | null
   provider: AIProvider
   fallbackUsed: boolean
   result: ListingAssistOutput
+}
+
+export type AIFeedbackInput = {
+  eventId: string
+  feature: AIFeature
+  helpful: boolean
+}
+
+export type AIFeedbackResult = {
+  eventId: string
+  feature: AIFeature
+  helpful: boolean
+}
+
+export type AIProviderHealth = {
+  provider: AIProvider
+  enabled: boolean
+  available: boolean
+  message: string | null
+}
+
+export type AIHealthResult = {
+  available: boolean
+  primaryProvider: AIProvider | null
+  providers: AIProviderHealth[]
 }

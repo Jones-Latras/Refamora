@@ -80,9 +80,36 @@ export const listingAssistOutputSchema = z.object({
 })
 
 export const listingAssistResultSchema = z.object({
+  eventId: z.string().uuid().nullable(),
+  latencyMs: z.number().int().nonnegative().nullable(),
   provider: z.enum(['local_gemma', 'gemini']),
   fallbackUsed: z.boolean(),
   result: listingAssistOutputSchema,
+})
+
+export const aiFeedbackInputSchema = z.object({
+  eventId: z.string().uuid(),
+  feature: z.enum(['listing_copilot']),
+  helpful: z.boolean(),
+})
+
+export const aiFeedbackResultSchema = z.object({
+  eventId: z.string().uuid(),
+  feature: z.enum(['listing_copilot']),
+  helpful: z.boolean(),
+})
+
+export const aiHealthResultSchema = z.object({
+  available: z.boolean(),
+  primaryProvider: z.enum(['local_gemma', 'gemini']).nullable(),
+  providers: z.array(
+    z.object({
+      provider: z.enum(['local_gemma', 'gemini']),
+      enabled: z.boolean(),
+      available: z.boolean(),
+      message: z.string().nullable(),
+    }),
+  ),
 })
 
 export type LoginFormValues = z.infer<typeof loginSchema>
@@ -91,3 +118,4 @@ export type ProfileFormValues = z.input<typeof profileSchema>
 export type PasswordChangeFormValues = z.infer<typeof passwordChangeSchema>
 export type ListingFormValues = z.input<typeof listingSchema>
 export type ListingAssistFormValues = z.infer<typeof listingAssistInputSchema>
+export type AIFeedbackFormValues = z.infer<typeof aiFeedbackInputSchema>
