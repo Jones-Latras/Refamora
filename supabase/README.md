@@ -18,14 +18,14 @@ npx supabase link --project-ref <your-project-ref>
 npx supabase db push
 ```
 
-After the base schema is in place, also apply [migrations/20260417_ai_events.sql](./migrations/20260417_ai_events.sql) to enable AI event logging and feedback capture.
-Then apply [migrations/20260417_ai_events_waste_value_advisor.sql](./migrations/20260417_ai_events_waste_value_advisor.sql) to allow waste advisor events in the same analytics table.
-Then apply [migrations/20260417_ai_events_buyer_search_assistant.sql](./migrations/20260417_ai_events_buyer_search_assistant.sql) to allow buyer search assistant events in the same analytics table.
-Then apply [migrations/20260417_ai_events_listing_moderation.sql](./migrations/20260417_ai_events_listing_moderation.sql) to allow listing moderation events in the same analytics table.
-Then apply [migrations/20260417_ai_events_photo_quality_checker.sql](./migrations/20260417_ai_events_photo_quality_checker.sql) to allow photo checker events in the same analytics table.
-Then apply [migrations/20260417_listing_review_queue.sql](./migrations/20260417_listing_review_queue.sql) to create the moderation review queue table for flagged listings.
-Then apply [migrations/20260417_ai_events_messaging_support.sql](./migrations/20260417_ai_events_messaging_support.sql) to allow seller inquiry assistant events in the same analytics table.
-Then apply [migrations/20260417_contact_requests_responded.sql](./migrations/20260417_contact_requests_responded.sql) to allow seller inquiry updates to `responded`.
+After the base schema is in place, also apply [migrations/202604170001_ai_events.sql](./migrations/202604170001_ai_events.sql) to enable AI event logging and feedback capture.
+Then apply [migrations/202604170002_ai_events_waste_value_advisor.sql](./migrations/202604170002_ai_events_waste_value_advisor.sql) to allow waste advisor events in the same analytics table.
+Then apply [migrations/202604170003_ai_events_buyer_search_assistant.sql](./migrations/202604170003_ai_events_buyer_search_assistant.sql) to allow buyer search assistant events in the same analytics table.
+Then apply [migrations/202604170004_ai_events_listing_moderation.sql](./migrations/202604170004_ai_events_listing_moderation.sql) to allow listing moderation events in the same analytics table.
+Then apply [migrations/202604170005_ai_events_photo_quality_checker.sql](./migrations/202604170005_ai_events_photo_quality_checker.sql) to allow photo checker events in the same analytics table.
+Then apply [migrations/202604170006_listing_review_queue.sql](./migrations/202604170006_listing_review_queue.sql) to create the moderation review queue table for flagged listings.
+Then apply [migrations/202604170007_ai_events_messaging_support.sql](./migrations/202604170007_ai_events_messaging_support.sql) to allow seller inquiry assistant events in the same analytics table.
+Then apply [migrations/202604170008_contact_requests_responded.sql](./migrations/202604170008_contact_requests_responded.sql) to allow seller inquiry updates to `responded`.
 
 ## Regenerate TypeScript types
 
@@ -63,6 +63,8 @@ The repo now also contains a first AI edge function scaffold:
 - `localGemmaProvider` as the primary provider
 - `geminiProvider` as the optional fallback
 
+For a practical local AI walkthrough using Local Supabase + Gemma 3, see [../Doc/Refamora_Local_Supabase_Gemma3_Setup.md](../Doc/Refamora_Local_Supabase_Gemma3_Setup.md).
+
 The AI event migration adds `public.ai_events`, which stores provider, latency, success/error state, and user feedback for the listing copilot.
 
 ### Suggested function secrets
@@ -82,6 +84,12 @@ Set these in Supabase before deploying AI functions:
 - `AI_RATE_LIMIT_MAX_REQUESTS=8`
 
 If you deploy functions remotely, note that `LOCAL_GEMMA_BASE_URL` must point to a reachable host from the function runtime. For live hackathon demos on one machine, local or self-hosted execution is the safer path.
+If your Expo app points to a remote Supabase project, local values in the app `.env` will not make that remote runtime reach your laptop's Gemma server. For Local Gemma, either:
+
+- serve Supabase functions locally and point the app to that local Supabase stack, or
+- expose the local Gemma endpoint through a secure tunnel or reachable host and set `LOCAL_GEMMA_BASE_URL` in the function runtime to that reachable URL.
+
+For local Edge Function development, use [functions/.env.local.example](./functions/.env.local.example) as the template for AI provider secrets.
 
 The current rate limiter uses `ai_events` as the request log and enforces a per-user rolling window on the listing copilot endpoint.
 

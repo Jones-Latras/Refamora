@@ -45,6 +45,54 @@ import { getSupabaseClient, hasSupabaseEnv } from './supabase'
 
 type AIEventRow = Tables<'ai_events'>
 
+async function normalizeFunctionError(error: unknown, data: unknown) {
+  if (data && typeof data === 'object' && 'error' in data) {
+    const message = (data as { error?: unknown }).error
+
+    if (typeof message === 'string' && message.trim()) {
+      return new Error(message)
+    }
+  }
+
+  if (
+    error &&
+    typeof error === 'object' &&
+    'context' in error &&
+    (error as { context?: unknown }).context instanceof Response
+  ) {
+    const response = (error as { context: Response }).context
+
+    try {
+      const payload = await response.clone().json()
+
+      if (
+        payload &&
+        typeof payload === 'object' &&
+        'error' in payload &&
+        typeof (payload as { error?: unknown }).error === 'string'
+      ) {
+        return new Error((payload as { error: string }).error)
+      }
+    } catch {
+      try {
+        const text = await response.clone().text()
+
+        if (text.trim()) {
+          return new Error(text.trim())
+        }
+      } catch {
+        // ignore secondary parsing failures
+      }
+    }
+  }
+
+  if (error instanceof Error) {
+    return error
+  }
+
+  return new Error('AI request failed.')
+}
+
 export async function assistListing(
   input: ListingAssistInput,
 ): Promise<ServiceResult<ListingAssistResult>> {
@@ -72,7 +120,7 @@ export async function assistListing(
   )
 
   if (error) {
-    return { data: null, error }
+    return { data: null, error: await normalizeFunctionError(error, data) }
   }
 
   const parsedResult = listingAssistResultSchema.safeParse(data)
@@ -100,7 +148,7 @@ export async function getAIHealth(): Promise<ServiceResult<AIHealthResult>> {
   })
 
   if (error) {
-    return { data: null, error }
+    return { data: null, error: await normalizeFunctionError(error, data) }
   }
 
   const parsedResult = aiHealthResultSchema.safeParse(data)
@@ -144,7 +192,7 @@ export async function getWasteValueAdvice(
   )
 
   if (error) {
-    return { data: null, error }
+    return { data: null, error: await normalizeFunctionError(error, data) }
   }
 
   const parsedResult = wasteValueAdviceResultSchema.safeParse(data)
@@ -189,7 +237,7 @@ export async function getBuyerSearchAssist(
   )
 
   if (error) {
-    return { data: null, error }
+    return { data: null, error: await normalizeFunctionError(error, data) }
   }
 
   const parsedResult = buyerSearchAssistResultSchema.safeParse(data)
@@ -233,7 +281,7 @@ export async function getPhotoCheck(
   )
 
   if (error) {
-    return { data: null, error }
+    return { data: null, error: await normalizeFunctionError(error, data) }
   }
 
   const parsedResult = photoCheckResultSchema.safeParse(data)
@@ -278,7 +326,7 @@ export async function moderateListing(
   )
 
   if (error) {
-    return { data: null, error }
+    return { data: null, error: await normalizeFunctionError(error, data) }
   }
 
   const parsedResult = listingModerationResultSchema.safeParse(data)
@@ -327,7 +375,7 @@ export async function getInquirySummary(
   )
 
   if (error) {
-    return { data: null, error }
+    return { data: null, error: await normalizeFunctionError(error, data) }
   }
 
   const parsedResult = inquirySummaryResultSchema.safeParse(data)
@@ -374,7 +422,7 @@ export async function getReplyDraft(
   )
 
   if (error) {
-    return { data: null, error }
+    return { data: null, error: await normalizeFunctionError(error, data) }
   }
 
   const parsedResult = replyDraftResultSchema.safeParse(data)
