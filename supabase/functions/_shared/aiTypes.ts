@@ -126,6 +126,8 @@ export type ListingModerationResult = {
   latencyMs: number | null
   provider: AIProvider
   fallbackUsed: boolean
+  queuedForReview: boolean
+  reviewQueueId: string | null
   result: ListingModerationOutput
 }
 

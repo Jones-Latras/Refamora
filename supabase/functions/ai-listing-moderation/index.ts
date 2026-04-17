@@ -5,6 +5,7 @@ import {
   logAIEvent,
 } from '../_shared/aiEventLogger.ts'
 import { getAuthenticatedFarmer } from '../_shared/auth.ts'
+import { queueModerationReview } from '../_shared/moderationQueue.ts'
 import { moderateListing } from '../_shared/aiService.ts'
 import type { ListingModerationInput } from '../_shared/aiTypes.ts'
 
@@ -100,12 +101,30 @@ serve(async (req) => {
         hasImage: Boolean(input.imageBase64),
       },
     })
+    const shouldQueue =
+      result.result.decision === 'review' || result.result.decision === 'block'
+    const reviewQueueId = shouldQueue
+      ? await queueModerationReview({
+          req,
+          sellerId: auth.user.id,
+          aiEventId: eventId,
+          moderation: {
+            decision: result.result.decision,
+            reasons: result.result.reasons,
+            fieldWarnings: result.result.fieldWarnings,
+            imageWarnings: result.result.imageWarnings,
+          },
+          listing: input,
+        })
+      : null
 
     return new Response(
       JSON.stringify({
         ...result,
         eventId,
         latencyMs,
+        queuedForReview: Boolean(reviewQueueId),
+        reviewQueueId,
       }),
       {
         status: 200,

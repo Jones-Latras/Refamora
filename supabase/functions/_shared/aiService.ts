@@ -115,6 +115,8 @@ export async function adviseWasteValue(
         latencyMs: null,
         provider,
         fallbackUsed: index > 0,
+        queuedForReview: false,
+        reviewQueueId: null,
         result,
       }
     } catch (error) {

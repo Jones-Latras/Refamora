@@ -320,11 +320,14 @@ export function ListingEditor({
         return true
       }
 
-      const primaryReason =
-        result.data.result.reasons[0] ??
-        (result.data.result.decision === 'block'
-          ? 'This listing was blocked by the safety check.'
-          : 'Please review the flagged listing details before publishing.')
+      const primaryReason = result.data.queuedForReview
+        ? result.data.result.decision === 'block'
+          ? 'This listing was blocked and added to the admin review queue.'
+          : 'This listing was flagged and added to the admin review queue.'
+        : result.data.result.reasons[0] ??
+          (result.data.result.decision === 'block'
+            ? 'This listing was blocked by the safety check.'
+            : 'Please review the flagged listing details before publishing.')
 
       onError(primaryReason)
       scrollViewRef.current?.scrollToEnd({ animated: true })
@@ -1284,6 +1287,13 @@ export function ListingEditor({
                     </View>
                   ) : null}
 
+                  {moderationResult.queuedForReview ? (
+                    <Text style={styles.moderationQueueNote}>
+                      Added to admin review queue
+                      {moderationResult.reviewQueueId ? `: ${moderationResult.reviewQueueId}` : ''}
+                    </Text>
+                  ) : null}
+
                   {moderationResult.result.fieldWarnings.length > 0 ? (
                     <View style={styles.moderationListBlock}>
                       <Text style={styles.moderationListLabel}>Text warnings</Text>
@@ -1836,6 +1846,12 @@ const styles = StyleSheet.create({
   moderationMeta: {
     color: palette.muted,
     fontSize: 12,
+  },
+  moderationQueueNote: {
+    color: palette.sageDark,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '700',
   },
   moderationListBlock: {
     gap: 6,

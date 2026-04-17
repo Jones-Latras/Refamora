@@ -177,6 +177,8 @@ export const listingModerationResultSchema = z.object({
   latencyMs: z.number().int().nonnegative().nullable(),
   provider: z.enum(['local_gemma', 'gemini']),
   fallbackUsed: z.boolean(),
+  queuedForReview: z.boolean(),
+  reviewQueueId: z.string().uuid().nullable(),
   result: listingModerationOutputSchema,
 })
 

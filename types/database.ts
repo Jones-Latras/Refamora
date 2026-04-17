@@ -155,6 +155,59 @@ export type Database = {
         }
         Relationships: []
       }
+      listing_review_queue: {
+        Row: {
+          id: string
+          seller_id: string
+          listing_id: string | null
+          ai_event_id: string | null
+          decision: 'review' | 'block'
+          queue_status: 'pending' | 'resolved' | 'dismissed'
+          title: string
+          waste_type: string | null
+          city: string | null
+          reasons: Json
+          field_warnings: Json
+          image_warnings: Json
+          listing_snapshot: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          seller_id: string
+          listing_id?: string | null
+          ai_event_id?: string | null
+          decision: 'review' | 'block'
+          queue_status?: 'pending' | 'resolved' | 'dismissed'
+          title: string
+          waste_type?: string | null
+          city?: string | null
+          reasons?: Json
+          field_warnings?: Json
+          image_warnings?: Json
+          listing_snapshot?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          seller_id?: string
+          listing_id?: string | null
+          ai_event_id?: string | null
+          decision?: 'review' | 'block'
+          queue_status?: 'pending' | 'resolved' | 'dismissed'
+          title?: string
+          waste_type?: string | null
+          city?: string | null
+          reasons?: Json
+          field_warnings?: Json
+          image_warnings?: Json
+          listing_snapshot?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       contact_requests: {
         Row: {
           id: string

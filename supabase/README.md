@@ -23,6 +23,7 @@ Then apply [migrations/20260417_ai_events_waste_value_advisor.sql](./migrations/
 Then apply [migrations/20260417_ai_events_buyer_search_assistant.sql](./migrations/20260417_ai_events_buyer_search_assistant.sql) to allow buyer search assistant events in the same analytics table.
 Then apply [migrations/20260417_ai_events_listing_moderation.sql](./migrations/20260417_ai_events_listing_moderation.sql) to allow listing moderation events in the same analytics table.
 Then apply [migrations/20260417_ai_events_photo_quality_checker.sql](./migrations/20260417_ai_events_photo_quality_checker.sql) to allow photo checker events in the same analytics table.
+Then apply [migrations/20260417_listing_review_queue.sql](./migrations/20260417_listing_review_queue.sql) to create the moderation review queue table for flagged listings.
 
 ## Regenerate TypeScript types
 
@@ -87,3 +88,4 @@ The waste advisor is now grounded with a small curated Refamora knowledge base s
 The buyer feed also includes a Search with AI flow that interprets natural-language search into structured filters, shows the interpretation back to the user, and only applies it after confirmation.
 The listing editor also runs an automatic AI safety check before publish, reviewing listing text and image content and stopping the submit flow when the result needs review or is blocked.
 The listing editor now also includes an on-demand Photo Check that reviews image clarity, suggests retakes, and can surface a likely waste type when the image is clear enough.
+Flagged moderation results are now persisted to `listing_review_queue`, giving Refamora a basic admin review queue foundation before a dedicated admin dashboard exists.
