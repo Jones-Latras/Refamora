@@ -17,7 +17,7 @@ The goal is simple: keep Refamora useful as a real marketplace first, then use A
 ## Master Checklist
 
 Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
-Latest note: 2026-04-17 buyer discovery now includes save, distance, and map improvements, while farmer operations now show listing performance, grouped inquiry inboxes, per-listing activity timelines, seller reminders, bulk status cleanup, and duplicate listing support.
+Latest note: 2026-04-17 buyer discovery now includes save, distance, and map improvements, farmer operations now show listing performance, grouped inquiry inboxes, per-listing activity timelines, seller reminders, bulk status cleanup, duplicate listing support, and resumable listing drafts, and profile completion is now visible on both dashboards and the shared profile flow.
 
 ### AI Phase 0 - Foundations
 
@@ -123,7 +123,7 @@ The app now has the right screens, but the movement between them still needs to 
 
 Refamora will feel more credible when seller identity and listing quality are stronger.
 
-- [ ] Add profile completion logic for both buyers and sellers with clear completion criteria
+- [x] Add profile completion logic for both buyers and sellers with clear completion criteria
 - [ ] Add public-facing seller trust indicators such as location, avatar, listing count, and response activity
 - [ ] Add listing quality checks before publish
 - [ ] Add stronger validation for phone, city, quantity, and price formats
@@ -147,7 +147,7 @@ The buyer side works, but it can become much more useful.
 
 The seller flow should help farmers act faster with less friction.
 
-- [ ] Add draft listings so incomplete forms do not block progress
+- [x] Add draft listings so incomplete forms do not block progress
 - [x] Add duplicate listing action for recurring waste types
 - [x] Add listing performance summary such as views and inquiries
 - [x] Add inquiry inbox grouping by listing
@@ -186,7 +186,7 @@ This is the safest non-AI sequence.
 
 ### Phase C: Strengthen Trust
 
-- [ ] Profile completion
+- [x] Profile completion
 - [ ] Better seller identity block
 - [ ] Listing status quality checks
 - [ ] Report listing flow

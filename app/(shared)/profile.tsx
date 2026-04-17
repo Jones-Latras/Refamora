@@ -30,6 +30,7 @@ import {
   profileSchema,
 } from '../../utils/schemas'
 import { pickAndCompressAvatar } from '../../utils/imageUtils'
+import { getProfileCompletion } from '../../utils/profileCompletion'
 import { palette, radii, shadow } from '../../utils/theme'
 
 function getInitials(name?: string | null, fallback = 'A') {
@@ -122,16 +123,12 @@ export default function ProfileScreen() {
     !passwordErrors.password &&
     !passwordErrors.confirmPassword
 
-  const roleLabel = role === 'farmer' ? 'Farmer seller' : 'Buyer account'
+  const normalizedRole = role === 'farmer' ? 'farmer' : 'buyer'
+  const roleLabel = normalizedRole === 'farmer' ? 'Farmer seller' : 'Buyer account'
   const locationLabel = profile?.city ? `${roleLabel} from ${profile.city}` : roleLabel
-  const completionItems = [
-    { label: 'Profile photo', done: Boolean(profile?.avatar_url) },
-    { label: 'Phone number', done: Boolean(profile?.phone) },
-    { label: 'City', done: Boolean(profile?.city) },
-  ]
-  const isProfileComplete = completionItems.every((item) => item.done)
-  const completionPercent = Math.round(
-    (completionItems.filter((item) => item.done).length / completionItems.length) * 100,
+  const profileCompletion = useMemo(
+    () => getProfileCompletion(profile, normalizedRole),
+    [normalizedRole, profile],
   )
 
   const handlePickAvatar = async () => {
@@ -271,22 +268,38 @@ export default function ProfileScreen() {
             <View style={styles.verifiedBadge}>
               <Text style={styles.verifiedBadgeText}>Verified account</Text>
             </View>
+            {profileCompletion.isComplete ? (
+              <Text style={styles.readyText}>{profileCompletion.completeLabel}</Text>
+            ) : null}
           </View>
 
-          {!isProfileComplete ? (
+          {!profileCompletion.isComplete ? (
             <View style={styles.completionCard}>
               <View style={styles.completionHeader}>
-                <Text style={styles.completionTitle}>Profile completeness</Text>
-                <Text style={styles.completionPercent}>{completionPercent}%</Text>
+                <Text style={styles.completionTitle}>{profileCompletion.title}</Text>
+                <Text style={styles.completionPercent}>{profileCompletion.percent}%</Text>
               </View>
+              <Text style={styles.completionSummary}>{profileCompletion.summary}</Text>
               <View style={styles.progressTrack}>
-                <View style={[styles.progressFill, { width: `${completionPercent}%` }]} />
+                <View
+                  style={[styles.progressFill, { width: `${profileCompletion.percent}%` }]}
+                />
               </View>
+              <Text style={styles.completionCount}>
+                {profileCompletion.completedCount} of {profileCompletion.items.length} details
+                complete
+              </Text>
               <View style={styles.completionList}>
-                {completionItems.map((item) => (
-                  <Text key={item.label} style={styles.completionItem}>
-                    {item.done ? 'Done' : 'Add'} {item.label}
-                  </Text>
+                {profileCompletion.items.map((item) => (
+                  <View key={item.key} style={styles.completionItemRow}>
+                    <Text style={styles.completionItemStatus}>
+                      {item.done ? 'Done' : 'Add'}
+                    </Text>
+                    <View style={styles.completionItemText}>
+                      <Text style={styles.completionItemLabel}>{item.label}</Text>
+                      <Text style={styles.completionItemDescription}>{item.description}</Text>
+                    </View>
+                  </View>
                 ))}
               </View>
             </View>
@@ -537,6 +550,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
+  readyText: {
+    marginTop: 2,
+    color: palette.sageDark,
+    fontSize: 12,
+    fontWeight: '700',
+  },
   completionCard: {
     width: '100%',
     backgroundColor: '#f7faf7',
@@ -561,6 +580,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 14,
   },
+  completionSummary: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 18,
+  },
   progressTrack: {
     width: '100%',
     height: 8,
@@ -574,12 +598,38 @@ const styles = StyleSheet.create({
     backgroundColor: palette.sage,
   },
   completionList: {
-    gap: 4,
+    gap: 10,
   },
-  completionItem: {
+  completionCount: {
+    color: palette.sageDark,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  completionItemRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  completionItemStatus: {
+    width: 38,
+    color: palette.sageDark,
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  completionItemText: {
+    flex: 1,
+    gap: 2,
+  },
+  completionItemLabel: {
+    color: palette.soil,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  completionItemDescription: {
     color: palette.muted,
     fontSize: 12,
-    lineHeight: 16,
+    lineHeight: 17,
   },
   card: {
     marginTop: 16,

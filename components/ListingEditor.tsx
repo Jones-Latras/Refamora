@@ -46,8 +46,11 @@ type ListingEditorProps = {
   heroSubtitle?: string
   submitLabel: string
   submittingLabel: string
+  draftLabel?: string
+  draftSavedLabel?: string
   initialValues: ListingFormValues
   onSubmitValues: (values: ListingFormValues) => Promise<void>
+  onSaveDraftValues?: (values: ListingFormValues) => Promise<void>
   onInfo: (message: string) => void
   onError: (message: string) => void
 }
@@ -62,8 +65,11 @@ export function ListingEditor({
   heroSubtitle,
   submitLabel,
   submittingLabel,
+  draftLabel = 'Save Draft',
+  draftSavedLabel = 'Saving draft...',
   initialValues,
   onSubmitValues,
+  onSaveDraftValues,
   onInfo,
   onError,
 }: ListingEditorProps) {
@@ -78,6 +84,7 @@ export function ListingEditor({
   const [isPhotoCheckLoading, setIsPhotoCheckLoading] = useState(false)
   const [isModerationLoading, setIsModerationLoading] = useState(false)
   const [isSubmittingAiFeedback, setIsSubmittingAiFeedback] = useState(false)
+  const [isSavingDraft, setIsSavingDraft] = useState(false)
   const [aiAssistResult, setAiAssistResult] =
     useState<ListingAssistResult | null>(null)
   const [wasteAdviceResult, setWasteAdviceResult] =
@@ -97,6 +104,7 @@ export function ListingEditor({
     reset,
     setValue,
     watch,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<ListingFormValues>({
     resolver: zodResolver(listingSchema),
@@ -260,6 +268,20 @@ export function ListingEditor({
       onError('Please complete the missing fields before publishing.')
     },
   )
+
+  const handleSaveDraft = async () => {
+    if (!onSaveDraftValues) {
+      return
+    }
+
+    setIsSavingDraft(true)
+
+    try {
+      await onSaveDraftValues(getValues())
+    } finally {
+      setIsSavingDraft(false)
+    }
+  }
 
   const handlePickImage = async () => {
     const imageUri = await pickAndCompressImage()
@@ -1325,19 +1347,32 @@ export function ListingEditor({
             </View>
           ) : null}
 
-          <Pressable
-            disabled={isSubmitting || isModerationLoading}
-            onPress={onSubmit}
-            style={styles.primaryButton}
-          >
-            <Text style={styles.primaryButtonText}>
-              {isSubmitting
-                ? submittingLabel
-                : isModerationLoading
-                  ? 'Running safety check...'
-                  : submitLabel}
-            </Text>
-          </Pressable>
+          <View style={styles.submitRow}>
+            {onSaveDraftValues ? (
+              <Pressable
+                disabled={isSavingDraft || isSubmitting}
+                onPress={() => void handleSaveDraft()}
+                style={styles.draftButton}
+              >
+                <Text style={styles.draftButtonText}>
+                  {isSavingDraft ? draftSavedLabel : draftLabel}
+                </Text>
+              </Pressable>
+            ) : null}
+            <Pressable
+              disabled={isSubmitting || isModerationLoading || isSavingDraft}
+              onPress={onSubmit}
+              style={styles.primaryButton}
+            >
+              <Text style={styles.primaryButtonText}>
+                {isSubmitting
+                  ? submittingLabel
+                  : isModerationLoading
+                    ? 'Running safety check...'
+                    : submitLabel}
+              </Text>
+            </Pressable>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -1621,7 +1656,25 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
+  submitRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  draftButton: {
+    flex: 1,
+    backgroundColor: palette.surface,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: palette.border,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  draftButtonText: {
+    color: palette.clay,
+    fontWeight: '800',
+  },
   primaryButton: {
+    flex: 1,
     backgroundColor: palette.sage,
     borderRadius: 999,
     paddingVertical: 16,

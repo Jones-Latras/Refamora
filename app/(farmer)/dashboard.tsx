@@ -8,6 +8,7 @@ import { ContactRequestCard } from '../../components/ContactRequestCard'
 import { EmptyState } from '../../components/EmptyState'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
+import { useListingDraftStore } from '../../hooks/useListingDrafts'
 import { useProfile } from '../../hooks/useProfile'
 import {
   getSellerInquiries,
@@ -25,6 +26,7 @@ import type {
   ListingPreview,
 } from '../../types/app'
 import { formatDate, formatPrice } from '../../utils/formatters'
+import { getProfileCompletion } from '../../utils/profileCompletion'
 import { palette, radii, shadow } from '../../utils/theme'
 
 function getGreeting(name?: string | null) {
@@ -188,6 +190,9 @@ export default function FarmerDashboardScreen() {
   const { user } = useAuth()
   const { profile } = useProfile(user?.id)
   const { showToast } = useToast()
+  const savedDraft = useListingDraftStore((state) =>
+    user?.id ? state.draftsByUser[user.id] ?? null : null,
+  )
   const [listings, setListings] = useState<ListingPreview[]>([])
   const [inquiries, setInquiries] = useState<ContactRequestSummary[]>([])
   const [aiAnalytics, setAiAnalytics] = useState<AIAnalyticsSummary | null>(null)
@@ -273,8 +278,8 @@ export default function FarmerDashboardScreen() {
     () => inquiries.filter((request) => request.status === 'pending').length,
     [inquiries],
   )
-  const profileIncomplete = useMemo(
-    () => !profile?.phone || !profile?.city || !profile?.avatar_url,
+  const profileCompletion = useMemo(
+    () => getProfileCompletion(profile, 'farmer'),
     [profile],
   )
   const performanceByListing = useMemo(
@@ -326,14 +331,30 @@ export default function FarmerDashboardScreen() {
   const dashboardReminders = useMemo<ReminderItem[]>(() => {
     const reminders: ReminderItem[] = []
 
-    if (profileIncomplete) {
+    if (!profileCompletion.isComplete) {
+      const missingPreview = profileCompletion.missingLabels.slice(0, 2).join(', ')
       reminders.push({
         id: 'profile',
         title: 'Complete your seller profile',
-        description:
-          'Add your photo, phone number, and city so buyers can trust your listings faster.',
-        actionLabel: 'Finish profile',
+        description: missingPreview
+          ? `Still missing: ${missingPreview}${
+              profileCompletion.remainingCount > 2 ? ' and more' : ''
+            }.`
+          : profileCompletion.summary,
+        actionLabel: profileCompletion.nextActionLabel,
         onPress: () => router.push('/(farmer)/profile'),
+      })
+    }
+
+    if (savedDraft) {
+      reminders.push({
+        id: 'draft',
+        title: 'Resume your saved draft',
+        description: `Continue editing "${
+          savedDraft.values.title.trim() || 'Untitled listing draft'
+        }" without starting over.`,
+        actionLabel: 'Open draft',
+        onPress: () => router.push('/(farmer)/create-listing'),
       })
     }
 
@@ -376,7 +397,14 @@ export default function FarmerDashboardScreen() {
     }
 
     return reminders.slice(0, 3)
-  }, [activeCount, listings.length, pendingInquiryCount, profileIncomplete, staleListings])
+  }, [
+    activeCount,
+    listings.length,
+    pendingInquiryCount,
+    profileCompletion,
+    savedDraft,
+    staleListings,
+  ])
 
   return (
     <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={styles.safeArea}>
@@ -416,18 +444,21 @@ export default function FarmerDashboardScreen() {
             </View>
           </View>
 
-          {profileIncomplete ? (
+          {!profileCompletion.isComplete ? (
             <View style={styles.tipCard}>
-              <Text style={styles.tipTitle}>Complete your profile</Text>
+              <Text style={styles.tipTitle}>{profileCompletion.title}</Text>
               <Text style={styles.tipText}>
-                Add your photo, phone number, and city so buyers can trust your
-                listings faster.
+                {profileCompletion.completedCount} of {profileCompletion.items.length} details
+                complete. {profileCompletion.summary}
+              </Text>
+              <Text style={styles.tipMeta}>
+                Missing: {profileCompletion.missingLabels.join(', ')}
               </Text>
               <Pressable
                 onPress={() => router.push('/(farmer)/profile')}
                 style={styles.tipAction}
               >
-                <Text style={styles.tipActionText}>Finish profile</Text>
+                <Text style={styles.tipActionText}>{profileCompletion.nextActionLabel}</Text>
               </Pressable>
             </View>
           ) : null}
@@ -777,6 +808,11 @@ const styles = StyleSheet.create({
   tipText: {
     color: palette.sageDark,
     lineHeight: 20,
+  },
+  tipMeta: {
+    color: '#5f7166',
+    fontSize: 12,
+    lineHeight: 18,
   },
   tipAction: {
     alignSelf: 'flex-start',

@@ -1,6 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native'
 import { router } from 'expo-router'
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -9,21 +9,25 @@ import { EmptyState } from '../../components/EmptyState'
 import { ListingCard } from '../../components/ListingCard'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
+import { useProfile } from '../../hooks/useProfile'
 import { useRecentlyViewedStore } from '../../hooks/useRecentlyViewed'
 import { useSavedListingsStore } from '../../hooks/useSavedListings'
 import { getBuyerContactRequests } from '../../services/contactService'
 import { getListingPreviewsByIds } from '../../services/listingService'
 import type { ContactRequestSummary, ListingPreview } from '../../types/app'
+import { getProfileCompletion } from '../../utils/profileCompletion'
 import { palette } from '../../utils/theme'
 
 export default function BuyerDashboardScreen() {
   const { user } = useAuth()
   const { showToast } = useToast()
+  const { profile } = useProfile(user?.id)
   const recentlyViewedIds = useRecentlyViewedStore((state) => state.listingIds)
   const savedListingIds = useSavedListingsStore((state) => state.listingIds)
   const [requests, setRequests] = useState<ContactRequestSummary[]>([])
   const [recentListings, setRecentListings] = useState<ListingPreview[]>([])
   const [savedListings, setSavedListings] = useState<ListingPreview[]>([])
+  const profileCompletion = useMemo(() => getProfileCompletion(profile, 'buyer'), [profile])
 
   const loadRequests = useCallback(async () => {
     if (!user) {
@@ -89,6 +93,25 @@ export default function BuyerDashboardScreen() {
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
+        {!profileCompletion.isComplete ? (
+          <View style={styles.tipCard}>
+            <Text style={styles.tipTitle}>{profileCompletion.title}</Text>
+            <Text style={styles.tipText}>
+              {profileCompletion.completedCount} of {profileCompletion.items.length} details
+              complete. {profileCompletion.summary}
+            </Text>
+            <Text style={styles.tipMeta}>
+              Missing: {profileCompletion.missingLabels.join(', ')}
+            </Text>
+            <Pressable
+              onPress={() => router.push('/(buyer)/profile')}
+              style={styles.tipAction}
+            >
+              <Text style={styles.tipActionText}>{profileCompletion.nextActionLabel}</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View>
@@ -200,6 +223,41 @@ const styles = StyleSheet.create({
   content: {
     padding: 24,
     gap: 18,
+  },
+  tipCard: {
+    backgroundColor: '#eef6ed',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(58, 102, 72, 0.12)',
+    padding: 16,
+    gap: 8,
+  },
+  tipTitle: {
+    color: palette.sageDark,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  tipText: {
+    color: palette.sageDark,
+    lineHeight: 20,
+  },
+  tipMeta: {
+    color: palette.muted,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  tipAction: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    backgroundColor: palette.surface,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  tipActionText: {
+    color: palette.sageDark,
+    fontSize: 13,
+    fontWeight: '800',
   },
   section: {
     gap: 14,

@@ -7,6 +7,7 @@ import { EmptyState } from '../../components/EmptyState'
 import { ListingEditor } from '../../components/ListingEditor'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
+import { useListingDraftStore } from '../../hooks/useListingDrafts'
 import {
   createListing,
   getListingById,
@@ -24,6 +25,11 @@ export default function CreateListingScreen() {
   const { duplicateFromId } = useLocalSearchParams<{ duplicateFromId?: string }>()
   const { user } = useAuth()
   const { showToast } = useToast()
+  const savedDraft = useListingDraftStore((state) =>
+    user?.id ? state.draftsByUser[user.id] ?? null : null,
+  )
+  const saveDraft = useListingDraftStore((state) => state.saveDraft)
+  const clearDraft = useListingDraftStore((state) => state.clearDraft)
   const [sourceListing, setSourceListing] = useState<ListingDetail | null>(null)
   const [isLoadingDuplicate, setIsLoadingDuplicate] = useState(Boolean(duplicateFromId))
 
@@ -79,6 +85,8 @@ export default function CreateListingScreen() {
             accept_offers: sourceListing.acceptOffers,
             image_url: sourceListing.imageUrl,
           }
+        : savedDraft?.values
+          ? savedDraft.values
         : {
             title: '',
             description: '',
@@ -94,7 +102,7 @@ export default function CreateListingScreen() {
             accept_offers: false,
             image_url: null,
           },
-    [sourceListing],
+    [savedDraft?.values, sourceListing],
   )
 
   const handleSubmitValues = async (values: ListingFormValues) => {
@@ -139,8 +147,19 @@ export default function CreateListingScreen() {
       return
     }
 
+    clearDraft(user.id)
     showToast('Listing created successfully.', 'success')
     router.replace('/(farmer)/my-listings')
+  }
+
+  const handleSaveDraftValues = async (values: ListingFormValues) => {
+    if (!user) {
+      showToast('Sign in before saving a draft.', 'error')
+      return
+    }
+
+    saveDraft(user.id, values)
+    showToast('Draft saved. You can come back and finish it later.', 'success')
   }
 
   if (isLoadingDuplicate) {
@@ -169,16 +188,27 @@ export default function CreateListingScreen() {
 
   return (
     <ListingEditor
-      heroTitle={sourceListing ? 'Duplicate listing' : undefined}
+      heroTitle={
+        sourceListing
+          ? 'Duplicate listing'
+          : savedDraft?.values
+            ? 'Resume draft'
+            : undefined
+      }
       heroSubtitle={
         sourceListing
           ? 'Start from an existing listing, then adjust the details before publishing.'
+          : savedDraft?.values
+            ? 'Your unfinished listing draft has been restored. Continue where you left off.'
           : undefined
       }
       submitLabel="Publish Listing"
       submittingLabel="Saving listing..."
+      draftLabel="Save Draft"
+      draftSavedLabel="Saving draft..."
       initialValues={initialValues}
       onSubmitValues={handleSubmitValues}
+      onSaveDraftValues={handleSaveDraftValues}
       onInfo={(message) => showToast(message, 'info')}
       onError={(message) => showToast(message, 'error')}
     />
