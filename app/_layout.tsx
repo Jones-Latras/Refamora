@@ -3,8 +3,10 @@ import { useEffect } from 'react'
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
+import { OfflineBanner } from '../components/OfflineBanner'
 import { ToastProvider, useToast } from '../components/Toast'
 import { AuthProvider, useAuth } from '../hooks/useAuth'
+import { ConnectivityProvider } from '../hooks/useConnectivity'
 import { palette } from '../utils/theme'
 
 function normalizeRedirectPath(pathname: string) {
@@ -97,13 +99,24 @@ function SplashGate() {
   )
 }
 
+function AppChrome() {
+  return (
+    <>
+      <SplashGate />
+      <OfflineBanner />
+    </>
+  )
+}
+
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ToastProvider>
-        <AuthProvider>
-          <SplashGate />
-        </AuthProvider>
+        <ConnectivityProvider>
+          <AuthProvider>
+            <AppChrome />
+          </AuthProvider>
+        </ConnectivityProvider>
       </ToastProvider>
     </SafeAreaProvider>
   )

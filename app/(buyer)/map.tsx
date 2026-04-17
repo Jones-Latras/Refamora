@@ -5,10 +5,12 @@ import ClusteredMapView from 'react-native-map-clustering'
 import { Marker } from 'react-native-maps'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import { EmptyState } from '../../components/EmptyState'
 import { MapMarker } from '../../components/MapMarker'
 import { PinPopup } from '../../components/PinPopup'
 import { useToast } from '../../components/Toast'
 import { useBuyerLocationStore } from '../../hooks/useBuyerLocation'
+import { useConnectivity } from '../../hooks/useConnectivity'
 import { requestCurrentCoordinates } from '../../services/locationService'
 import { fetchListingPins, fetchPinDetails } from '../../services/mapService'
 import type { ListingDetail, ListingPin } from '../../types/app'
@@ -24,6 +26,7 @@ const INITIAL_REGION = {
 
 export default function MapScreen() {
   const { showToast } = useToast()
+  const { isOffline } = useConnectivity()
   const buyerCoordinates = useBuyerLocationStore((state) => state.coordinates)
   const setBuyerCoordinates = useBuyerLocationStore((state) => state.setCoordinates)
   const [pins, setPins] = useState<ListingPin[]>([])
@@ -60,6 +63,11 @@ export default function MapScreen() {
   }, [buyerCoordinates])
 
   const handleSelectPin = async (pinId: string) => {
+    if (isOffline) {
+      showToast('Reconnect to load listing previews from the map.', 'info')
+      return
+    }
+
     setSelectedPinId(pinId)
     const result = await fetchPinDetails(pinId)
 
@@ -182,6 +190,15 @@ export default function MapScreen() {
           <View style={styles.loadingState}>
             <ActivityIndicator color={palette.sage} size="small" />
             <Text style={styles.loadingText}>Loading map pins...</Text>
+          </View>
+        ) : isOffline && pins.length === 0 ? (
+          <View style={styles.emptyWrapper}>
+            <EmptyState
+              title="Map is unavailable offline"
+              description="Reconnect to load listing pins and preview sellers around you."
+              actionLabel="Browse list view"
+              onAction={() => router.push('/(buyer)/feed')}
+            />
           </View>
         ) : (
           <ClusteredMapView
@@ -331,6 +348,11 @@ const styles = StyleSheet.create({
   loadingText: {
     color: palette.sageDark,
     fontWeight: '600',
+  },
+  emptyWrapper: {
+    flex: 1,
+    padding: 24,
+    justifyContent: 'center',
   },
   inlineLoader: {
     position: 'absolute',

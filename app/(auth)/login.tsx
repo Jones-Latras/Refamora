@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, router, useLocalSearchParams } from 'expo-router'
+import { useRef, type RefObject } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import {
   Image,
@@ -9,6 +10,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -25,6 +27,10 @@ export default function LoginScreen() {
   const { showToast } = useToast()
   const params = useLocalSearchParams<{ redirect?: string }>()
   const redirect = typeof params.redirect === 'string' ? params.redirect : '/'
+  const scrollViewRef = useRef<ScrollView>(null)
+  const emailRef = useRef<TextInput>(null)
+  const passwordRef = useRef<TextInput>(null)
+  const fieldPositions = useRef<Record<string, number>>({})
   const {
     control,
     handleSubmit,
@@ -37,17 +43,56 @@ export default function LoginScreen() {
     },
   })
 
-  const onSubmit = handleSubmit(async (values) => {
-    const { error } = await signIn(values.email, values.password)
-
-    if (error) {
-      showToast(error.message, 'error')
-      return
+  const registerFieldPosition =
+    (fieldName: string) =>
+    (event: { nativeEvent: { layout: { y: number } } }) => {
+      fieldPositions.current[fieldName] = event.nativeEvent.layout.y
     }
 
-    showToast('Signed in successfully.', 'success')
-    router.replace(redirect)
-  })
+  const focusField = (fieldName: keyof LoginFormValues) => {
+    const y = fieldPositions.current[fieldName]
+
+    if (typeof y === 'number') {
+      scrollViewRef.current?.scrollTo({ y: Math.max(y - 24, 0), animated: true })
+    }
+
+    const refs: Partial<Record<keyof LoginFormValues, RefObject<TextInput | null>>> = {
+      email: emailRef,
+      password: passwordRef,
+    }
+
+    refs[fieldName]?.current?.focus()
+  }
+
+  const onSubmit = handleSubmit(
+    async (values) => {
+      const { error } = await signIn(values.email, values.password)
+
+      if (error) {
+        showToast(error.message, 'error')
+        return
+      }
+
+      showToast('Signed in successfully.', 'success')
+      router.replace(redirect)
+    },
+    (fieldErrors) => {
+      const fieldOrder: (keyof LoginFormValues)[] = ['email', 'password']
+      const firstErrorField = fieldOrder.find((fieldName) => fieldErrors[fieldName])
+
+      if (firstErrorField) {
+        focusField(firstErrorField)
+        const message = fieldErrors[firstErrorField]?.message
+
+        if (typeof message === 'string' && message.length > 0) {
+          showToast(message, 'error')
+          return
+        }
+      }
+
+      showToast('Please enter your email and password to continue.', 'error')
+    },
+  )
 
   return (
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
@@ -60,6 +105,7 @@ export default function LoginScreen() {
           <View style={styles.midGlow} />
 
           <ScrollView
+            ref={scrollViewRef}
             bounces={false}
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
@@ -88,34 +134,44 @@ export default function LoginScreen() {
               ) : null}
 
               <View style={styles.form}>
-                <Controller
-                  control={control}
-                  name="email"
-                  render={({ field: { onChange, value } }) => (
-                    <FormField
-                      label="Email"
-                      value={value}
-                      onChangeText={onChange}
-                      placeholder="farmer@example.com"
-                      keyboardType="email-address"
-                      error={errors.email?.message}
-                    />
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="password"
-                  render={({ field: { onChange, value } }) => (
-                    <FormField
-                      label="Password"
-                      value={value}
-                      onChangeText={onChange}
-                      placeholder="Your password"
-                      secureTextEntry
-                      error={errors.password?.message}
-                    />
-                  )}
-                />
+                <View onLayout={registerFieldPosition('email')}>
+                  <Controller
+                    control={control}
+                    name="email"
+                    render={({ field: { onChange, value } }) => (
+                      <FormField
+                        ref={emailRef}
+                        label="Email"
+                        value={value}
+                        onChangeText={onChange}
+                        placeholder="farmer@example.com"
+                        keyboardType="email-address"
+                        returnKeyType="next"
+                        onSubmitEditing={() => passwordRef.current?.focus()}
+                        error={errors.email?.message}
+                      />
+                    )}
+                  />
+                </View>
+                <View onLayout={registerFieldPosition('password')}>
+                  <Controller
+                    control={control}
+                    name="password"
+                    render={({ field: { onChange, value } }) => (
+                      <FormField
+                        ref={passwordRef}
+                        label="Password"
+                        value={value}
+                        onChangeText={onChange}
+                        placeholder="Your password"
+                        secureTextEntry
+                        returnKeyType="done"
+                        onSubmitEditing={() => void onSubmit()}
+                        error={errors.password?.message}
+                      />
+                    )}
+                  />
+                </View>
 
                 <Pressable
                   disabled={isSubmitting}

@@ -24,6 +24,7 @@ import { useBuyerLocationStore } from '../../hooks/useBuyerLocation'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useBuyerListings } from '../../hooks/useListings'
 import { useBuyerFeedStore } from '../../hooks/useBuyerFeedState'
+import { useConnectivity } from '../../hooks/useConnectivity'
 import { useProfile } from '../../hooks/useProfile'
 import { useRecentlyViewedStore } from '../../hooks/useRecentlyViewed'
 import { getBuyerSearchAssist } from '../../services/aiService'
@@ -113,6 +114,7 @@ function RecentListingChip({
 export default function FeedScreen() {
   const { user } = useAuth()
   const { profile } = useProfile(user?.id)
+  const { isOffline } = useConnectivity()
   const { showToast } = useToast()
   const recentlyViewedIds = useRecentlyViewedStore((state) => state.listingIds)
   const buyerCoordinates = useBuyerLocationStore((state) => state.coordinates)
@@ -224,6 +226,14 @@ export default function FeedScreen() {
   )
 
   const handleAiSearch = async () => {
+    if (isOffline) {
+      showToast(
+        'Reconnect to use AI search. You can still browse listings that were already loaded.',
+        'info',
+      )
+      return
+    }
+
     const trimmedQuery = query.trim()
 
     if (trimmedQuery.length < 3) {
@@ -372,11 +382,16 @@ export default function FeedScreen() {
 
           <View style={styles.filterRow}>
             <Pressable
+              disabled={isOffline}
               onPress={() => void handleAiSearch()}
-              style={styles.aiSearchButton}
+              style={[styles.aiSearchButton, isOffline ? styles.disabledButton : null]}
             >
               <Text style={styles.aiSearchButtonText}>
-                {isAiSearchLoading ? 'Reading search...' : 'Search with AI'}
+                {isOffline
+                  ? 'AI search offline'
+                  : isAiSearchLoading
+                    ? 'Reading search...'
+                    : 'Search with AI'}
               </Text>
             </Pressable>
             <Pressable
@@ -512,7 +527,7 @@ export default function FeedScreen() {
             data={listingsWithDistance}
             keyExtractor={(item) => item.listing.id}
             contentContainerStyle={styles.list}
-            onEndReached={loadMore}
+            onEndReached={isOffline ? undefined : loadMore}
             onEndReachedThreshold={0.8}
             ListFooterComponent={
               isFetchingMore ? (
@@ -535,8 +550,12 @@ export default function FeedScreen() {
           />
         ) : (
           <EmptyState
-            title="No listings match your search"
-            description="Try widening your price range, changing the waste type, or switching to Map to explore nearby listings that are still available."
+            title={isOffline ? 'Listings are unavailable offline' : 'No listings match your search'}
+            description={
+              isOffline
+                ? 'Reconnect to refresh the feed, pull the latest listings, and run search again.'
+                : 'Try widening your price range, changing the waste type, or switching to Map to explore nearby listings that are still available.'
+            }
             actionLabel="Open map view"
             onAction={() => router.push('/(buyer)/map')}
           />
@@ -740,6 +759,9 @@ const styles = StyleSheet.create({
     color: palette.sageDark,
     fontWeight: '800',
     fontSize: 13,
+  },
+  disabledButton: {
+    opacity: 0.55,
   },
   filterButton: {
     alignSelf: 'flex-start',

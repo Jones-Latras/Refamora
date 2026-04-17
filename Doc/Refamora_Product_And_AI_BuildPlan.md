@@ -17,7 +17,7 @@ The goal is simple: keep Refamora useful as a real marketplace first, then use A
 ## Master Checklist
 
 Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
-Latest note: 2026-04-17 buyer discovery now includes save, distance, map improvements, richer seller trust details on listing pages, a visible seller-verification placeholder, a real report-listing flow, stronger success feedback after key actions, clearer image-upload failure messages for size, type, and network issues, consistent loading skeletons across dashboards, profile, listing details, and requests, more helpful empty states that explain what is happening and where to go next, and gentler session-expiry recovery that redirects users back to sign-in with context preserved, while farmer operations now show listing performance, grouped inquiry inboxes, per-listing activity timelines, seller reminders, bulk status cleanup, duplicate listing support, resumable listing drafts, shared profile completion prompts across the app, a visible publish-readiness panel that stops weak listings before publish, stronger validation for phone, city, quantity, and price formats, and clearer listing status badges for active, sold, unavailable, and draft states.
+Latest note: 2026-04-17 buyer discovery now includes save, distance, map improvements, richer seller trust details on listing pages, a visible seller-verification placeholder, a real report-listing flow, stronger success feedback after key actions, clearer image-upload failure messages for size, type, and network issues, consistent loading skeletons across dashboards, profile, listing details, and requests, more helpful empty states that explain what is happening and where to go next, gentler session-expiry recovery that redirects users back to sign-in with context preserved, a shared offline banner with graceful offline handling on feed, map, and profile surfaces, and better form guidance on the main auth, profile, and listing submit flows with focus and scroll-to-error behavior, while farmer operations now show listing performance, grouped inquiry inboxes, per-listing activity timelines, seller reminders, bulk status cleanup, duplicate listing support, resumable listing drafts, shared profile completion prompts across the app, a visible publish-readiness panel that stops weak listings before publish, stronger validation for phone, city, quantity, and price formats, and clearer listing status badges for active, sold, unavailable, and draft states.
 
 ### AI Phase 0 - Foundations
 
@@ -99,8 +99,8 @@ Latest note: 2026-04-17 buyer discovery now includes save, distance, map improve
 These are the highest-value non-AI improvements because they protect the core marketplace loop.
 
 - [ ] Add full error boundary coverage with retry states
-- [ ] Audit all submit flows for missing-field focus and scroll-to-error behavior
-- [ ] Add offline banner and graceful offline handling for feed, map, and profile surfaces
+- [~] Audit all submit flows for missing-field focus and scroll-to-error behavior
+- [x] Add offline banner and graceful offline handling for feed, map, and profile surfaces
 - [x] Add loading skeleton consistency across dashboards, profile, listing details, and requests
 - [x] Add empty-state copy that reflects real state, not generic fallback text
 - [x] Add stronger success feedback after create listing, update listing, send inquiry, and save profile

@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { router, useLocalSearchParams } from 'expo-router'
+import { useRef, type RefObject } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import {
   KeyboardAvoidingView,
@@ -8,6 +9,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -23,6 +25,13 @@ export default function SignUpScreen() {
   const { showToast } = useToast()
   const params = useLocalSearchParams<{ redirect?: string }>()
   const redirect = typeof params.redirect === 'string' ? params.redirect : '/'
+  const scrollViewRef = useRef<ScrollView>(null)
+  const fullNameRef = useRef<TextInput>(null)
+  const phoneRef = useRef<TextInput>(null)
+  const emailRef = useRef<TextInput>(null)
+  const passwordRef = useRef<TextInput>(null)
+  const confirmPasswordRef = useRef<TextInput>(null)
+  const fieldPositions = useRef<Record<string, number>>({})
   const {
     control,
     handleSubmit,
@@ -38,23 +47,71 @@ export default function SignUpScreen() {
     },
   })
 
-  const onSubmit = handleSubmit(async (values) => {
-    const { user, error } = await signUp(values.email, values.password, {
-      full_name: values.fullName,
-      phone: values.phone,
-    })
-
-    if (error || !user) {
-      showToast(error?.message ?? 'Unable to create account.', 'error')
-      return
+  const registerFieldPosition =
+    (fieldName: string) =>
+    (event: { nativeEvent: { layout: { y: number } } }) => {
+      fieldPositions.current[fieldName] = event.nativeEvent.layout.y
     }
 
-    showToast('Account created. Pick your role next.', 'success')
-    router.replace({
-      pathname: '/(auth)/role-select',
-      params: redirect !== '/' ? { redirect } : undefined,
-    })
-  })
+  const focusField = (fieldName: keyof SignUpFormValues) => {
+    const y = fieldPositions.current[fieldName]
+
+    if (typeof y === 'number') {
+      scrollViewRef.current?.scrollTo({ y: Math.max(y - 24, 0), animated: true })
+    }
+
+    const refs: Partial<Record<keyof SignUpFormValues, RefObject<TextInput | null>>> = {
+      fullName: fullNameRef,
+      phone: phoneRef,
+      email: emailRef,
+      password: passwordRef,
+      confirmPassword: confirmPasswordRef,
+    }
+
+    refs[fieldName]?.current?.focus()
+  }
+
+  const onSubmit = handleSubmit(
+    async (values) => {
+      const { user, error } = await signUp(values.email, values.password, {
+        full_name: values.fullName,
+        phone: values.phone,
+      })
+
+      if (error || !user) {
+        showToast(error?.message ?? 'Unable to create account.', 'error')
+        return
+      }
+
+      showToast('Account created. Pick your role next.', 'success')
+      router.replace({
+        pathname: '/(auth)/role-select',
+        params: redirect !== '/' ? { redirect } : undefined,
+      })
+    },
+    (fieldErrors) => {
+      const fieldOrder: (keyof SignUpFormValues)[] = [
+        'fullName',
+        'phone',
+        'email',
+        'password',
+        'confirmPassword',
+      ]
+      const firstErrorField = fieldOrder.find((fieldName) => fieldErrors[fieldName])
+
+      if (firstErrorField) {
+        focusField(firstErrorField)
+        const message = fieldErrors[firstErrorField]?.message
+
+        if (typeof message === 'string' && message.length > 0) {
+          showToast(message, 'error')
+          return
+        }
+      }
+
+      showToast('Please complete the required fields before creating your account.', 'error')
+    },
+  )
 
   return (
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
@@ -62,82 +119,111 @@ export default function SignUpScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}
       >
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView
+          ref={scrollViewRef}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.hero}>
             <Text style={styles.title}>Create your Refamora account</Text>
           </View>
 
           <View style={styles.form}>
-            <Controller
-              control={control}
-              name="fullName"
-              render={({ field: { onChange, value } }) => (
-                <FormField
-                  label="Full name"
-                  value={value}
-                  onChangeText={onChange}
-                  placeholder="Maria Santos"
-                  error={errors.fullName?.message}
-                />
-              )}
-            />
-            <Controller
-              control={control}
-              name="phone"
-              render={({ field: { onChange, value } }) => (
-                <FormField
-                  label="Phone"
-                  value={value}
-                  onChangeText={onChange}
-                  placeholder="0917 123 4567"
-                  keyboardType="phone-pad"
-                  helperText="Use an active mobile number like 09171234567."
-                  error={errors.phone?.message}
-                />
-              )}
-            />
-            <Controller
-              control={control}
-              name="email"
-              render={({ field: { onChange, value } }) => (
-                <FormField
-                  label="Email"
-                  value={value}
-                  onChangeText={onChange}
-                  placeholder="maria@example.com"
-                  keyboardType="email-address"
-                  error={errors.email?.message}
-                />
-              )}
-            />
-            <Controller
-              control={control}
-              name="password"
-              render={({ field: { onChange, value } }) => (
-                <FormField
-                  label="Password"
-                  value={value}
-                  onChangeText={onChange}
-                  placeholder="Create a password"
-                  secureTextEntry
-                  error={errors.password?.message}
-                />
-              )}
-            />
-            <Controller
-              control={control}
-              name="confirmPassword"
-              render={({ field: { onChange, value } }) => (
-                <FormField
-                  label="Confirm password"
-                  value={value}
-                  onChangeText={onChange}
-                  placeholder="Repeat your password"
-                  secureTextEntry
-                  error={errors.confirmPassword?.message}
-                />
-              )}
-            />
+            <View onLayout={registerFieldPosition('fullName')}>
+              <Controller
+                control={control}
+                name="fullName"
+                render={({ field: { onChange, value } }) => (
+                  <FormField
+                    ref={fullNameRef}
+                    label="Full name"
+                    value={value}
+                    onChangeText={onChange}
+                    placeholder="Maria Santos"
+                    returnKeyType="next"
+                    onSubmitEditing={() => phoneRef.current?.focus()}
+                    error={errors.fullName?.message}
+                  />
+                )}
+              />
+            </View>
+            <View onLayout={registerFieldPosition('phone')}>
+              <Controller
+                control={control}
+                name="phone"
+                render={({ field: { onChange, value } }) => (
+                  <FormField
+                    ref={phoneRef}
+                    label="Phone"
+                    value={value}
+                    onChangeText={onChange}
+                    placeholder="0917 123 4567"
+                    keyboardType="phone-pad"
+                    returnKeyType="next"
+                    onSubmitEditing={() => emailRef.current?.focus()}
+                    helperText="Use an active mobile number like 09171234567."
+                    error={errors.phone?.message}
+                  />
+                )}
+              />
+            </View>
+            <View onLayout={registerFieldPosition('email')}>
+              <Controller
+                control={control}
+                name="email"
+                render={({ field: { onChange, value } }) => (
+                  <FormField
+                    ref={emailRef}
+                    label="Email"
+                    value={value}
+                    onChangeText={onChange}
+                    placeholder="maria@example.com"
+                    keyboardType="email-address"
+                    returnKeyType="next"
+                    onSubmitEditing={() => passwordRef.current?.focus()}
+                    error={errors.email?.message}
+                  />
+                )}
+              />
+            </View>
+            <View onLayout={registerFieldPosition('password')}>
+              <Controller
+                control={control}
+                name="password"
+                render={({ field: { onChange, value } }) => (
+                  <FormField
+                    ref={passwordRef}
+                    label="Password"
+                    value={value}
+                    onChangeText={onChange}
+                    placeholder="Create a password"
+                    secureTextEntry
+                    returnKeyType="next"
+                    onSubmitEditing={() => confirmPasswordRef.current?.focus()}
+                    error={errors.password?.message}
+                  />
+                )}
+              />
+            </View>
+            <View onLayout={registerFieldPosition('confirmPassword')}>
+              <Controller
+                control={control}
+                name="confirmPassword"
+                render={({ field: { onChange, value } }) => (
+                  <FormField
+                    ref={confirmPasswordRef}
+                    label="Confirm password"
+                    value={value}
+                    onChangeText={onChange}
+                    placeholder="Repeat your password"
+                    secureTextEntry
+                    returnKeyType="done"
+                    onSubmitEditing={() => void onSubmit()}
+                    error={errors.confirmPassword?.message}
+                  />
+                )}
+              />
+            </View>
 
             <Pressable
               disabled={isSubmitting}

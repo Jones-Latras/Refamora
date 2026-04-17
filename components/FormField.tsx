@@ -1,4 +1,12 @@
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { forwardRef } from 'react'
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  type ReturnKeyTypeOptions,
+  View,
+} from 'react-native'
 
 import { palette, radii } from '../utils/theme'
 
@@ -14,9 +22,12 @@ type FormFieldProps = {
   helperText?: string
   actionLabel?: string
   onActionPress?: () => void
+  returnKeyType?: ReturnKeyTypeOptions
+  onSubmitEditing?: () => void
+  blurOnSubmit?: boolean
 }
 
-export function FormField({
+export const FormField = forwardRef<TextInput, FormFieldProps>(function FormField({
   label,
   value,
   onChangeText,
@@ -28,7 +39,10 @@ export function FormField({
   helperText,
   actionLabel,
   onActionPress,
-}: FormFieldProps) {
+  returnKeyType,
+  onSubmitEditing,
+  blurOnSubmit,
+}, ref) {
   return (
     <View style={styles.wrapper}>
       <View style={styles.labelRow}>
@@ -40,6 +54,7 @@ export function FormField({
         ) : null}
       </View>
       <TextInput
+        ref={ref}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
@@ -47,6 +62,9 @@ export function FormField({
         secureTextEntry={secureTextEntry}
         multiline={multiline}
         keyboardType={keyboardType}
+        returnKeyType={returnKeyType}
+        onSubmitEditing={onSubmitEditing}
+        blurOnSubmit={blurOnSubmit}
         style={[
           styles.input,
           multiline ? styles.multiline : null,
@@ -57,7 +75,7 @@ export function FormField({
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   wrapper: {

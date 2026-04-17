@@ -7,16 +7,18 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 
 import { EmptyState } from '../../components/EmptyState'
 import { FormField } from '../../components/FormField'
 import { ProfileScreenSkeleton } from '../../components/ScreenSkeleton'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
+import { useConnectivity } from '../../hooks/useConnectivity'
 import { useProfile } from '../../hooks/useProfile'
 import { signOut, updatePassword } from '../../services/authService'
 import { updateUserProfile } from '../../services/profileService'
@@ -48,8 +50,16 @@ function getInitials(name?: string | null, fallback = 'A') {
 
 export default function ProfileScreen() {
   const { user, role } = useAuth()
+  const { isOffline } = useConnectivity()
   const { showToast } = useToast()
   const { profile, isLoading, refetch } = useProfile(user?.id)
+  const scrollViewRef = useRef<ScrollView>(null)
+  const fullNameRef = useRef<TextInput>(null)
+  const phoneRef = useRef<TextInput>(null)
+  const cityRef = useRef<TextInput>(null)
+  const passwordRef = useRef<TextInput>(null)
+  const confirmPasswordRef = useRef<TextInput>(null)
+  const fieldPositions = useRef<Record<string, number>>({})
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -131,7 +141,36 @@ export default function ProfileScreen() {
     [normalizedRole, profile],
   )
 
+  const registerFieldPosition =
+    (fieldName: string) =>
+    (event: { nativeEvent: { layout: { y: number } } }) => {
+      fieldPositions.current[fieldName] = event.nativeEvent.layout.y
+    }
+
+  const focusField = (fieldName: string) => {
+    const y = fieldPositions.current[fieldName]
+
+    if (typeof y === 'number') {
+      scrollViewRef.current?.scrollTo({ y: Math.max(y - 24, 0), animated: true })
+    }
+
+    const refs: Record<string, RefObject<TextInput | null>> = {
+      full_name: fullNameRef,
+      phone: phoneRef,
+      city: cityRef,
+      password: passwordRef,
+      confirmPassword: confirmPasswordRef,
+    }
+
+    refs[fieldName]?.current?.focus()
+  }
+
   const handlePickAvatar = async () => {
+    if (isOffline) {
+      showToast('Reconnect before updating your profile photo.', 'info')
+      return
+    }
+
     if (!user) {
       showToast('Sign in before updating your profile photo.', 'error')
       return
@@ -175,46 +214,96 @@ export default function ProfileScreen() {
     })
   }
 
-  const handleSaveProfile = handleSubmit(async (values) => {
-    if (!user) {
-      showToast('Sign in before updating your profile.', 'error')
-      return
-    }
+  const handleSaveProfile = handleSubmit(
+    async (values) => {
+      if (isOffline) {
+        showToast('Reconnect before saving profile changes.', 'info')
+        return
+      }
 
-    const result = await updateUserProfile(user.id, {
-      full_name: values.full_name,
-      phone: values.phone,
-      city: values.city,
-    })
+      if (!user) {
+        showToast('Sign in before updating your profile.', 'error')
+        return
+      }
 
-    if (result.error) {
-      showToast(result.error.message, 'error')
-      return
-    }
+      const result = await updateUserProfile(user.id, {
+        full_name: values.full_name,
+        phone: values.phone,
+        city: values.city,
+      })
 
-    await refetch()
-    showToast({
-      title: 'Profile saved',
-      message: 'Your updated details are now reflected across your account.',
-      variant: 'success',
-    })
-  })
+      if (result.error) {
+        showToast(result.error.message, 'error')
+        return
+      }
 
-  const handleSavePassword = handlePasswordSubmit(async (values) => {
-    const result = await updatePassword(values.password)
+      await refetch()
+      showToast({
+        title: 'Profile saved',
+        message: 'Your updated details are now reflected across your account.',
+        variant: 'success',
+      })
+    },
+    (fieldErrors) => {
+      const fieldOrder: ('full_name' | 'phone' | 'city')[] = [
+        'full_name',
+        'phone',
+        'city',
+      ]
+      const firstErrorField = fieldOrder.find((fieldName) => fieldErrors[fieldName])
 
-    if (result.error) {
-      showToast(result.error.message, 'error')
-      return
-    }
+      if (firstErrorField) {
+        focusField(firstErrorField)
+        const message = fieldErrors[firstErrorField]?.message
 
-    resetPasswordForm()
-    showToast({
-      title: 'Password updated',
-      message: 'Your account security has been refreshed successfully.',
-      variant: 'success',
-    })
-  })
+        if (typeof message === 'string' && message.length > 0) {
+          showToast(message, 'error')
+          return
+        }
+      }
+
+      showToast('Please complete the missing profile details before saving.', 'error')
+    },
+  )
+
+  const handleSavePassword = handlePasswordSubmit(
+    async (values) => {
+      if (isOffline) {
+        showToast('Reconnect before changing your password.', 'info')
+        return
+      }
+
+      const result = await updatePassword(values.password)
+
+      if (result.error) {
+        showToast(result.error.message, 'error')
+        return
+      }
+
+      resetPasswordForm()
+      showToast({
+        title: 'Password updated',
+        message: 'Your account security has been refreshed successfully.',
+        variant: 'success',
+      })
+    },
+    (fieldErrors) => {
+      const fieldOrder: ('password' | 'confirmPassword')[] = ['password', 'confirmPassword']
+      const firstErrorField = fieldOrder.find((fieldName) => fieldErrors[fieldName])
+
+      if (firstErrorField) {
+        focusField(firstErrorField === 'confirmPassword' ? 'confirmPassword' : 'password')
+        const message = fieldErrors[firstErrorField]?.message
+
+        if (typeof message === 'string' && message.length > 0) {
+          showToast(message, 'error')
+          return
+        }
+      }
+
+      showToast('Please fix the password fields before updating your account.', 'error')
+    },
+  )
 
   const handleLogout = async () => {
     await signOut()
@@ -253,12 +342,14 @@ export default function ProfileScreen() {
       <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
         <View style={styles.emptyWrapper}>
           <EmptyState
-            title="Profile setup is not ready yet"
-            description="We could not load your saved profile details right now. Try refreshing this screen to pull your name, city, and contact information again."
-            actionLabel="Try again"
-            onAction={() => {
-              void refetch()
-            }}
+            title={isOffline ? 'Profile unavailable offline' : 'Profile setup is not ready yet'}
+            description={
+              isOffline
+                ? 'Reconnect to load your saved profile details and continue editing your account.'
+                : 'We could not load your saved profile details right now. Try refreshing this screen to pull your name, city, and contact information again.'
+            }
+            actionLabel={isOffline ? undefined : 'Try again'}
+            onAction={isOffline ? undefined : () => void refetch()}
           />
         </View>
       </SafeAreaView>
@@ -267,7 +358,11 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        ref={scrollViewRef}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.cover}>
           <View style={styles.coverGlow} />
         </View>
@@ -275,7 +370,7 @@ export default function ProfileScreen() {
         <View style={styles.profileHeader}>
           <View style={styles.avatarWrapper}>
             <Pressable
-              disabled={isUploadingAvatar}
+              disabled={isOffline || isUploadingAvatar}
               onPress={() => void handlePickAvatar()}
               style={styles.avatarPressable}
             >
@@ -292,9 +387,16 @@ export default function ProfileScreen() {
                 <Text style={styles.avatarBadgeText}>+</Text>
               </View>
             </Pressable>
-            <Pressable disabled={isUploadingAvatar} onPress={() => void handlePickAvatar()}>
+            <Pressable
+              disabled={isOffline || isUploadingAvatar}
+              onPress={() => void handlePickAvatar()}
+            >
               <Text style={styles.avatarButtonText}>
-                {isUploadingAvatar ? 'Uploading photo...' : 'Change photo'}
+                {isOffline
+                  ? 'Reconnect to change photo'
+                  : isUploadingAvatar
+                    ? 'Uploading photo...'
+                    : 'Change photo'}
               </Text>
             </Pressable>
           </View>
@@ -344,57 +446,82 @@ export default function ProfileScreen() {
           ) : null}
         </View>
 
+        {isOffline ? (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Offline mode</Text>
+            <Text style={styles.offlineText}>
+              You can still review your saved profile details, but photo uploads,
+              profile updates, and password changes need a connection.
+            </Text>
+          </View>
+        ) : null}
+
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Personal information</Text>
-          <Controller
-            control={control}
-            name="full_name"
-            render={({ field: { onChange, value } }) => (
-              <FormField
-                label="Full name"
-                value={value}
-                onChangeText={onChange}
-                placeholder="Your full name"
-                error={errors.full_name?.message}
-              />
-            )}
-          />
-          <Controller
-            control={control}
-            name="phone"
-            render={({ field: { onChange, value } }) => (
-              <FormField
-                label="Phone"
-                value={value}
-                onChangeText={onChange}
-                placeholder="0917 123 4567"
-                keyboardType="phone-pad"
-                helperText="Use the number buyers or sellers can actually reach."
-                error={errors.phone?.message}
-              />
-            )}
-          />
-          <Controller
-            control={control}
-            name="city"
-            render={({ field: { onChange, value } }) => (
-              <FormField
-                label="City"
-                value={value}
-                onChangeText={onChange}
-                placeholder="Cagayan de Oro"
-                helperText="Use the city people will recognize when finding you."
-                error={errors.city?.message}
-              />
-            )}
-          />
+          <View onLayout={registerFieldPosition('full_name')}>
+            <Controller
+              control={control}
+              name="full_name"
+              render={({ field: { onChange, value } }) => (
+                <FormField
+                  ref={fullNameRef}
+                  label="Full name"
+                  value={value}
+                  onChangeText={onChange}
+                  placeholder="Your full name"
+                  returnKeyType="next"
+                  onSubmitEditing={() => phoneRef.current?.focus()}
+                  error={errors.full_name?.message}
+                />
+              )}
+            />
+          </View>
+          <View onLayout={registerFieldPosition('phone')}>
+            <Controller
+              control={control}
+              name="phone"
+              render={({ field: { onChange, value } }) => (
+                <FormField
+                  ref={phoneRef}
+                  label="Phone"
+                  value={value}
+                  onChangeText={onChange}
+                  placeholder="0917 123 4567"
+                  keyboardType="phone-pad"
+                  returnKeyType="next"
+                  onSubmitEditing={() => cityRef.current?.focus()}
+                  helperText="Use the number buyers or sellers can actually reach."
+                  error={errors.phone?.message}
+                />
+              )}
+            />
+          </View>
+          <View onLayout={registerFieldPosition('city')}>
+            <Controller
+              control={control}
+              name="city"
+              render={({ field: { onChange, value } }) => (
+                <FormField
+                  ref={cityRef}
+                  label="City"
+                  value={value}
+                  onChangeText={onChange}
+                  placeholder="Cagayan de Oro"
+                  returnKeyType="done"
+                  onSubmitEditing={() => void handleSaveProfile()}
+                  helperText="Use the city people will recognize when finding you."
+                  error={errors.city?.message}
+                />
+              )}
+            />
+          </View>
 
           <Pressable
-            disabled={isSubmitting || !hasProfileChanges}
+            disabled={isOffline || isSubmitting || !hasProfileChanges}
             onPress={() => void handleSaveProfile()}
             style={[
               styles.primaryButton,
-              isSubmitting || !hasProfileChanges ? styles.buttonDisabled : null,
+              isOffline || isSubmitting || !hasProfileChanges ? styles.buttonDisabled : null,
             ]}
           >
             <Text style={styles.primaryButtonText}>
@@ -448,46 +575,56 @@ export default function ProfileScreen() {
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Change password</Text>
-          <Controller
-            control={passwordControl}
-            name="password"
-            render={({ field: { onChange, value } }) => (
-              <FormField
-                label="New password"
-                value={value}
-                onChangeText={onChange}
-                placeholder="Create a new password"
-                secureTextEntry={!showPassword}
-                error={passwordErrors.password?.message}
-                helperText="At least 6 characters."
-                actionLabel={showPassword ? 'Hide' : 'Show'}
-                onActionPress={() => setShowPassword((current) => !current)}
-              />
-            )}
-          />
-          <Controller
-            control={passwordControl}
-            name="confirmPassword"
-            render={({ field: { onChange, value } }) => (
-              <FormField
-                label="Confirm new password"
-                value={value}
-                onChangeText={onChange}
-                placeholder="Repeat the new password"
-                secureTextEntry={!showConfirmPassword}
-                error={passwordErrors.confirmPassword?.message}
-                actionLabel={showConfirmPassword ? 'Hide' : 'Show'}
-                onActionPress={() => setShowConfirmPassword((current) => !current)}
-              />
-            )}
-          />
+          <View onLayout={registerFieldPosition('password')}>
+            <Controller
+              control={passwordControl}
+              name="password"
+              render={({ field: { onChange, value } }) => (
+                <FormField
+                  ref={passwordRef}
+                  label="New password"
+                  value={value}
+                  onChangeText={onChange}
+                  placeholder="Create a new password"
+                  secureTextEntry={!showPassword}
+                  returnKeyType="next"
+                  onSubmitEditing={() => confirmPasswordRef.current?.focus()}
+                  error={passwordErrors.password?.message}
+                  helperText="At least 6 characters."
+                  actionLabel={showPassword ? 'Hide' : 'Show'}
+                  onActionPress={() => setShowPassword((current) => !current)}
+                />
+              )}
+            />
+          </View>
+          <View onLayout={registerFieldPosition('confirmPassword')}>
+            <Controller
+              control={passwordControl}
+              name="confirmPassword"
+              render={({ field: { onChange, value } }) => (
+                <FormField
+                  ref={confirmPasswordRef}
+                  label="Confirm new password"
+                  value={value}
+                  onChangeText={onChange}
+                  placeholder="Repeat the new password"
+                  secureTextEntry={!showConfirmPassword}
+                  returnKeyType="done"
+                  onSubmitEditing={() => void handleSavePassword()}
+                  error={passwordErrors.confirmPassword?.message}
+                  actionLabel={showConfirmPassword ? 'Hide' : 'Show'}
+                  onActionPress={() => setShowConfirmPassword((current) => !current)}
+                />
+              )}
+            />
+          </View>
 
           <Pressable
-            disabled={isUpdatingPassword || !canSubmitPassword}
+            disabled={isOffline || isUpdatingPassword || !canSubmitPassword}
             onPress={() => void handleSavePassword()}
             style={[
               styles.secondaryButton,
-              isUpdatingPassword || !canSubmitPassword ? styles.buttonDisabled : null,
+              isOffline || isUpdatingPassword || !canSubmitPassword ? styles.buttonDisabled : null,
             ]}
           >
             <Text style={styles.secondaryButtonText}>
@@ -797,6 +934,11 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.55,
+  },
+  offlineText: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 20,
   },
   logoutButton: {
     backgroundColor: '#f9e4df',

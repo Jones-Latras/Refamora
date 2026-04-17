@@ -1,8 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import Constants from 'expo-constants'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { Controller, useForm } from 'react-hook-form'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import type {
@@ -89,6 +89,13 @@ export function ListingEditor({
   const scrollViewRef = useRef<ScrollView>(null)
   const fieldPositions = useRef<Partial<Record<keyof ListingFormValues, number>>>({})
   const qualityPanelPosition = useRef(0)
+  const titleRef = useRef<TextInput>(null)
+  const descriptionRef = useRef<TextInput>(null)
+  const priceRef = useRef<TextInput>(null)
+  const quantityRef = useRef<TextInput>(null)
+  const unitRef = useRef<TextInput>(null)
+  const cityRef = useRef<TextInput>(null)
+  const addressRef = useRef<TextInput>(null)
   const [aiHealth, setAiHealth] = useState<AIHealthResult | null>(null)
   const [aiHealthError, setAiHealthError] = useState<string | null>(null)
   const [isCheckingAIHealth, setIsCheckingAIHealth] =
@@ -208,6 +215,7 @@ export function ListingEditor({
     Boolean(selectedImage) && !selectedImage?.startsWith('http')
   const fieldOrder = useMemo<(keyof ListingFormValues)[]>(
     () => [
+      'waste_type',
       'title',
       'description',
       'price',
@@ -245,14 +253,24 @@ export function ListingEditor({
   const scrollToField = (fieldName: keyof ListingFormValues) => {
     const y = fieldPositions.current[fieldName]
 
-    if (typeof y !== 'number') {
-      return
+    if (typeof y === 'number') {
+      scrollViewRef.current?.scrollTo({
+        y: Math.max(y - 24, 0),
+        animated: true,
+      })
     }
 
-    scrollViewRef.current?.scrollTo({
-      y: Math.max(y - 24, 0),
-      animated: true,
-    })
+    const fieldRefs: Partial<Record<keyof ListingFormValues, RefObject<TextInput | null>>> = {
+      title: titleRef,
+      description: descriptionRef,
+      price: priceRef,
+      quantity: quantityRef,
+      unit: unitRef,
+      city: cityRef,
+      address: addressRef,
+    }
+
+    fieldRefs[fieldName]?.current?.focus()
   }
 
   const scrollToQualityPanel = () => {
@@ -260,6 +278,24 @@ export function ListingEditor({
       y: Math.max(qualityPanelPosition.current - 24, 0),
       animated: true,
     })
+  }
+
+  const focusBlockingQualityItem = (itemId: string) => {
+    const itemFieldMap: Partial<Record<string, keyof ListingFormValues>> = {
+      title: 'title',
+      description: 'description',
+      price: 'price',
+      location: 'city',
+    }
+
+    const targetField = itemFieldMap[itemId]
+
+    if (targetField) {
+      scrollToField(targetField)
+      return
+    }
+
+    scrollToQualityPanel()
   }
 
   const buildPublishQualityItems = useCallback((
@@ -411,7 +447,7 @@ export function ListingEditor({
       const blockingItems = qualityItems.filter((item) => item.status === 'fail')
 
       if (blockingItems.length > 0) {
-        scrollToQualityPanel()
+        focusBlockingQualityItem(blockingItems[0]?.id ?? '')
         onError(blockingItems[0]?.description ?? 'Fix the listing quality issues before publishing.')
         return
       }
@@ -779,6 +815,7 @@ export function ListingEditor({
 
         <View style={styles.form}>
           <View style={styles.selectorBlock}>
+          <View onLayout={registerFieldPosition('waste_type')}>
             <Text style={styles.selectorLabel}>Waste type</Text>
             <View style={styles.selectorWrap}>
               {WASTE_TYPES.map((type) => {
@@ -812,6 +849,7 @@ export function ListingEditor({
             {errors.waste_type?.message ? (
               <Text style={styles.errorText}>{errors.waste_type.message}</Text>
             ) : null}
+          </View>
           </View>
 
           {wasteSuggestions.length > 0 ? (
@@ -912,10 +950,13 @@ export function ListingEditor({
               name="title"
               render={({ field: { onChange, value } }) => (
                 <FormField
+                  ref={titleRef}
                   label="Listing title"
                   value={value}
                   onChangeText={onChange}
                   placeholder="Dry rice straw for mushroom growing"
+                  returnKeyType="next"
+                  onSubmitEditing={() => descriptionRef.current?.focus()}
                   error={errors.title?.message}
                 />
               )}
@@ -927,11 +968,15 @@ export function ListingEditor({
               name="description"
               render={({ field: { onChange, value } }) => (
                 <FormField
+                  ref={descriptionRef}
                   label="Description"
                   value={value}
                   onChangeText={onChange}
                   placeholder="Short details about moisture, condition, and volume"
                   multiline
+                  returnKeyType="next"
+                  blurOnSubmit
+                  onSubmitEditing={() => priceRef.current?.focus()}
                   error={errors.description?.message}
                 />
               )}
@@ -1081,10 +1126,13 @@ export function ListingEditor({
               render={({ field: { onChange, value } }) => (
                 <View style={styles.flex}>
                   <FormField
+                    ref={priceRef}
                     label="Price"
                     value={String(value)}
                     onChangeText={onChange}
                     keyboardType="number-pad"
+                    returnKeyType="next"
+                    onSubmitEditing={() => quantityRef.current?.focus()}
                     helperText="Enter the listing price in pesos, for example 250 or 250.50."
                     error={errors.price?.message}
                   />
@@ -1097,10 +1145,13 @@ export function ListingEditor({
               render={({ field: { onChange, value } }) => (
                 <View style={styles.flex}>
                   <FormField
+                    ref={quantityRef}
                     label="Quantity"
                     value={String(value)}
                     onChangeText={onChange}
                     keyboardType="number-pad"
+                    returnKeyType="next"
+                    onSubmitEditing={() => unitRef.current?.focus()}
                     helperText="Use numbers only, such as 10, 25, or 1.5."
                     error={errors.quantity?.message}
                   />
@@ -1121,10 +1172,13 @@ export function ListingEditor({
               render={({ field: { onChange, value } }) => (
                 <View style={styles.flex}>
                   <FormField
+                    ref={unitRef}
                     label="Unit"
                     value={value}
                     onChangeText={onChange}
                     placeholder="kg"
+                    returnKeyType="next"
+                    onSubmitEditing={() => cityRef.current?.focus()}
                     error={errors.unit?.message}
                   />
                 </View>
@@ -1136,10 +1190,13 @@ export function ListingEditor({
               render={({ field: { onChange, value } }) => (
                 <View style={styles.flex}>
                   <FormField
+                    ref={cityRef}
                     label="City"
                     value={value}
                     onChangeText={onChange}
                     placeholder="Malaybalay"
+                    returnKeyType="next"
+                    onSubmitEditing={() => addressRef.current?.focus()}
                     helperText="Use the city buyers will search for."
                     error={errors.city?.message}
                   />
@@ -1185,10 +1242,13 @@ export function ListingEditor({
               name="address"
               render={({ field: { onChange, value } }) => (
                 <FormField
+                  ref={addressRef}
                   label="Pickup address"
                   value={value}
                   onChangeText={onChange}
                   placeholder="Purok 3, Malaybalay, Bukidnon"
+                  returnKeyType="done"
+                  onSubmitEditing={() => void onSubmit()}
                   error={errors.address?.message}
                 />
               )}
