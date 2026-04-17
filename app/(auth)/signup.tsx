@@ -91,6 +91,7 @@ export default function SignUpScreen() {
                   onChangeText={onChange}
                   placeholder="0917 123 4567"
                   keyboardType="phone-pad"
+                  helperText="Use an active mobile number like 09171234567."
                   error={errors.phone?.message}
                 />
               )}

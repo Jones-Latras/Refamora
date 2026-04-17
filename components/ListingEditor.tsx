@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import Constants from 'expo-constants'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -60,6 +60,19 @@ type ListingDraftSnapshot = Pick<
   'title' | 'description' | 'waste_type' | 'unit'
 >
 
+type PublishQualityStatus = 'pass' | 'warn' | 'fail'
+
+type PublishQualityItem = {
+  id: string
+  label: string
+  description: string
+  status: PublishQualityStatus
+}
+
+function hasText(value?: string | null) {
+  return Boolean(value?.trim())
+}
+
 export function ListingEditor({
   heroTitle,
   heroSubtitle,
@@ -75,6 +88,7 @@ export function ListingEditor({
 }: ListingEditorProps) {
   const scrollViewRef = useRef<ScrollView>(null)
   const fieldPositions = useRef<Partial<Record<keyof ListingFormValues, number>>>({})
+  const qualityPanelPosition = useRef(0)
   const [aiHealth, setAiHealth] = useState<AIHealthResult | null>(null)
   const [aiHealthError, setAiHealthError] = useState<string | null>(null)
   const [isCheckingAIHealth, setIsCheckingAIHealth] =
@@ -176,6 +190,7 @@ export function ListingEditor({
   const titleValue = watch('title')
   const descriptionValue = watch('description')
   const cityValue = watch('city')
+  const addressValue = watch('address')
   const priceValue = watch('price')
   const primaryAiProviderLabel =
     aiHealth?.primaryProvider === 'local_gemma'
@@ -240,8 +255,167 @@ export function ListingEditor({
     })
   }
 
+  const scrollToQualityPanel = () => {
+    scrollViewRef.current?.scrollTo({
+      y: Math.max(qualityPanelPosition.current - 24, 0),
+      animated: true,
+    })
+  }
+
+  const buildPublishQualityItems = useCallback((
+    values: Pick<
+      ListingFormValues,
+      | 'title'
+      | 'description'
+      | 'price'
+      | 'city'
+      | 'address'
+      | 'latitude'
+      | 'longitude'
+      | 'image_url'
+    >,
+  ): PublishQualityItem[] => {
+    const title = values.title?.trim() ?? ''
+    const description = values.description?.trim() ?? ''
+    const city = values.city?.trim() ?? ''
+    const address = values.address?.trim() ?? ''
+    const price = Number(values.price)
+    const hasImage = hasText(values.image_url)
+    const hasPin = values.latitude != null && values.longitude != null
+
+    return [
+      {
+        id: 'title',
+        label: 'Clear title',
+        description:
+          title.length >= 8
+            ? 'Your title is specific enough for buyers to scan quickly.'
+            : 'Make the title a bit more specific so buyers know what is being sold.',
+        status: title.length >= 8 ? 'pass' : 'fail',
+      },
+      {
+        id: 'description',
+        label: 'Useful description',
+        description:
+          description.length >= 24
+            ? 'Your description gives buyers enough context to understand the listing.'
+            : 'Add a fuller description with condition, packaging, or pickup details.',
+        status: description.length >= 24 ? 'pass' : 'fail',
+      },
+      {
+        id: 'price',
+        label: 'Buyer-ready price',
+        description:
+          Number.isFinite(price) && price > 0
+            ? 'Your listing has a visible price buyers can compare.'
+            : 'Set a price above zero before publishing this listing.',
+        status: Number.isFinite(price) && price > 0 ? 'pass' : 'fail',
+      },
+      {
+        id: 'location',
+        label: 'Location details',
+        description:
+          hasText(city) && hasText(address)
+            ? 'City and pickup area are filled in for buyer coordination.'
+            : 'Add both city and address so buyers know where the waste is located.',
+        status: hasText(city) && hasText(address) ? 'pass' : 'fail',
+      },
+      {
+        id: 'map-pin',
+        label: 'Exact map pin',
+        description: hasPin
+          ? 'Your map pin helps nearby buyers judge distance and pickup practicality.'
+          : 'Place a pin on the map so buyers can see the exact area before they inquire.',
+        status: hasPin ? 'pass' : 'fail',
+      },
+      {
+        id: 'photo',
+        label: 'Listing photo',
+        description: !hasImage
+          ? 'Add a product photo so buyers can trust what they are seeing.'
+          : !aiListingAssistEnabled
+            ? 'A photo is attached and ready to publish.'
+            : !photoCheckResult
+              ? 'A photo is attached. Run Check photo for extra quality feedback.'
+              : photoCheckResult.result.readiness === 'retake'
+                ? 'The current photo should be retaken before publishing.'
+                : photoCheckResult.result.readiness === 'needs_review'
+                  ? 'The photo is attached, but the checker suggests a quick review first.'
+                  : 'The photo check says this image looks ready for the marketplace.',
+        status: !hasImage
+          ? 'fail'
+          : !aiListingAssistEnabled
+            ? 'pass'
+            : !photoCheckResult
+              ? 'warn'
+              : photoCheckResult.result.readiness === 'retake'
+                ? 'fail'
+                : photoCheckResult.result.readiness === 'needs_review'
+                  ? 'warn'
+                  : 'pass',
+      },
+      {
+        id: 'safety',
+        label: 'Safety review',
+        description: !aiListingAssistEnabled
+          ? 'AI safety review is off, so only manual quality checks are active right now.'
+          : !moderationResult
+            ? 'AI safety review will run automatically when you publish.'
+            : moderationResult.result.decision === 'allow'
+              ? 'The AI safety check passed for this listing.'
+              : moderationResult.result.decision === 'review'
+                ? 'The AI safety check wants a review before this listing should go live.'
+                : 'The AI safety check blocked this listing from publishing.',
+        status: !aiListingAssistEnabled
+          ? 'warn'
+          : !moderationResult
+            ? 'warn'
+            : moderationResult.result.decision === 'allow'
+              ? 'pass'
+              : 'fail',
+      },
+    ]
+  }, [moderationResult, photoCheckResult])
+
+  const publishQualityItems = useMemo(
+    () =>
+      buildPublishQualityItems({
+        title: titleValue,
+        description: descriptionValue,
+        price: priceValue,
+        city: cityValue,
+        address: addressValue,
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
+        image_url: selectedImage,
+      }),
+    [
+      buildPublishQualityItems,
+      addressValue,
+      cityValue,
+      coordinates.latitude,
+      coordinates.longitude,
+      descriptionValue,
+      priceValue,
+      selectedImage,
+      titleValue,
+    ],
+  )
+  const blockingQualityItems = publishQualityItems.filter((item) => item.status === 'fail')
+  const warningQualityItems = publishQualityItems.filter((item) => item.status === 'warn')
+  const passedQualityItems = publishQualityItems.filter((item) => item.status === 'pass')
+
   const onSubmit = handleSubmit(
     async (values) => {
+      const qualityItems = buildPublishQualityItems(values)
+      const blockingItems = qualityItems.filter((item) => item.status === 'fail')
+
+      if (blockingItems.length > 0) {
+        scrollToQualityPanel()
+        onError(blockingItems[0]?.description ?? 'Fix the listing quality issues before publishing.')
+        return
+      }
+
       if (aiListingAssistEnabled) {
         const canContinue = await runListingModeration(values)
 
@@ -911,6 +1085,7 @@ export function ListingEditor({
                     value={String(value)}
                     onChangeText={onChange}
                     keyboardType="number-pad"
+                    helperText="Enter the listing price in pesos, for example 250 or 250.50."
                     error={errors.price?.message}
                   />
                 </View>
@@ -926,6 +1101,7 @@ export function ListingEditor({
                     value={String(value)}
                     onChangeText={onChange}
                     keyboardType="number-pad"
+                    helperText="Use numbers only, such as 10, 25, or 1.5."
                     error={errors.quantity?.message}
                   />
                 </View>
@@ -964,6 +1140,7 @@ export function ListingEditor({
                     value={value}
                     onChangeText={onChange}
                     placeholder="Malaybalay"
+                    helperText="Use the city buyers will search for."
                     error={errors.city?.message}
                   />
                 </View>
@@ -1249,6 +1426,75 @@ export function ListingEditor({
             </Text>
           </Pressable>
 
+          <View
+            onLayout={(event) => {
+              qualityPanelPosition.current = event.nativeEvent.layout.y
+            }}
+            style={styles.qualityCard}
+          >
+            <View style={styles.qualityHeader}>
+              <View style={styles.qualityTextBlock}>
+                <Text style={styles.qualityTitle}>Publish readiness</Text>
+                <Text style={styles.qualitySubtitle}>
+                  Refamora checks the essentials before your listing goes live.
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.qualityBadge,
+                  blockingQualityItems.length > 0
+                    ? styles.qualityBadgeFail
+                    : warningQualityItems.length > 0
+                      ? styles.qualityBadgeWarn
+                      : styles.qualityBadgePass,
+                ]}
+              >
+                <Text style={styles.qualityBadgeText}>
+                  {blockingQualityItems.length > 0
+                    ? `${blockingQualityItems.length} fix`
+                    : warningQualityItems.length > 0
+                      ? `${warningQualityItems.length} review`
+                      : 'Ready'}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.qualitySummary}>
+              {passedQualityItems.length} passed
+              {warningQualityItems.length > 0 ? ` • ${warningQualityItems.length} review` : ''}
+              {blockingQualityItems.length > 0 ? ` • ${blockingQualityItems.length} fix now` : ''}
+            </Text>
+
+            <View style={styles.qualityList}>
+              {publishQualityItems.map((item) => (
+                <View key={item.id} style={styles.qualityItem}>
+                  <View
+                    style={[
+                      styles.qualityItemBadge,
+                      item.status === 'pass'
+                        ? styles.qualityItemBadgePass
+                        : item.status === 'warn'
+                          ? styles.qualityItemBadgeWarn
+                          : styles.qualityItemBadgeFail,
+                    ]}
+                  >
+                    <Text style={styles.qualityItemBadgeText}>
+                      {item.status === 'pass'
+                        ? 'Pass'
+                        : item.status === 'warn'
+                          ? 'Review'
+                          : 'Fix'}
+                    </Text>
+                  </View>
+                  <View style={styles.qualityItemText}>
+                    <Text style={styles.qualityItemTitle}>{item.label}</Text>
+                    <Text style={styles.qualityItemDescription}>{item.description}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+
           {aiListingAssistEnabled ? (
             <View style={styles.moderationCard}>
               <View style={styles.moderationHeader}>
@@ -1369,6 +1615,8 @@ export function ListingEditor({
                   ? submittingLabel
                   : isModerationLoading
                     ? 'Running safety check...'
+                    : blockingQualityItems.length > 0
+                      ? 'Fix quality issues first'
                     : submitLabel}
               </Text>
             </Pressable>
@@ -1655,6 +1903,107 @@ const styles = StyleSheet.create({
   },
   flex: {
     flex: 1,
+  },
+  qualityCard: {
+    gap: 12,
+    backgroundColor: '#f4f7f1',
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(58, 102, 72, 0.12)',
+    padding: 14,
+  },
+  qualityHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  qualityTextBlock: {
+    flex: 1,
+    gap: 4,
+  },
+  qualityTitle: {
+    color: palette.soil,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  qualitySubtitle: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  qualityBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  qualityBadgePass: {
+    backgroundColor: 'rgba(58, 102, 72, 0.14)',
+  },
+  qualityBadgeWarn: {
+    backgroundColor: 'rgba(176, 126, 40, 0.14)',
+  },
+  qualityBadgeFail: {
+    backgroundColor: 'rgba(160, 69, 50, 0.12)',
+  },
+  qualityBadgeText: {
+    color: palette.soil,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  qualitySummary: {
+    color: palette.sageDark,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  qualityList: {
+    gap: 10,
+  },
+  qualityItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: palette.surface,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(58, 102, 72, 0.08)',
+    padding: 12,
+  },
+  qualityItemBadge: {
+    minWidth: 54,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  qualityItemBadgePass: {
+    backgroundColor: 'rgba(58, 102, 72, 0.14)',
+  },
+  qualityItemBadgeWarn: {
+    backgroundColor: 'rgba(176, 126, 40, 0.14)',
+  },
+  qualityItemBadgeFail: {
+    backgroundColor: 'rgba(160, 69, 50, 0.12)',
+  },
+  qualityItemBadgeText: {
+    color: palette.soil,
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  qualityItemText: {
+    flex: 1,
+    gap: 3,
+  },
+  qualityItemTitle: {
+    color: palette.soil,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  qualityItemDescription: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 18,
   },
   submitRow: {
     flexDirection: 'row',

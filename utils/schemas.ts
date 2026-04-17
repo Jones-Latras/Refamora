@@ -2,6 +2,15 @@ import { z } from 'zod'
 
 import { WASTE_TYPES } from './wasteTypes'
 
+const phonePattern = /^(?:\+?63|0)?\d{10}$/
+const cityPattern = /^[\p{L}\s.'-]+$/u
+
+function hasValidPhone(value: string) {
+  const normalized = value.replace(/[^\d+]/g, '')
+
+  return phonePattern.test(normalized)
+}
+
 export const loginSchema = z.object({
   email: z.string().email('Enter a valid email address.'),
   password: z.string().min(6, 'Password must be at least 6 characters.'),
@@ -9,8 +18,15 @@ export const loginSchema = z.object({
 
 export const signUpSchema = loginSchema
   .extend({
-    fullName: z.string().min(2, 'Full name is required.'),
-    phone: z.string().min(7, 'Phone number is required.'),
+    fullName: z.string().trim().min(2, 'Full name is required.'),
+    phone: z
+      .string()
+      .trim()
+      .min(1, 'Phone number is required.')
+      .refine(
+        hasValidPhone,
+        'Enter a valid mobile number like 09171234567 or +639171234567.',
+      ),
     confirmPassword: z.string().min(6, 'Confirm your password.'),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -19,9 +35,24 @@ export const signUpSchema = loginSchema
   })
 
 export const profileSchema = z.object({
-  full_name: z.string().min(2, 'Full name is required.'),
-  phone: z.string().min(7, 'Phone number is required.'),
-  city: z.string().min(2, 'City is required.'),
+  full_name: z.string().trim().min(2, 'Full name is required.'),
+  phone: z
+    .string()
+    .trim()
+    .min(1, 'Phone number is required.')
+    .refine(
+      hasValidPhone,
+      'Enter a valid mobile number like 09171234567 or +639171234567.',
+    ),
+  city: z
+    .string()
+    .trim()
+    .min(2, 'City is required.')
+    .max(60, 'City name is too long.')
+    .refine(
+      (value) => cityPattern.test(value),
+      'Use letters only for the city name, with spaces or hyphens if needed.',
+    ),
   avatar_url: z.string().url().nullable().optional(),
 })
 
@@ -41,14 +72,38 @@ const wasteTypeValues = WASTE_TYPES.map((item) => item.value) as [
 ]
 
 export const listingSchema = z.object({
-  title: z.string().min(3, 'Listing title is required.'),
-  description: z.string().min(10, 'Add a short description.'),
+  title: z.string().trim().min(3, 'Listing title is required.'),
+  description: z.string().trim().min(10, 'Add a short description.'),
   waste_type: z.enum(wasteTypeValues),
-  price: z.coerce.number().min(0),
-  quantity: z.coerce.number().min(1),
-  unit: z.string().min(1),
-  city: z.string().min(2),
-  address: z.string().min(4, 'Add a pickup address.'),
+  price: z
+    .coerce
+    .number()
+    .positive('Enter a price greater than 0.')
+    .max(1000000, 'Keep the price below 1,000,000.')
+    .refine(
+      (value) => Number.isInteger(value * 100),
+      'Use at most 2 decimal places for the price.',
+    ),
+  quantity: z
+    .coerce
+    .number()
+    .positive('Enter a quantity greater than 0.')
+    .max(100000, 'Keep the quantity below 100,000.')
+    .refine(
+      (value) => Number.isInteger(value * 100),
+      'Use at most 2 decimal places for the quantity.',
+    ),
+  unit: z.string().trim().min(1, 'Add a unit like kg, sack, or ton.'),
+  city: z
+    .string()
+    .trim()
+    .min(2, 'City is required.')
+    .max(60, 'City name is too long.')
+    .refine(
+      (value) => cityPattern.test(value),
+      'Use letters only for the city name, with spaces or hyphens if needed.',
+    ),
+  address: z.string().trim().min(4, 'Add a pickup address.'),
   latitude: z.coerce.number().nullable(),
   longitude: z.coerce.number().nullable(),
   fulfillment_type: z.enum(['pickup', 'delivery', 'both']),

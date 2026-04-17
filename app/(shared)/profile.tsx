@@ -331,6 +331,7 @@ export default function ProfileScreen() {
                 onChangeText={onChange}
                 placeholder="0917 123 4567"
                 keyboardType="phone-pad"
+                helperText="Use the number buyers or sellers can actually reach."
                 error={errors.phone?.message}
               />
             )}
@@ -344,6 +345,7 @@ export default function ProfileScreen() {
                 value={value}
                 onChangeText={onChange}
                 placeholder="Cagayan de Oro"
+                helperText="Use the city people will recognize when finding you."
                 error={errors.city?.message}
               />
             )}
