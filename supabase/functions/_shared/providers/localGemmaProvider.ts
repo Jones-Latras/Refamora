@@ -1,11 +1,14 @@
 import type {
   AIService,
+  BuyerSearchAssistInput,
   ListingAssistInput,
   WasteValueAdviceInput,
 } from '../aiTypes.ts'
 
 import {
+  buyerSearchAssistOutputJsonSchema,
   listingAssistOutputJsonSchema,
+  normalizeBuyerSearchAssistOutput,
   normalizeListingAssistOutput,
   normalizeWasteValueAdviceOutput,
   wasteValueAdviceOutputJsonSchema,
@@ -48,6 +51,19 @@ function buildWasteValueAdvicePrompt(input: WasteValueAdviceInput) {
     '',
     `Waste type: ${input.wasteType}`,
     `City: ${input.city ?? 'unknown'}`,
+  ].join('\n')
+}
+
+function buildBuyerSearchPrompt(input: BuyerSearchAssistInput) {
+  return [
+    'You are Refamora buyer search assistant.',
+    'Convert the buyer query into structured marketplace filters.',
+    'Only use these waste type values when appropriate: coconut_husk, rice_straw, corn_stalks, banana_trunk, sugarcane_bagasse, pineapple_leaves, cassava_peel, other.',
+    'Use the search field for leftover location or keyword text.',
+    'Do not invent unavailable constraints.',
+    'Return only JSON that matches the provided schema.',
+    '',
+    `Buyer query: ${input.query}`,
   ].join('\n')
 }
 
@@ -112,6 +128,36 @@ export const localGemmaProvider: AIService = {
     }
 
     return normalizeWasteValueAdviceOutput(JSON.parse(text))
+  },
+  async parseBuyerSearch(input) {
+    const config = getLocalGemmaConfig()
+    const response = await fetch(`${config.baseUrl}/api/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(config.timeoutMs),
+      body: JSON.stringify({
+        model: config.model,
+        prompt: buildBuyerSearchPrompt(input),
+        format: buyerSearchAssistOutputJsonSchema,
+        stream: false,
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Local Gemma request failed with ${response.status}.`)
+    }
+
+    const payload = await response.json()
+    const text =
+      typeof payload?.response === 'string' ? payload.response.trim() : ''
+
+    if (!text) {
+      throw new Error('Local Gemma returned an empty response.')
+    }
+
+    return normalizeBuyerSearchAssistOutput(JSON.parse(text))
   },
 }
 

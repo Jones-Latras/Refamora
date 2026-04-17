@@ -1,5 +1,8 @@
 export type AIProvider = 'local_gemma' | 'gemini'
-export type AIFeature = 'listing_copilot' | 'waste_value_advisor'
+export type AIFeature =
+  | 'listing_copilot'
+  | 'waste_value_advisor'
+  | 'buyer_search_assistant'
 
 export type ListingAssistInput = {
   title: string
@@ -19,6 +22,10 @@ export type WasteValueAdviceInput = {
   city: string | null
 }
 
+export type BuyerSearchAssistInput = {
+  query: string
+}
+
 export type ListingAssistOutput = {
   improvedTitle: string
   improvedDescription: string
@@ -33,6 +40,15 @@ export type WasteValueAdviceOutput = {
   uses: string[]
   cautions: string[]
   marketTip: string | null
+}
+
+export type BuyerSearchAssistOutput = {
+  wasteType: string | null
+  fulfillmentType: 'pickup' | 'delivery' | 'both' | null
+  minPrice: number | null
+  maxPrice: number | null
+  search: string | null
+  notes: string[]
 }
 
 export type ListingAssistResult = {
@@ -51,6 +67,14 @@ export type WasteValueAdviceResult = {
   result: WasteValueAdviceOutput
 }
 
+export type BuyerSearchAssistResult = {
+  eventId: string | null
+  latencyMs: number | null
+  provider: AIProvider
+  fallbackUsed: boolean
+  result: BuyerSearchAssistOutput
+}
+
 export type AIFeedbackInput = {
   eventId: string
   feature: AIFeature
@@ -66,6 +90,9 @@ export type AIFeedbackResult = {
 export type AIService = {
   assistListing(input: ListingAssistInput): Promise<ListingAssistOutput>
   adviseWasteValue(input: WasteValueAdviceInput): Promise<WasteValueAdviceOutput>
+  parseBuyerSearch(
+    input: BuyerSearchAssistInput,
+  ): Promise<BuyerSearchAssistOutput>
 }
 
 export type AIProviderHealth = {

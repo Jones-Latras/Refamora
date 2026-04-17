@@ -1,5 +1,5 @@
 import { router } from 'expo-router'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
@@ -16,12 +16,15 @@ import { EmptyState } from '../../components/EmptyState'
 import { FeedFilterSheet } from '../../components/FeedFilterSheet'
 import { ListingCard } from '../../components/ListingCard'
 import { SkeletonCard } from '../../components/SkeletonCard'
+import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useBuyerListings } from '../../hooks/useListings'
 import { useProfile } from '../../hooks/useProfile'
-import type { ListingFilters } from '../../types/app'
+import { getBuyerSearchAssist } from '../../services/aiService'
+import type { BuyerSearchAssistResult, ListingFilters } from '../../types/app'
 import { palette, radii } from '../../utils/theme'
+import { WASTE_TYPES } from '../../utils/wasteTypes'
 
 function getInitials(name?: string | null, fallback = 'B') {
   if (!name) {
@@ -36,12 +39,47 @@ function getInitials(name?: string | null, fallback = 'B') {
     .join('')
 }
 
+function formatAiSearchLabels(result: BuyerSearchAssistResult | null) {
+  if (!result) {
+    return []
+  }
+
+  const labels: string[] = []
+  const wasteTypeLabel = WASTE_TYPES.find(
+    (item) => item.value === result.result.wasteType,
+  )?.label
+
+  if (wasteTypeLabel) {
+    labels.push(wasteTypeLabel)
+  }
+
+  if (result.result.fulfillmentType) {
+    labels.push(result.result.fulfillmentType)
+  }
+
+  if (result.result.minPrice != null || result.result.maxPrice != null) {
+    labels.push(
+      `PHP ${result.result.minPrice ?? 0} - ${result.result.maxPrice ?? 'up'}`,
+    )
+  }
+
+  if (result.result.search) {
+    labels.push(result.result.search)
+  }
+
+  return labels
+}
+
 export default function FeedScreen() {
   const { user } = useAuth()
   const { profile } = useProfile(user?.id)
+  const { showToast } = useToast()
   const [query, setQuery] = useState('')
   const [filters, setFilters] = useState<ListingFilters>({})
   const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [isAiSearchLoading, setIsAiSearchLoading] = useState(false)
+  const [aiSearchResult, setAiSearchResult] =
+    useState<BuyerSearchAssistResult | null>(null)
   const debouncedQuery = useDebounce(query)
   const { data, isLoading, isFetchingMore, loadMore } = useBuyerListings({
     ...filters,
@@ -54,6 +92,57 @@ export default function FeedScreen() {
     filters.minPrice,
     filters.maxPrice,
   ].filter((value) => value != null && value !== '').length
+  const interpretedLabels = useMemo(
+    () => formatAiSearchLabels(aiSearchResult),
+    [aiSearchResult],
+  )
+
+  const handleAiSearch = async () => {
+    const trimmedQuery = query.trim()
+
+    if (trimmedQuery.length < 3) {
+      showToast('Enter a more specific search request first.', 'error')
+      return
+    }
+
+    setIsAiSearchLoading(true)
+
+    try {
+      const result = await getBuyerSearchAssist({
+        query: trimmedQuery,
+      })
+
+      if (result.error || !result.data) {
+        showToast(
+          result.error?.message ??
+            'AI search is unavailable right now. You can continue with normal search.',
+          'error',
+        )
+        return
+      }
+
+      setAiSearchResult(result.data)
+      showToast('AI filters are ready to review.', 'success')
+    } finally {
+      setIsAiSearchLoading(false)
+    }
+  }
+
+  const applyAiSearch = () => {
+    if (!aiSearchResult) {
+      return
+    }
+
+    setFilters({
+      wasteType: aiSearchResult.result.wasteType ?? undefined,
+      fulfillmentType: aiSearchResult.result.fulfillmentType ?? undefined,
+      minPrice: aiSearchResult.result.minPrice ?? undefined,
+      maxPrice: aiSearchResult.result.maxPrice ?? undefined,
+    })
+    setQuery(aiSearchResult.result.search ?? '')
+    setAiSearchResult(null)
+    showToast('AI filters applied. You can still adjust them manually.', 'success')
+  }
 
   return (
     <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={styles.safeArea}>
@@ -113,6 +202,14 @@ export default function FeedScreen() {
 
           <View style={styles.filterRow}>
             <Pressable
+              onPress={() => void handleAiSearch()}
+              style={styles.aiSearchButton}
+            >
+              <Text style={styles.aiSearchButtonText}>
+                {isAiSearchLoading ? 'Reading search...' : 'Search with AI'}
+              </Text>
+            </Pressable>
+            <Pressable
               onPress={() => setIsFilterOpen(true)}
               style={styles.filterButton}
             >
@@ -122,6 +219,48 @@ export default function FeedScreen() {
               </Text>
             </Pressable>
           </View>
+
+          {aiSearchResult ? (
+            <View style={styles.aiReviewCard}>
+              <Text style={styles.aiReviewTitle}>AI interpreted your search</Text>
+              <Text style={styles.aiReviewMeta}>
+                Provider:{' '}
+                {aiSearchResult.provider === 'local_gemma'
+                  ? 'Local Gemma'
+                  : 'Gemini'}
+                {aiSearchResult.fallbackUsed ? ' | fallback used' : ''}
+              </Text>
+              {interpretedLabels.length > 0 ? (
+                <View style={styles.aiReviewChipWrap}>
+                  {interpretedLabels.map((label) => (
+                    <View key={label} style={styles.aiReviewChip}>
+                      <Text style={styles.aiReviewChipText}>{label}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+              {aiSearchResult.result.notes.length > 0 ? (
+                <View style={styles.aiReviewNotes}>
+                  {aiSearchResult.result.notes.map((note) => (
+                    <Text key={note} style={styles.aiReviewNote}>
+                      - {note}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
+              <View style={styles.aiReviewActions}>
+                <Pressable onPress={applyAiSearch} style={styles.aiApplyButton}>
+                  <Text style={styles.aiApplyButtonText}>Apply AI filters</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setAiSearchResult(null)}
+                  style={styles.aiDismissButton}
+                >
+                  <Text style={styles.aiDismissButtonText}>Dismiss</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
         </View>
 
         {isLoading ? (
@@ -259,7 +398,21 @@ const styles = StyleSheet.create({
     color: palette.ink,
   },
   filterRow: {
+    flexDirection: 'row',
     gap: 8,
+    flexWrap: 'wrap',
+  },
+  aiSearchButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#e4efe6',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  aiSearchButtonText: {
+    color: palette.sageDark,
+    fontWeight: '800',
+    fontSize: 13,
   },
   filterButton: {
     alignSelf: 'flex-start',
@@ -281,6 +434,79 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 16,
     fontWeight: '700',
+  },
+  aiReviewCard: {
+    gap: 10,
+    backgroundColor: '#eef6ed',
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(58, 102, 72, 0.12)',
+    padding: 14,
+  },
+  aiReviewTitle: {
+    color: palette.sageDark,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  aiReviewMeta: {
+    color: palette.muted,
+    fontSize: 12,
+  },
+  aiReviewChipWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  aiReviewChip: {
+    backgroundColor: palette.surface,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(58, 102, 72, 0.12)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  aiReviewChipText: {
+    color: palette.clay,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  aiReviewNotes: {
+    gap: 4,
+  },
+  aiReviewNote: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  aiReviewActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  aiApplyButton: {
+    flex: 1,
+    backgroundColor: palette.sage,
+    borderRadius: 999,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  aiApplyButtonText: {
+    color: palette.cream,
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  aiDismissButton: {
+    flex: 1,
+    backgroundColor: palette.surface,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: palette.border,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  aiDismissButtonText: {
+    color: palette.clay,
+    fontWeight: '800',
+    fontSize: 13,
   },
   loading: {
     gap: 16,

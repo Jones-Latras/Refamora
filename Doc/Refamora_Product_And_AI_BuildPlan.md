@@ -17,7 +17,7 @@ The goal is simple: keep Refamora useful as a real marketplace first, then use A
 ## Master Checklist
 
 Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
-Latest note: 2026-04-17 the listing flow now includes a Waste-To-Value Advisor beside waste type selection. Farmers can request short AI-generated downstream uses, cautions, and a market tip for the selected waste material while still keeping the form fully manual and editable.
+Latest note: 2026-04-17 the buyer feed now includes a Search with AI flow that converts natural-language queries into structured marketplace filters, shows the interpreted filters back to the user, and only applies them after confirmation. Buyer search now falls back cleanly to normal search if AI parsing fails.
 
 ### AI Phase 0 - Foundations
 
@@ -52,11 +52,11 @@ Latest note: 2026-04-17 the listing flow now includes a Waste-To-Value Advisor b
 
 ### AI Phase 3 - Buyer Search Assistant
 
-- [ ] Add `Search with AI` entry point in buyer feed
-- [ ] Convert natural language to a structured filter object
-- [ ] Validate parsed filters before running actual queries
-- [ ] Show the interpreted filters back to the user before applying
-- [ ] Fall back to normal search if AI parsing fails
+- [x] Add `Search with AI` entry point in buyer feed
+- [x] Convert natural language to a structured filter object
+- [x] Validate parsed filters before running actual queries
+- [x] Show the interpreted filters back to the user before applying
+- [x] Fall back to normal search if AI parsing fails
 
 ### AI Phase 4 - Photo Analysis And Moderation
 
@@ -546,11 +546,11 @@ Implementation note:
 
 ### AI Phase 3: Buyer Search Assistant
 
-- [ ] Add `Search with AI` entry point in buyer feed
-- [ ] Convert natural language to a structured filter object
-- [ ] Validate parsed filters before running actual queries
-- [ ] Show the interpreted filters back to the user before applying
-- [ ] Fall back to normal search if AI parsing fails
+- [x] Add `Search with AI` entry point in buyer feed
+- [x] Convert natural language to a structured filter object
+- [x] Validate parsed filters before running actual queries
+- [x] Show the interpreted filters back to the user before applying
+- [x] Fall back to normal search if AI parsing fails
 
 Implementation note:
 

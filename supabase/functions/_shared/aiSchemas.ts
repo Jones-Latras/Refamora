@@ -1,4 +1,5 @@
 import type {
+  BuyerSearchAssistOutput,
   ListingAssistOutput,
   WasteValueAdviceOutput,
 } from './aiTypes.ts'
@@ -72,6 +73,40 @@ export const wasteValueAdviceOutputJsonSchema = {
   required: ['uses', 'cautions', 'marketTip'],
 } as const
 
+export const buyerSearchAssistOutputJsonSchema = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    wasteType: {
+      type: ['string', 'null'],
+      description: 'Best matching Refamora waste type value if identifiable.',
+    },
+    fulfillmentType: {
+      type: ['string', 'null'],
+      enum: ['pickup', 'delivery', 'both', null],
+      description: 'Requested fulfillment type if clearly stated.',
+    },
+    minPrice: {
+      type: ['number', 'null'],
+      description: 'Lower bound if the request includes a price range.',
+    },
+    maxPrice: {
+      type: ['number', 'null'],
+      description: 'Upper bound if the request includes a price cap or range.',
+    },
+    search: {
+      type: ['string', 'null'],
+      description: 'Remaining keyword or location text to pass to standard search.',
+    },
+    notes: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Short notes describing assumptions or limits in the interpretation.',
+    },
+  },
+  required: ['wasteType', 'fulfillmentType', 'minPrice', 'maxPrice', 'search', 'notes'],
+} as const
+
 function asString(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value.trim() : fallback
 }
@@ -124,5 +159,28 @@ export function normalizeWasteValueAdviceOutput(
     uses: asStringArray(Reflect.get(raw, 'uses')).slice(0, 3),
     cautions: asStringArray(Reflect.get(raw, 'cautions')).slice(0, 2),
     marketTip: asNullableString(Reflect.get(raw, 'marketTip')),
+  }
+}
+
+export function normalizeBuyerSearchAssistOutput(
+  value: unknown,
+): BuyerSearchAssistOutput {
+  const raw = typeof value === 'object' && value ? value : {}
+  const fulfillmentType = Reflect.get(raw, 'fulfillmentType')
+  const minPrice = Reflect.get(raw, 'minPrice')
+  const maxPrice = Reflect.get(raw, 'maxPrice')
+
+  return {
+    wasteType: asNullableString(Reflect.get(raw, 'wasteType')),
+    fulfillmentType:
+      fulfillmentType === 'pickup' ||
+      fulfillmentType === 'delivery' ||
+      fulfillmentType === 'both'
+        ? fulfillmentType
+        : null,
+    minPrice: typeof minPrice === 'number' ? minPrice : null,
+    maxPrice: typeof maxPrice === 'number' ? maxPrice : null,
+    search: asNullableString(Reflect.get(raw, 'search')),
+    notes: asStringArray(Reflect.get(raw, 'notes')).slice(0, 3),
   }
 }

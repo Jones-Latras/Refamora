@@ -84,7 +84,10 @@ export type ContactRequestSummary = {
 }
 
 export type AIProvider = 'local_gemma' | 'gemini'
-export type AIFeature = 'listing_copilot' | 'waste_value_advisor'
+export type AIFeature =
+  | 'listing_copilot'
+  | 'waste_value_advisor'
+  | 'buyer_search_assistant'
 
 export type ListingAssistInput = {
   title: string
@@ -134,6 +137,27 @@ export type WasteValueAdviceResult = {
   provider: AIProvider
   fallbackUsed: boolean
   result: WasteValueAdviceOutput
+}
+
+export type BuyerSearchAssistInput = {
+  query: string
+}
+
+export type BuyerSearchAssistOutput = {
+  wasteType: string | null
+  fulfillmentType: FulfillmentType | null
+  minPrice: number | null
+  maxPrice: number | null
+  search: string | null
+  notes: string[]
+}
+
+export type BuyerSearchAssistResult = {
+  eventId: string | null
+  latencyMs: number | null
+  provider: AIProvider
+  fallbackUsed: boolean
+  result: BuyerSearchAssistOutput
 }
 
 export type AIFeedbackInput = {

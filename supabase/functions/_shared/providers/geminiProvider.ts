@@ -1,11 +1,14 @@
 import type {
   AIService,
+  BuyerSearchAssistInput,
   ListingAssistInput,
   WasteValueAdviceInput,
 } from '../aiTypes.ts'
 
 import {
+  buyerSearchAssistOutputJsonSchema,
   listingAssistOutputJsonSchema,
+  normalizeBuyerSearchAssistOutput,
   normalizeListingAssistOutput,
   normalizeWasteValueAdviceOutput,
   wasteValueAdviceOutputJsonSchema,
@@ -47,6 +50,19 @@ function buildWasteValueAdvicePrompt(input: WasteValueAdviceInput) {
     '',
     `Waste type: ${input.wasteType}`,
     `City: ${input.city ?? 'unknown'}`,
+  ].join('\n')
+}
+
+function buildBuyerSearchPrompt(input: BuyerSearchAssistInput) {
+  return [
+    'You are Refamora buyer search assistant.',
+    'Convert the buyer query into structured marketplace filters.',
+    'Only use these waste type values when appropriate: coconut_husk, rice_straw, corn_stalks, banana_trunk, sugarcane_bagasse, pineapple_leaves, cassava_peel, other.',
+    'Use the search field for leftover location or keyword text.',
+    'Do not invent unavailable constraints.',
+    'Return only JSON that matches the schema.',
+    '',
+    `Buyer query: ${input.query}`,
   ].join('\n')
 }
 
@@ -134,6 +150,48 @@ export const geminiProvider: AIService = {
     }
 
     return normalizeWasteValueAdviceOutput(JSON.parse(text))
+  },
+  async parseBuyerSearch(input) {
+    const config = getGeminiConfig()
+
+    if (!config.apiKey) {
+      throw new Error('Missing GEMINI_API_KEY.')
+    }
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(config.timeoutMs),
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: buildBuyerSearchPrompt(input) }],
+            },
+          ],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            responseJsonSchema: buyerSearchAssistOutputJsonSchema,
+          },
+        }),
+      },
+    )
+
+    if (!response.ok) {
+      throw new Error(`Gemini request failed with ${response.status}.`)
+    }
+
+    const payload = await response.json()
+    const text = payload?.candidates?.[0]?.content?.parts?.[0]?.text
+
+    if (typeof text !== 'string' || !text.trim()) {
+      throw new Error('Gemini returned an empty response.')
+    }
+
+    return normalizeBuyerSearchAssistOutput(JSON.parse(text))
   },
 }
 

@@ -74,6 +74,10 @@ export const wasteValueAdviceInputSchema = z.object({
   city: z.string().nullable(),
 })
 
+export const buyerSearchAssistInputSchema = z.object({
+  query: z.string().min(3, 'Enter a more specific search request.'),
+})
+
 export const listingAssistOutputSchema = z.object({
   improvedTitle: z.string(),
   improvedDescription: z.string(),
@@ -106,15 +110,40 @@ export const wasteValueAdviceResultSchema = z.object({
   result: wasteValueAdviceOutputSchema,
 })
 
+export const buyerSearchAssistOutputSchema = z.object({
+  wasteType: z.string().nullable(),
+  fulfillmentType: z.enum(['pickup', 'delivery', 'both']).nullable(),
+  minPrice: z.number().nullable(),
+  maxPrice: z.number().nullable(),
+  search: z.string().nullable(),
+  notes: z.array(z.string()),
+})
+
+export const buyerSearchAssistResultSchema = z.object({
+  eventId: z.string().uuid().nullable(),
+  latencyMs: z.number().int().nonnegative().nullable(),
+  provider: z.enum(['local_gemma', 'gemini']),
+  fallbackUsed: z.boolean(),
+  result: buyerSearchAssistOutputSchema,
+})
+
 export const aiFeedbackInputSchema = z.object({
   eventId: z.string().uuid(),
-  feature: z.enum(['listing_copilot', 'waste_value_advisor']),
+  feature: z.enum([
+    'listing_copilot',
+    'waste_value_advisor',
+    'buyer_search_assistant',
+  ]),
   helpful: z.boolean(),
 })
 
 export const aiFeedbackResultSchema = z.object({
   eventId: z.string().uuid(),
-  feature: z.enum(['listing_copilot', 'waste_value_advisor']),
+  feature: z.enum([
+    'listing_copilot',
+    'waste_value_advisor',
+    'buyer_search_assistant',
+  ]),
   helpful: z.boolean(),
 })
 
@@ -139,3 +168,4 @@ export type ListingFormValues = z.input<typeof listingSchema>
 export type ListingAssistFormValues = z.infer<typeof listingAssistInputSchema>
 export type AIFeedbackFormValues = z.infer<typeof aiFeedbackInputSchema>
 export type WasteValueAdviceFormValues = z.infer<typeof wasteValueAdviceInputSchema>
+export type BuyerSearchAssistFormValues = z.infer<typeof buyerSearchAssistInputSchema>

@@ -2,6 +2,8 @@ import type {
   AIAnalyticsSummary,
   AIFeedbackInput,
   AIFeedbackResult,
+  BuyerSearchAssistInput,
+  BuyerSearchAssistResult,
   AIHealthResult,
   ListingAssistInput,
   ListingAssistResult,
@@ -15,6 +17,8 @@ import {
   aiFeedbackInputSchema,
   aiFeedbackResultSchema,
   aiHealthResultSchema,
+  buyerSearchAssistInputSchema,
+  buyerSearchAssistResultSchema,
   listingAssistInputSchema,
   listingAssistResultSchema,
   wasteValueAdviceInputSchema,
@@ -133,6 +137,51 @@ export async function getWasteValueAdvice(
     return {
       data: null,
       error: new Error('Waste advice response did not match the expected format.'),
+    }
+  }
+
+  return { data: parsedResult.data, error: null }
+}
+
+export async function getBuyerSearchAssist(
+  input: BuyerSearchAssistInput,
+): Promise<ServiceResult<BuyerSearchAssistResult>> {
+  const parsedInput = buyerSearchAssistInputSchema.safeParse(input)
+
+  if (!parsedInput.success) {
+    return {
+      data: null,
+      error: new Error(
+        parsedInput.error.issues[0]?.message ??
+          'Invalid buyer search assistant input.',
+      ),
+    }
+  }
+
+  if (!hasSupabaseEnv) {
+    return {
+      data: null,
+      error: new Error('Supabase is not configured yet.'),
+    }
+  }
+
+  const { data, error } = await getSupabaseClient().functions.invoke(
+    'ai-search-assist',
+    {
+      body: parsedInput.data,
+    },
+  )
+
+  if (error) {
+    return { data: null, error }
+  }
+
+  const parsedResult = buyerSearchAssistResultSchema.safeParse(data)
+
+  if (!parsedResult.success) {
+    return {
+      data: null,
+      error: new Error('Buyer search AI response did not match the expected format.'),
     }
   }
 
