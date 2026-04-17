@@ -17,7 +17,7 @@ The goal is simple: keep Refamora useful as a real marketplace first, then use A
 ## Master Checklist
 
 Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
-Latest note: 2026-04-17 the buyer and farmer tab bars now include icons, and listing details now include stronger trust context plus related listings so navigation and discovery both feel more complete.
+Latest note: 2026-04-17 buyer browsing now includes a clearer in-screen `List / Map` toggle, buyer search remembers the latest query and filters, and buyers can now save listings for later from the listing detail screen.
 
 ### AI Phase 0 - Foundations
 
@@ -135,10 +135,10 @@ Refamora will feel more credible when seller identity and listing quality are st
 
 The buyer side works, but it can become much more useful.
 
-- [ ] Improve search relevance and filter persistence
+- [~] Improve search relevance and filter persistence
 - [ ] Add distance-aware browsing from buyer location
-- [ ] Add a clearer `List / Map` browsing toggle
-- [ ] Add saved filters or favorites
+- [x] Add a clearer `List / Map` browsing toggle
+- [x] Add saved filters or favorites
 - [x] Add contact request status states such as `sent`, `seen`, `responded`
 - [~] Add richer listing details: distance, posted age, seller activity, clearer map preview
 - [x] Add related listings section on listing details
@@ -194,7 +194,7 @@ This is the safest non-AI sequence.
 ### Phase D: Improve Discovery
 
 - [ ] Distance-aware browsing
-- [ ] Better map/list switching
+- [x] Better map/list switching
 - [ ] Saved filters and favorites
 - [ ] Related listings
 

@@ -22,6 +22,7 @@ import { ListingCard } from '../../../components/ListingCard'
 import { useToast } from '../../../components/Toast'
 import { useAuth } from '../../../hooks/useAuth'
 import { useRecentlyViewedStore } from '../../../hooks/useRecentlyViewed'
+import { useSavedListingsStore } from '../../../hooks/useSavedListings'
 import {
   getBuyerContactRequests,
   sendContactRequest,
@@ -71,6 +72,8 @@ export default function ListingDetailScreen() {
   const { user, role } = useAuth()
   const { showToast } = useToast()
   const addRecentlyViewed = useRecentlyViewedStore((state) => state.addListing)
+  const savedListingIds = useSavedListingsStore((state) => state.listingIds)
+  const toggleSavedListing = useSavedListingsStore((state) => state.toggleListing)
   const [listing, setListing] = useState<ListingDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isContactModalVisible, setIsContactModalVisible] = useState(false)
@@ -196,6 +199,8 @@ export default function ListingDetailScreen() {
 
   const canContactSeller =
     role === 'buyer' && !!user && !!listing && user.id !== listing.sellerId
+  const canSaveListing = role !== 'farmer'
+  const isSaved = listing ? savedListingIds.includes(listing.id) : false
   const postedLabel = listing ? formatRelativePostedDate(listing.createdAt) : ''
 
   const handleBackPress = () => {
@@ -228,6 +233,18 @@ export default function ListingDetailScreen() {
     } catch {
       showToast('Unable to open the share sheet right now.', 'error')
     }
+  }
+
+  const handleToggleSavedListing = () => {
+    if (!listing) {
+      return
+    }
+
+    const nextSaved = toggleSavedListing(listing.id)
+    showToast(
+      nextSaved ? 'Listing saved for later.' : 'Listing removed from saved.',
+      'success',
+    )
   }
 
   const handleSubmitContactRequest = async () => {
@@ -335,9 +352,29 @@ export default function ListingDetailScreen() {
                 {formatPrice(listing.price, listing.unit)}
               </Text>
             </View>
-            <Pressable onPress={() => void handleShareListing()} style={styles.shareButton}>
-              <Text style={styles.shareButtonText}>Share</Text>
-            </Pressable>
+            <View style={styles.heroActions}>
+              {canSaveListing ? (
+                <Pressable
+                  onPress={handleToggleSavedListing}
+                  style={[styles.shareButton, isSaved ? styles.savedButton : null]}
+                >
+                  <Text
+                    style={[
+                      styles.shareButtonText,
+                      isSaved ? styles.savedButtonText : null,
+                    ]}
+                  >
+                    {isSaved ? 'Saved' : 'Save'}
+                  </Text>
+                </Pressable>
+              ) : null}
+              <Pressable
+                onPress={() => void handleShareListing()}
+                style={styles.shareButton}
+              >
+                <Text style={styles.shareButtonText}>Share</Text>
+              </Pressable>
+            </View>
           </View>
           <View style={styles.heroBadgeRow}>
             <View style={styles.infoBadge}>
@@ -606,6 +643,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
+  heroActions: {
+    alignItems: 'flex-end',
+    gap: 8,
+  },
   heroTextBlock: {
     flex: 1,
     gap: 8,
@@ -661,6 +702,13 @@ const styles = StyleSheet.create({
     color: palette.sageDark,
     fontSize: 13,
     fontWeight: '800',
+  },
+  savedButton: {
+    backgroundColor: '#e1eee4',
+    borderColor: '#c8decf',
+  },
+  savedButtonText: {
+    color: palette.sageDark,
   },
   section: {
     backgroundColor: palette.surface,

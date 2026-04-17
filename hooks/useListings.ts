@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import type { ListingFilters, ListingPreview } from '../types/app'
 
@@ -6,22 +6,42 @@ import { useAsync } from './useAsync'
 
 import { getFarmerListings, getListings } from '../services/listingService'
 
-export function useBuyerListings(filters: ListingFilters = {}) {
+export function useBuyerListings(filters: ListingFilters = {}, enabled = true) {
   const [listings, setListings] = useState<ListingPreview[]>([])
   const [page, setPage] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [isFetchingMore, setIsFetchingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
   const [error, setError] = useState<Error | null>(null)
+  const requestFilters = useMemo(
+    () => ({
+      fulfillmentType: filters.fulfillmentType,
+      maxPrice: filters.maxPrice,
+      minPrice: filters.minPrice,
+      search: filters.search,
+      wasteType: filters.wasteType,
+    }),
+    [
+      filters.fulfillmentType,
+      filters.maxPrice,
+      filters.minPrice,
+      filters.search,
+      filters.wasteType,
+    ],
+  )
 
   useEffect(() => {
+    if (!enabled) {
+      return
+    }
+
     let isMounted = true
 
     const loadFirstPage = async () => {
       setIsLoading(true)
       setError(null)
 
-      const result = await getListings(0, filters)
+      const result = await getListings(0, requestFilters)
 
       if (!isMounted) {
         return
@@ -46,23 +66,17 @@ export function useBuyerListings(filters: ListingFilters = {}) {
     return () => {
       isMounted = false
     }
-  }, [
-    filters.fulfillmentType,
-    filters.maxPrice,
-    filters.minPrice,
-    filters.search,
-    filters.wasteType,
-  ])
+  }, [enabled, requestFilters])
 
   const loadMore = async () => {
-    if (isLoading || isFetchingMore || !hasMore) {
+    if (!enabled || isLoading || isFetchingMore || !hasMore) {
       return
     }
 
     const nextPage = page + 1
     setIsFetchingMore(true)
 
-    const result = await getListings(nextPage, filters)
+    const result = await getListings(nextPage, requestFilters)
 
     if (result.error) {
       setError(result.error)
@@ -78,7 +92,7 @@ export function useBuyerListings(filters: ListingFilters = {}) {
 
   return {
     data: listings,
-    isLoading,
+    isLoading: enabled ? isLoading : true,
     isFetchingMore,
     hasMore,
     error,

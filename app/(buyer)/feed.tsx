@@ -22,11 +22,12 @@ import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useBuyerListings } from '../../hooks/useListings'
+import { useBuyerFeedStore } from '../../hooks/useBuyerFeedState'
 import { useProfile } from '../../hooks/useProfile'
 import { useRecentlyViewedStore } from '../../hooks/useRecentlyViewed'
 import { getBuyerSearchAssist } from '../../services/aiService'
 import { getListingPreviewsByIds } from '../../services/listingService'
-import type { BuyerSearchAssistResult, ListingFilters } from '../../types/app'
+import type { BuyerSearchAssistResult } from '../../types/app'
 import { palette, radii } from '../../utils/theme'
 import { WASTE_TYPES } from '../../utils/wasteTypes'
 
@@ -111,8 +112,11 @@ export default function FeedScreen() {
   const { profile } = useProfile(user?.id)
   const { showToast } = useToast()
   const recentlyViewedIds = useRecentlyViewedStore((state) => state.listingIds)
-  const [query, setQuery] = useState('')
-  const [filters, setFilters] = useState<ListingFilters>({})
+  const isFeedStateHydrated = useBuyerFeedStore((state) => state.hydrated)
+  const query = useBuyerFeedStore((state) => state.query)
+  const setQuery = useBuyerFeedStore((state) => state.setQuery)
+  const filters = useBuyerFeedStore((state) => state.filters)
+  const setFilters = useBuyerFeedStore((state) => state.setFilters)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [isAiSearchLoading, setIsAiSearchLoading] = useState(false)
   const [aiSearchResult, setAiSearchResult] =
@@ -126,10 +130,13 @@ export default function FeedScreen() {
     }[]
   >([])
   const debouncedQuery = useDebounce(query)
-  const { data, isLoading, isFetchingMore, loadMore } = useBuyerListings({
-    ...filters,
-    search: debouncedQuery.trim() || undefined,
-  })
+  const { data, isLoading, isFetchingMore, loadMore } = useBuyerListings(
+    {
+      ...filters,
+      search: debouncedQuery.trim() || undefined,
+    },
+    isFeedStateHydrated,
+  )
 
   const activeFilterCount = [
     filters.wasteType,
@@ -265,6 +272,20 @@ export default function FeedScreen() {
                 <Text style={styles.iconGlyph}>✎</Text>
               </Pressable>
             </View>
+          </View>
+
+          <View style={styles.viewToggle}>
+            <Pressable style={[styles.viewToggleOption, styles.viewToggleOptionActive]}>
+              <Text style={[styles.viewToggleText, styles.viewToggleTextActive]}>
+                List
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/(buyer)/map')}
+              style={styles.viewToggleOption}
+            >
+              <Text style={styles.viewToggleText}>Map</Text>
+            </Pressable>
           </View>
 
           <View style={styles.activityShortcutRow}>
@@ -504,6 +525,32 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     lineHeight: 18,
+  },
+  viewToggle: {
+    flexDirection: 'row',
+    alignSelf: 'flex-start',
+    backgroundColor: palette.parchment,
+    borderRadius: 999,
+    padding: 4,
+    gap: 4,
+  },
+  viewToggleOption: {
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  viewToggleOptionActive: {
+    backgroundColor: palette.surface,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  viewToggleText: {
+    color: palette.muted,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  viewToggleTextActive: {
+    color: palette.soil,
   },
   search: {
     backgroundColor: palette.surface,

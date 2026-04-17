@@ -1,6 +1,6 @@
 import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import ClusteredMapView from 'react-native-map-clustering'
 import { Marker } from 'react-native-maps'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -52,6 +52,29 @@ export default function MapScreen() {
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
       <View style={styles.container}>
+        <View style={styles.topOverlay}>
+          <View style={styles.toggleCard}>
+            <View style={styles.viewToggle}>
+              <Pressable
+                onPress={() => router.push('/(buyer)/feed')}
+                style={styles.viewToggleOption}
+              >
+                <Text style={styles.viewToggleText}>List</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.viewToggleOption, styles.viewToggleOptionActive]}
+              >
+                <Text style={[styles.viewToggleText, styles.viewToggleTextActive]}>
+                  Map
+                </Text>
+              </Pressable>
+            </View>
+            <Text style={styles.toggleHelper}>
+              Tap a pin to preview a listing, then open full details.
+            </Text>
+          </View>
+        </View>
+
         {isLoading ? (
           <View style={styles.loadingState}>
             <ActivityIndicator color={palette.sage} size="small" />
@@ -111,6 +134,52 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+  },
+  topOverlay: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    right: 16,
+    zIndex: 10,
+  },
+  toggleCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.96)',
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: palette.border,
+    padding: 12,
+    gap: 10,
+  },
+  viewToggle: {
+    flexDirection: 'row',
+    alignSelf: 'flex-start',
+    backgroundColor: palette.parchment,
+    borderRadius: 999,
+    padding: 4,
+    gap: 4,
+  },
+  viewToggleOption: {
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  viewToggleOptionActive: {
+    backgroundColor: palette.surface,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  viewToggleText: {
+    color: palette.muted,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  viewToggleTextActive: {
+    color: palette.soil,
+  },
+  toggleHelper: {
+    color: palette.muted,
+    fontSize: 12,
+    lineHeight: 18,
   },
   map: {
     flex: 1,

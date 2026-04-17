@@ -10,6 +10,7 @@ import { ListingCard } from '../../components/ListingCard'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
 import { useRecentlyViewedStore } from '../../hooks/useRecentlyViewed'
+import { useSavedListingsStore } from '../../hooks/useSavedListings'
 import { getBuyerContactRequests } from '../../services/contactService'
 import { getListingPreviewsByIds } from '../../services/listingService'
 import type { ContactRequestSummary, ListingPreview } from '../../types/app'
@@ -19,8 +20,10 @@ export default function BuyerDashboardScreen() {
   const { user } = useAuth()
   const { showToast } = useToast()
   const recentlyViewedIds = useRecentlyViewedStore((state) => state.listingIds)
+  const savedListingIds = useSavedListingsStore((state) => state.listingIds)
   const [requests, setRequests] = useState<ContactRequestSummary[]>([])
   const [recentListings, setRecentListings] = useState<ListingPreview[]>([])
+  const [savedListings, setSavedListings] = useState<ListingPreview[]>([])
 
   const loadRequests = useCallback(async () => {
     if (!user) {
@@ -56,11 +59,29 @@ export default function BuyerDashboardScreen() {
     setRecentListings(result.data ?? [])
   }, [recentlyViewedIds, showToast])
 
+  const loadSavedListings = useCallback(async () => {
+    if (savedListingIds.length === 0) {
+      setSavedListings([])
+      return
+    }
+
+    const result = await getListingPreviewsByIds(savedListingIds)
+
+    if (result.error) {
+      showToast(result.error.message, 'error')
+      setSavedListings([])
+      return
+    }
+
+    setSavedListings(result.data ?? [])
+  }, [savedListingIds, showToast])
+
   useFocusEffect(
     useCallback(() => {
       void loadRequests()
       void loadRecentListings()
-    }, [loadRecentListings, loadRequests]),
+      void loadSavedListings()
+    }, [loadRecentListings, loadRequests, loadSavedListings]),
   )
 
   const recentRequests = requests.slice(0, 3)
@@ -68,6 +89,40 @@ export default function BuyerDashboardScreen() {
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text style={styles.sectionTitle}>Saved listings</Text>
+              <Text style={styles.sectionSubtitle}>
+                {savedListings.length} listing
+                {savedListings.length === 1 ? '' : 's'} saved for later
+              </Text>
+            </View>
+            <Pressable onPress={() => router.push('/(buyer)/feed')}>
+              <Text style={styles.linkText}>Browse feed</Text>
+            </Pressable>
+          </View>
+
+          {savedListings.length > 0 ? (
+            <View style={styles.stack}>
+              {savedListings.map((listing) => (
+                <ListingCard
+                  key={listing.id}
+                  listing={listing}
+                  onPress={() => router.push(`/(shared)/listing/${listing.id}`)}
+                />
+              ))}
+            </View>
+          ) : (
+            <EmptyState
+              title="No saved listings yet"
+              description="Save any listing from its detail page to keep your best options in one place."
+              actionLabel="Browse the feed"
+              onAction={() => router.push('/(buyer)/feed')}
+            />
+          )}
+        </View>
+
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View>
