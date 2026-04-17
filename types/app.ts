@@ -73,6 +73,15 @@ export type ListingPin = {
   wasteType: string
 }
 
+export type ListingPerformanceSummary = {
+  listingId: string
+  viewCount: number
+  inquiryCount: number
+  pendingInquiryCount: number
+  respondedInquiryCount: number
+  lastInquiryAt: string | null
+}
+
 export type ContactRequestSummary = {
   id: string
   listingId: string

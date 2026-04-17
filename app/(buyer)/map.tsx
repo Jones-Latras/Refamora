@@ -1,5 +1,5 @@
 import { router } from 'expo-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import ClusteredMapView from 'react-native-map-clustering'
 import { Marker } from 'react-native-maps'
@@ -7,8 +7,12 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { MapMarker } from '../../components/MapMarker'
 import { PinPopup } from '../../components/PinPopup'
+import { useToast } from '../../components/Toast'
+import { useBuyerLocationStore } from '../../hooks/useBuyerLocation'
+import { requestCurrentCoordinates } from '../../services/locationService'
 import { fetchListingPins, fetchPinDetails } from '../../services/mapService'
 import type { ListingDetail, ListingPin } from '../../types/app'
+import { formatDistanceAway, getDistanceKm } from '../../utils/location'
 import { palette } from '../../utils/theme'
 
 const INITIAL_REGION = {
@@ -19,12 +23,17 @@ const INITIAL_REGION = {
 }
 
 export default function MapScreen() {
+  const { showToast } = useToast()
+  const buyerCoordinates = useBuyerLocationStore((state) => state.coordinates)
+  const setBuyerCoordinates = useBuyerLocationStore((state) => state.setCoordinates)
   const [pins, setPins] = useState<ListingPin[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isLocationLoading, setIsLocationLoading] = useState(false)
   const [selectedListing, setSelectedListing] = useState<ListingDetail | null>(
     null,
   )
   const [selectedPinId, setSelectedPinId] = useState<string | null>(null)
+  const [mapRegion, setMapRegion] = useState(INITIAL_REGION)
 
   useEffect(() => {
     const loadPins = async () => {
@@ -37,6 +46,19 @@ export default function MapScreen() {
     void loadPins()
   }, [])
 
+  useEffect(() => {
+    if (!buyerCoordinates) {
+      return
+    }
+
+    setMapRegion({
+      latitude: buyerCoordinates.latitude,
+      longitude: buyerCoordinates.longitude,
+      latitudeDelta: 0.18,
+      longitudeDelta: 0.18,
+    })
+  }, [buyerCoordinates])
+
   const handleSelectPin = async (pinId: string) => {
     setSelectedPinId(pinId)
     const result = await fetchPinDetails(pinId)
@@ -48,6 +70,58 @@ export default function MapScreen() {
 
     setSelectedListing(result.data)
   }
+
+  const handleUseMyLocation = async () => {
+    setIsLocationLoading(true)
+
+    const result = await requestCurrentCoordinates()
+
+    setIsLocationLoading(false)
+
+    if (result.error || !result.data) {
+      showToast(
+        result.error?.message ?? 'Unable to get your current location right now.',
+        'error',
+      )
+      return
+    }
+
+    setBuyerCoordinates(result.data)
+    showToast('Map centered near you.', 'success')
+  }
+
+  const nearbyPinCount = useMemo(() => {
+    if (!buyerCoordinates) {
+      return 0
+    }
+
+    return pins.filter((pin) => {
+      const distanceKm = getDistanceKm(buyerCoordinates, {
+        latitude: pin.latitude,
+        longitude: pin.longitude,
+      })
+
+      return distanceKm <= 15
+    }).length
+  }, [buyerCoordinates, pins])
+
+  const selectedDistanceLabel = useMemo(() => {
+    if (
+      !buyerCoordinates ||
+      !selectedListing ||
+      selectedListing.latitude == null ||
+      selectedListing.longitude == null
+    ) {
+      return null
+    }
+
+    return formatDistanceAway(
+      getDistanceKm(buyerCoordinates, {
+        latitude: selectedListing.latitude,
+        longitude: selectedListing.longitude,
+      }),
+    )
+  }, [buyerCoordinates, selectedListing])
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
@@ -69,8 +143,37 @@ export default function MapScreen() {
                 </Text>
               </Pressable>
             </View>
+            <View style={styles.locationRow}>
+              <Pressable
+                onPress={() => void handleUseMyLocation()}
+                style={[
+                  styles.locationButton,
+                  buyerCoordinates ? styles.locationButtonActive : null,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.locationButtonText,
+                    buyerCoordinates ? styles.locationButtonTextActive : null,
+                  ]}
+                >
+                  {isLocationLoading
+                    ? 'Getting your location...'
+                    : buyerCoordinates
+                      ? 'Recenter near me'
+                      : 'Use my location'}
+                </Text>
+              </Pressable>
+              {buyerCoordinates ? (
+                <Text style={styles.locationMeta}>
+                  {nearbyPinCount} nearby pin{nearbyPinCount === 1 ? '' : 's'} within 15 km
+                </Text>
+              ) : null}
+            </View>
             <Text style={styles.toggleHelper}>
-              Tap a pin to preview a listing, then open full details.
+              {buyerCoordinates
+                ? 'Tap a pin to preview a listing, compare distance, then open full details.'
+                : 'Tap a pin to preview a listing, then open full details.'}
             </Text>
           </View>
         </View>
@@ -83,7 +186,8 @@ export default function MapScreen() {
         ) : (
           <ClusteredMapView
             style={styles.map}
-            initialRegion={INITIAL_REGION}
+            region={mapRegion}
+            onRegionChangeComplete={setMapRegion}
             animationEnabled
             radius={40}
             minPoints={3}
@@ -113,6 +217,7 @@ export default function MapScreen() {
         {selectedListing ? (
           <PinPopup
             listing={selectedListing}
+            distanceLabel={selectedDistanceLabel}
             onClose={() => {
               setSelectedListing(null)
               setSelectedPinId(null)
@@ -177,6 +282,38 @@ const styles = StyleSheet.create({
     color: palette.soil,
   },
   toggleHelper: {
+    color: palette.muted,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  locationButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: palette.surface,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: palette.border,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  locationButtonActive: {
+    backgroundColor: '#e4efe6',
+    borderColor: 'rgba(58, 102, 72, 0.18)',
+  },
+  locationButtonText: {
+    color: palette.clay,
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  locationButtonTextActive: {
+    color: palette.sageDark,
+  },
+  locationMeta: {
     color: palette.muted,
     fontSize: 12,
     lineHeight: 18,

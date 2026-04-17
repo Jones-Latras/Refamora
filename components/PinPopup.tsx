@@ -8,12 +8,14 @@ import { palette, radii, shadow } from '../utils/theme'
 
 type PinPopupProps = {
   listing: ListingDetail
+  distanceLabel?: string | null
   onClose: () => void
   onViewDetails: () => void
 }
 
 export function PinPopup({
   listing,
+  distanceLabel,
   onClose,
   onViewDetails,
 }: PinPopupProps) {
@@ -48,6 +50,9 @@ export function PinPopup({
           <Text style={styles.meta}>
             {listing.city} | {listing.quantity} {listing.unit}
           </Text>
+          {distanceLabel ? (
+            <Text style={styles.distanceText}>{distanceLabel}</Text>
+          ) : null}
           <View style={styles.footer}>
             <FulfillmentLabel type={listing.fulfillmentType} />
             <Text style={styles.sellerText}>
@@ -149,6 +154,11 @@ const styles = StyleSheet.create({
   meta: {
     color: palette.muted,
     lineHeight: 20,
+  },
+  distanceText: {
+    color: palette.sageDark,
+    fontSize: 13,
+    fontWeight: '800',
   },
   footer: {
     flexDirection: 'row',

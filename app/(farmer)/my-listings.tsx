@@ -1,6 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native'
 import { router } from 'expo-router'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import {
   Alert,
   FlatList,
@@ -16,21 +16,36 @@ import { ListingCard } from '../../components/ListingCard'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
 import { useFarmerListings } from '../../hooks/useListings'
-import type { ListingStatus } from '../../types/app'
-import { setListingStatus } from '../../services/listingService'
+import type { ListingPerformanceSummary, ListingStatus } from '../../types/app'
+import {
+  getSellerListingPerformance,
+  setListingStatus,
+} from '../../services/listingService'
 import { palette, radii } from '../../utils/theme'
 
 export default function MyListingsScreen() {
   const { user } = useAuth()
   const { showToast } = useToast()
   const { data, isLoading, refetch } = useFarmerListings(user?.id)
+  const [performance, setPerformance] = useState<ListingPerformanceSummary[]>([])
 
   useFocusEffect(
     useCallback(() => {
       if (user?.id) {
         void refetch()
+        void (async () => {
+          const result = await getSellerListingPerformance(user.id)
+
+          if (result.error) {
+            showToast(result.error.message, 'error')
+            setPerformance([])
+            return
+          }
+
+          setPerformance(result.data ?? [])
+        })()
       }
-    }, [refetch, user?.id]),
+    }, [refetch, showToast, user?.id]),
   )
 
   const handleStatusChange = async (
@@ -76,6 +91,10 @@ export default function MyListingsScreen() {
     ])
   }
 
+  const performanceByListing = new Map(
+    performance.map((item) => [item.listingId, item]),
+  )
+
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
       {isLoading && data === null ? (
@@ -93,6 +112,26 @@ export default function MyListingsScreen() {
                 listing={item}
                 onPress={() => router.push(`/(farmer)/edit-listing/${item.id}`)}
               />
+              <View style={styles.performanceRow}>
+                <View style={styles.performanceChip}>
+                  <Text style={styles.performanceValue}>
+                    {performanceByListing.get(item.id)?.viewCount ?? 0}
+                  </Text>
+                  <Text style={styles.performanceLabel}>Views</Text>
+                </View>
+                <View style={styles.performanceChip}>
+                  <Text style={styles.performanceValue}>
+                    {performanceByListing.get(item.id)?.inquiryCount ?? 0}
+                  </Text>
+                  <Text style={styles.performanceLabel}>Inquiries</Text>
+                </View>
+                <View style={styles.performanceChip}>
+                  <Text style={styles.performanceValue}>
+                    {performanceByListing.get(item.id)?.pendingInquiryCount ?? 0}
+                  </Text>
+                  <Text style={styles.performanceLabel}>Pending</Text>
+                </View>
+              </View>
               <View style={styles.actions}>
                 <Pressable
                   onPress={() => router.push(`/(farmer)/edit-listing/${item.id}`)}
@@ -143,6 +182,30 @@ const styles = StyleSheet.create({
   },
   item: {
     gap: 10,
+  },
+  performanceRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  performanceChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 999,
+    backgroundColor: '#eef5ef',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  performanceValue: {
+    color: palette.soil,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  performanceLabel: {
+    color: palette.muted,
+    fontSize: 12,
+    fontWeight: '700',
   },
   actions: {
     flexDirection: 'row',

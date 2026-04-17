@@ -1,6 +1,7 @@
 import type {
   ListingDetail,
   ListingFilters,
+  ListingPerformanceSummary,
   ListingPin,
   ListingPreview,
   ListingStatus,
@@ -263,6 +264,126 @@ export async function getListingById(
   })
 
   return { data: mapListingDetail(data, sellerProfile), error: null }
+}
+
+export async function recordListingView(input: {
+  listingId: string
+  buyerId: string
+}): Promise<ServiceResult<Tables<'listing_engagement_events'>>> {
+  if (!hasSupabaseEnv) {
+    return { data: null, error: new Error('Supabase is not configured yet.') }
+  }
+
+  const { data, error } = await getSupabaseClient()
+    .from('listing_engagement_events')
+    .insert({
+      listing_id: input.listingId,
+      buyer_id: input.buyerId,
+      event_type: 'view',
+    })
+    .select()
+    .single()
+
+  return { data, error }
+}
+
+export async function getSellerListingPerformance(
+  sellerId: string,
+): Promise<ServiceResult<ListingPerformanceSummary[]>> {
+  if (!hasSupabaseEnv) {
+    return { data: [], error: null }
+  }
+
+  const { data: listings, error: listingsError } = await getSupabaseClient()
+    .from('listings')
+    .select('id')
+    .eq('seller_id', sellerId)
+
+  if (listingsError) {
+    return { data: [], error: listingsError }
+  }
+
+  const listingIds = (listings ?? []).map((listing) => listing.id)
+
+  if (listingIds.length === 0) {
+    return { data: [], error: null }
+  }
+
+  const [viewsResult, inquiriesResult] = await Promise.all([
+    getSupabaseClient()
+      .from('listing_engagement_events')
+      .select('listing_id, created_at, event_type')
+      .in('listing_id', listingIds)
+      .eq('event_type', 'view'),
+    getSupabaseClient()
+      .from('contact_requests')
+      .select('listing_id, status, created_at')
+      .in('listing_id', listingIds),
+  ])
+
+  if (viewsResult.error) {
+    return { data: [], error: viewsResult.error }
+  }
+
+  if (inquiriesResult.error) {
+    return { data: [], error: inquiriesResult.error }
+  }
+
+  const performanceByListing = new Map<string, ListingPerformanceSummary>(
+    listingIds.map((listingId) => [
+      listingId,
+      {
+        listingId,
+        viewCount: 0,
+        inquiryCount: 0,
+        pendingInquiryCount: 0,
+        respondedInquiryCount: 0,
+        lastInquiryAt: null,
+      },
+    ]),
+  )
+
+  for (const event of viewsResult.data ?? []) {
+    const current = performanceByListing.get(event.listing_id)
+
+    if (!current) {
+      continue
+    }
+
+    current.viewCount += 1
+  }
+
+  for (const inquiry of inquiriesResult.data ?? []) {
+    const current = performanceByListing.get(inquiry.listing_id)
+
+    if (!current) {
+      continue
+    }
+
+    current.inquiryCount += 1
+
+    if (inquiry.status === 'pending') {
+      current.pendingInquiryCount += 1
+    }
+
+    if (inquiry.status === 'responded') {
+      current.respondedInquiryCount += 1
+    }
+
+    if (
+      !current.lastInquiryAt ||
+      new Date(inquiry.created_at).getTime() > new Date(current.lastInquiryAt).getTime()
+    ) {
+      current.lastInquiryAt = inquiry.created_at
+    }
+  }
+
+  return {
+    data: listingIds
+      .map((listingId) => performanceByListing.get(listingId))
+      .filter((item): item is ListingPerformanceSummary => Boolean(item)),
+    error: null,
+  }
 }
 
 export async function createListing(

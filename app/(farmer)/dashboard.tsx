@@ -14,10 +14,14 @@ import {
   markSellerInquiriesSeen,
 } from '../../services/contactService'
 import { getListingCopilotAnalytics } from '../../services/aiService'
-import { getFarmerListings } from '../../services/listingService'
+import {
+  getFarmerListings,
+  getSellerListingPerformance,
+} from '../../services/listingService'
 import type {
   AIAnalyticsSummary,
   ContactRequestSummary,
+  ListingPerformanceSummary,
   ListingPreview,
 } from '../../types/app'
 import { formatDate, formatPrice } from '../../utils/formatters'
@@ -91,10 +95,15 @@ function MetricCard({ label, value, tone = 'default' }: MetricCardProps) {
 
 type ListingPreviewCardProps = {
   listing: ListingPreview
+  performance?: ListingPerformanceSummary
   onEdit: () => void
 }
 
-function ListingPreviewCard({ listing, onEdit }: ListingPreviewCardProps) {
+function ListingPreviewCard({
+  listing,
+  performance,
+  onEdit,
+}: ListingPreviewCardProps) {
   return (
     <View style={styles.listingCard}>
       {listing.imageUrl ? (
@@ -130,6 +139,27 @@ function ListingPreviewCard({ listing, onEdit }: ListingPreviewCardProps) {
           </View>
         </View>
 
+        <View style={styles.listingPerformanceRow}>
+          <View style={styles.listingPerformanceChip}>
+            <Text style={styles.listingPerformanceValue}>
+              {performance?.viewCount ?? 0}
+            </Text>
+            <Text style={styles.listingPerformanceLabel}>Views</Text>
+          </View>
+          <View style={styles.listingPerformanceChip}>
+            <Text style={styles.listingPerformanceValue}>
+              {performance?.inquiryCount ?? 0}
+            </Text>
+            <Text style={styles.listingPerformanceLabel}>Inquiries</Text>
+          </View>
+          <View style={styles.listingPerformanceChip}>
+            <Text style={styles.listingPerformanceValue}>
+              {performance?.pendingInquiryCount ?? 0}
+            </Text>
+            <Text style={styles.listingPerformanceLabel}>Pending</Text>
+          </View>
+        </View>
+
         <View style={styles.listingFooter}>
           <Text style={styles.listingDate}>Posted {formatDate(listing.createdAt)}</Text>
           <Pressable onPress={onEdit} style={styles.inlineAction}>
@@ -148,19 +178,25 @@ export default function FarmerDashboardScreen() {
   const [listings, setListings] = useState<ListingPreview[]>([])
   const [inquiries, setInquiries] = useState<ContactRequestSummary[]>([])
   const [aiAnalytics, setAiAnalytics] = useState<AIAnalyticsSummary | null>(null)
+  const [listingPerformance, setListingPerformance] = useState<
+    ListingPerformanceSummary[]
+  >([])
 
   const loadDashboard = useCallback(async () => {
     if (!user) {
       setListings([])
       setInquiries([])
       setAiAnalytics(null)
+      setListingPerformance([])
       return
     }
 
-    const [listingsResult, inquiriesResult, analyticsResult] = await Promise.all([
+    const [listingsResult, inquiriesResult, analyticsResult, performanceResult] =
+      await Promise.all([
       getFarmerListings(user.id),
       getSellerInquiries(user.id),
       getListingCopilotAnalytics(user.id),
+      getSellerListingPerformance(user.id),
     ])
 
     if (listingsResult.error) {
@@ -175,9 +211,14 @@ export default function FarmerDashboardScreen() {
       showToast(analyticsResult.error.message, 'error')
     }
 
+    if (performanceResult.error) {
+      showToast(performanceResult.error.message, 'error')
+    }
+
     setListings(listingsResult.data ?? [])
     setInquiries(inquiriesResult.data ?? [])
     setAiAnalytics(analyticsResult.data)
+    setListingPerformance(performanceResult.data ?? [])
   }, [showToast, user])
 
   useFocusEffect(
@@ -222,6 +263,34 @@ export default function FarmerDashboardScreen() {
   const profileIncomplete = useMemo(
     () => !profile?.phone || !profile?.city || !profile?.avatar_url,
     [profile],
+  )
+  const performanceByListing = useMemo(
+    () => new Map(listingPerformance.map((item) => [item.listingId, item])),
+    [listingPerformance],
+  )
+  const totalViews = useMemo(
+    () => listingPerformance.reduce((sum, item) => sum + item.viewCount, 0),
+    [listingPerformance],
+  )
+  const totalInquiries = useMemo(
+    () => listingPerformance.reduce((sum, item) => sum + item.inquiryCount, 0),
+    [listingPerformance],
+  )
+  const strongestListing = useMemo(() => {
+    if (listingPerformance.length === 0) {
+      return null
+    }
+
+    return [...listingPerformance].sort((left, right) => {
+      const leftScore = left.viewCount + left.inquiryCount * 3
+      const rightScore = right.viewCount + right.inquiryCount * 3
+
+      return rightScore - leftScore
+    })[0]
+  }, [listingPerformance])
+  const strongestListingTitle = useMemo(
+    () => listings.find((listing) => listing.id === strongestListing?.listingId)?.title ?? null,
+    [listings, strongestListing?.listingId],
   )
 
   return (
@@ -287,6 +356,45 @@ export default function FarmerDashboardScreen() {
             tone={pendingInquiryCount > 0 ? 'attention' : 'default'}
           />
           <MetricCard label="Sold items" value={soldCount.toString()} />
+        </View>
+
+        <View style={styles.performanceCard}>
+          <View style={styles.performanceHeader}>
+            <View>
+              <Text style={styles.performanceTitle}>Listing performance</Text>
+              <Text style={styles.performanceSubtitle}>
+                Views and inquiries across your marketplace listings
+              </Text>
+            </View>
+            <Pressable onPress={() => router.push('/(farmer)/my-listings')}>
+              <Text style={styles.linkText}>Open listings</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.performanceStatRow}>
+            <View style={styles.performanceStatCard}>
+              <Text style={styles.performanceStatValue}>{totalViews}</Text>
+              <Text style={styles.performanceStatLabel}>Total views</Text>
+            </View>
+            <View style={styles.performanceStatCard}>
+              <Text style={styles.performanceStatValue}>{totalInquiries}</Text>
+              <Text style={styles.performanceStatLabel}>Total inquiries</Text>
+            </View>
+          </View>
+
+          {strongestListing && strongestListingTitle ? (
+            <View style={styles.performanceHighlight}>
+              <Text style={styles.performanceHighlightLabel}>Top listing right now</Text>
+              <Text style={styles.performanceHighlightTitle}>{strongestListingTitle}</Text>
+              <Text style={styles.performanceHighlightMeta}>
+                {strongestListing.viewCount} views | {strongestListing.inquiryCount} inquiries
+              </Text>
+            </View>
+          ) : (
+            <Text style={styles.performanceEmptyText}>
+              Listing views will appear here once buyers start opening your listings.
+            </Text>
+          )}
         </View>
 
         <View style={styles.aiCard}>
@@ -429,6 +537,7 @@ export default function FarmerDashboardScreen() {
                 <ListingPreviewCard
                   key={listing.id}
                   listing={listing}
+                  performance={performanceByListing.get(listing.id)}
                   onEdit={() => router.push(`/(farmer)/edit-listing/${listing.id}`)}
                 />
               ))}
@@ -611,6 +720,83 @@ const styles = StyleSheet.create({
     color: palette.clay,
     fontSize: 11,
     fontWeight: '800',
+  },
+  performanceCard: {
+    backgroundColor: palette.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: palette.border,
+    padding: 16,
+    gap: 14,
+    ...shadow,
+  },
+  performanceHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  performanceTitle: {
+    color: palette.soil,
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  performanceSubtitle: {
+    color: palette.muted,
+    marginTop: 2,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  performanceStatRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  performanceStatCard: {
+    flex: 1,
+    minHeight: 88,
+    backgroundColor: '#f6f8f5',
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: palette.border,
+    padding: 12,
+    justifyContent: 'space-between',
+  },
+  performanceStatValue: {
+    color: palette.soil,
+    fontSize: 24,
+    fontWeight: '900',
+  },
+  performanceStatLabel: {
+    color: palette.muted,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  performanceHighlight: {
+    backgroundColor: '#eef6ed',
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(58, 102, 72, 0.12)',
+    padding: 14,
+    gap: 4,
+  },
+  performanceHighlightLabel: {
+    color: palette.sageDark,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  performanceHighlightTitle: {
+    color: palette.soil,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  performanceHighlightMeta: {
+    color: palette.muted,
+    fontSize: 13,
+  },
+  performanceEmptyText: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 20,
   },
   aiCard: {
     backgroundColor: '#eef6ed',
@@ -811,6 +997,30 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontSize: 13,
     lineHeight: 18,
+  },
+  listingPerformanceRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  listingPerformanceChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 999,
+    backgroundColor: '#f2f6f1',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  listingPerformanceValue: {
+    color: palette.soil,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  listingPerformanceLabel: {
+    color: palette.muted,
+    fontSize: 12,
+    fontWeight: '700',
   },
   statusPill: {
     borderRadius: 999,

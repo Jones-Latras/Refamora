@@ -17,7 +17,7 @@ The goal is simple: keep Refamora useful as a real marketplace first, then use A
 ## Master Checklist
 
 Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
-Latest note: 2026-04-17 buyer browsing now includes a clearer in-screen `List / Map` toggle, buyer search remembers the latest query and filters, buyers can save listings for later, and distance-aware browsing is now partially live in feed and listing details.
+Latest note: 2026-04-17 buyer discovery now includes save, distance, and map improvements, while farmer operations now show real listing performance with views and inquiries.
 
 ### AI Phase 0 - Foundations
 
@@ -136,7 +136,7 @@ Refamora will feel more credible when seller identity and listing quality are st
 The buyer side works, but it can become much more useful.
 
 - [~] Improve search relevance and filter persistence
-- [~] Add distance-aware browsing from buyer location
+- [x] Add distance-aware browsing from buyer location
 - [x] Add a clearer `List / Map` browsing toggle
 - [x] Add saved filters or favorites
 - [x] Add contact request status states such as `sent`, `seen`, `responded`
@@ -149,7 +149,7 @@ The seller flow should help farmers act faster with less friction.
 
 - [ ] Add draft listings so incomplete forms do not block progress
 - [ ] Add duplicate listing action for recurring waste types
-- [ ] Add listing performance summary such as views and inquiries
+- [x] Add listing performance summary such as views and inquiries
 - [ ] Add inquiry inbox grouping by listing
 - [ ] Add activity timeline per listing
 - [ ] Add bulk status actions for older listings

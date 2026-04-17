@@ -29,7 +29,11 @@ import {
   sendContactRequest,
 } from '../../../services/contactService'
 import { requestCurrentCoordinates } from '../../../services/locationService'
-import { getListingById, getRelatedListings } from '../../../services/listingService'
+import {
+  getListingById,
+  getRelatedListings,
+  recordListingView,
+} from '../../../services/listingService'
 import type { ListingDetail, ListingPreview } from '../../../types/app'
 import { formatDate, formatPrice, titleCase } from '../../../utils/formatters'
 import { formatDistanceAway, getDistanceKm } from '../../../utils/location'
@@ -158,6 +162,17 @@ export default function ListingDetailScreen() {
 
     addRecentlyViewed(listing.id)
   }, [addRecentlyViewed, listing, role])
+
+  useEffect(() => {
+    if (!user || role !== 'buyer' || !listing) {
+      return
+    }
+
+    void recordListingView({
+      listingId: listing.id,
+      buyerId: user.id,
+    })
+  }, [listing, role, user])
 
   useEffect(() => {
     let isMounted = true

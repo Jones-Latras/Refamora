@@ -158,6 +158,29 @@ export type Database = {
         }
         Relationships: []
       }
+      listing_engagement_events: {
+        Row: {
+          id: string
+          listing_id: string
+          buyer_id: string
+          event_type: 'view'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          listing_id: string
+          buyer_id: string
+          event_type?: 'view'
+          created_at?: string
+        }
+        Update: {
+          listing_id?: string
+          buyer_id?: string
+          event_type?: 'view'
+          created_at?: string
+        }
+        Relationships: []
+      }
       listing_review_queue: {
         Row: {
           id: string
