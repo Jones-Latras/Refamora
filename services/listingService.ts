@@ -17,6 +17,10 @@ type ListingRow = Tables<'listings'>
 type SellerRow = Tables<'users'>
 const PAGE_SIZE = 12
 
+function hasText(value?: string | null) {
+  return Boolean(value?.trim())
+}
+
 function mapListing(row: ListingRow): ListingPreview {
   return {
     id: row.id,
@@ -53,6 +57,15 @@ function mapSeller(
     city: row.city,
     avatarUrl: row.avatar_url,
     phone: row.phone,
+    profileCompletionPercent: Math.round(
+      ([hasText(row.full_name), hasText(row.avatar_url), hasText(row.phone), hasText(row.city)]
+        .filter(Boolean).length /
+        4) *
+        100,
+    ),
+    isProfileComplete: [row.full_name, row.avatar_url, row.phone, row.city].every((value) =>
+      hasText(value),
+    ),
     listingCount: stats?.listingCount ?? null,
     respondedInquiryCount: stats?.respondedInquiryCount ?? null,
   }

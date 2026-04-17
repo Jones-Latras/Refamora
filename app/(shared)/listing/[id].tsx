@@ -240,6 +240,23 @@ export default function ListingDetailScreen() {
   const canSaveListing = role !== 'farmer'
   const isSaved = listing ? savedListingIds.includes(listing.id) : false
   const postedLabel = listing ? formatRelativePostedDate(listing.createdAt) : ''
+  const sellerTrustSummary = useMemo(() => {
+    if (!listing?.seller) {
+      return null
+    }
+
+    return listing.seller.isProfileComplete
+      ? {
+          title: 'Trusted seller profile',
+          description:
+            'This seller has shared a photo, location, and contact details for smoother coordination.',
+        }
+      : {
+          title: 'Seller profile still in progress',
+          description:
+            'Some trust details are still missing, but you can still review the listing and send a request.',
+        }
+  }, [listing?.seller])
 
   const handleBackPress = () => {
     if (router.canGoBack()) {
@@ -533,7 +550,7 @@ export default function ListingDetailScreen() {
         ) : null}
 
         <View style={styles.sellerSection}>
-          <Text style={styles.sectionTitle}>Seller</Text>
+          <Text style={styles.sectionTitle}>Seller trust</Text>
           {listing.seller ? (
             <>
               <View style={styles.sellerRow}>
@@ -554,10 +571,72 @@ export default function ListingDetailScreen() {
                   <Text style={styles.sellerLocation}>
                     {listing.seller.city ?? 'Location not provided'}
                   </Text>
+                  <View style={styles.sellerBadgeRow}>
+                    <View
+                      style={[
+                        styles.sellerBadge,
+                        listing.seller.isProfileComplete
+                          ? styles.sellerBadgePositive
+                          : styles.sellerBadgeNeutral,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.sellerBadgeText,
+                          listing.seller.isProfileComplete
+                            ? styles.sellerBadgeTextPositive
+                            : null,
+                        ]}
+                      >
+                        {listing.seller.isProfileComplete ? 'Profile ready' : 'Profile improving'}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.sellerBadge,
+                        listing.seller.phone
+                          ? styles.sellerBadgePositive
+                          : styles.sellerBadgeNeutral,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.sellerBadgeText,
+                          listing.seller.phone ? styles.sellerBadgeTextPositive : null,
+                        ]}
+                      >
+                        {listing.seller.phone ? 'Phone on file' : 'No phone yet'}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
               </View>
 
+              {sellerTrustSummary ? (
+                <View
+                  style={[
+                    styles.sellerTrustSummaryCard,
+                    listing.seller.isProfileComplete
+                      ? styles.sellerTrustSummaryCardPositive
+                      : null,
+                  ]}
+                >
+                  <Text style={styles.sellerTrustSummaryTitle}>
+                    {sellerTrustSummary.title}
+                  </Text>
+                  <Text style={styles.sellerTrustSummaryText}>
+                    {sellerTrustSummary.description}
+                  </Text>
+                </View>
+              ) : null}
+
               <View style={styles.sellerTrustGrid}>
+                <View style={styles.sellerTrustCard}>
+                  <Text style={styles.sellerTrustValue}>
+                    {listing.seller.profileCompletionPercent}%
+                  </Text>
+                  <Text style={styles.sellerTrustLabel}>Profile complete</Text>
+                </View>
                 <View style={styles.sellerTrustCard}>
                   <Text style={styles.sellerTrustValue}>
                     {listing.seller.listingCount ?? 0}
@@ -891,14 +970,67 @@ const styles = StyleSheet.create({
   },
   sellerMeta: {
     flex: 1,
-    gap: 2,
+    gap: 6,
+  },
+  sellerBadgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 2,
+  },
+  sellerBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: '#f3f5f2',
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  sellerBadgePositive: {
+    backgroundColor: '#eef6ed',
+    borderColor: 'rgba(58, 102, 72, 0.12)',
+  },
+  sellerBadgeNeutral: {
+    backgroundColor: '#f5f6f4',
+  },
+  sellerBadgeText: {
+    color: palette.muted,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  sellerBadgeTextPositive: {
+    color: palette.sageDark,
+  },
+  sellerTrustSummaryCard: {
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: '#fafbfa',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 4,
+  },
+  sellerTrustSummaryCardPositive: {
+    backgroundColor: '#eef6ed',
+    borderColor: 'rgba(58, 102, 72, 0.12)',
+  },
+  sellerTrustSummaryTitle: {
+    color: palette.soil,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  sellerTrustSummaryText: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 18,
   },
   sellerTrustGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
   },
   sellerTrustCard: {
-    flex: 1,
+    width: '31%',
     backgroundColor: palette.surface,
     borderRadius: radii.md,
     borderWidth: 1,

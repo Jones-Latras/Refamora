@@ -40,6 +40,8 @@ export type SellerProfile = {
   city: string | null
   avatarUrl: string | null
   phone: string | null
+  profileCompletionPercent: number
+  isProfileComplete: boolean
   listingCount: number | null
   respondedInquiryCount: number | null
 }
