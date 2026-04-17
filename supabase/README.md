@@ -65,5 +65,10 @@ Set these in Supabase before deploying AI functions:
 - `GEMINI_API_KEY=<your-key-if-used>`
 - `GEMINI_MODEL=gemini-2.5-flash`
 - `GEMINI_TIMEOUT_MS=20000`
+- `AI_RATE_LIMIT_ENABLED=true`
+- `AI_RATE_LIMIT_WINDOW_MINUTES=10`
+- `AI_RATE_LIMIT_MAX_REQUESTS=8`
 
 If you deploy functions remotely, note that `LOCAL_GEMMA_BASE_URL` must point to a reachable host from the function runtime. For live hackathon demos on one machine, local or self-hosted execution is the safer path.
+
+The current rate limiter uses `ai_events` as the request log and enforces a per-user rolling window on the listing copilot endpoint.

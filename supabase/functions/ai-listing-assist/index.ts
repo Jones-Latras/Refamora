@@ -1,6 +1,9 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
 
-import { logAIEvent } from '../_shared/aiEventLogger.ts'
+import {
+  getAIRateLimitStatus,
+  logAIEvent,
+} from '../_shared/aiEventLogger.ts'
 import { assistListing } from '../_shared/aiService.ts'
 import { getAuthenticatedFarmer } from '../_shared/auth.ts'
 import type { ListingAssistInput } from '../_shared/aiTypes.ts'
@@ -35,6 +38,41 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
     })
+  }
+
+  const rateLimit = await getAIRateLimitStatus({
+    req,
+    userId: auth.user.id,
+    feature: 'listing_copilot',
+  })
+
+  if (!rateLimit.allowed) {
+    await logAIEvent({
+      req,
+      userId: auth.user.id,
+      feature: 'listing_copilot',
+      requestStatus: 'error',
+      metadata: {
+        rateLimited: true,
+        limit: rateLimit.limit,
+        windowMinutes: rateLimit.windowMinutes,
+        recentRequestCount: rateLimit.recentRequestCount,
+      },
+    })
+
+    return new Response(
+      JSON.stringify({
+        error: `AI assist is busy right now. Please wait a few minutes and try again. Limit: ${rateLimit.limit} requests per ${rateLimit.windowMinutes} minutes.`,
+      }),
+      {
+        status: 429,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+          'Retry-After': String(rateLimit.retryAfterSeconds),
+        },
+      },
+    )
   }
 
   const startedAt = Date.now()

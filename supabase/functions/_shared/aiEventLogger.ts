@@ -5,6 +5,14 @@ import type {
   AIProvider,
 } from './aiTypes.ts'
 
+type AIRateLimitStatus = {
+  allowed: boolean
+  limit: number
+  windowMinutes: number
+  retryAfterSeconds: number
+  recentRequestCount: number
+}
+
 type LogAIEventInput = {
   req: Request
   userId: string
@@ -52,6 +60,96 @@ export async function logAIEvent({
   }
 
   return typeof data?.id === 'string' ? data.id : null
+}
+
+function isEnabled(value: string | undefined, fallback: boolean) {
+  if (value == null) {
+    return fallback
+  }
+
+  return value.trim().toLowerCase() === 'true'
+}
+
+function getRateLimitConfig() {
+  return {
+    enabled: isEnabled(Deno.env.get('AI_RATE_LIMIT_ENABLED'), true),
+    windowMinutes: Math.max(
+      1,
+      Number.parseInt(Deno.env.get('AI_RATE_LIMIT_WINDOW_MINUTES') ?? '10', 10),
+    ),
+    maxRequests: Math.max(
+      1,
+      Number.parseInt(Deno.env.get('AI_RATE_LIMIT_MAX_REQUESTS') ?? '8', 10),
+    ),
+  }
+}
+
+export async function getAIRateLimitStatus({
+  req,
+  userId,
+  feature,
+}: {
+  req: Request
+  userId: string
+  feature: AIFeature
+}): Promise<AIRateLimitStatus> {
+  const config = getRateLimitConfig()
+
+  if (!config.enabled) {
+    return {
+      allowed: true,
+      limit: config.maxRequests,
+      windowMinutes: config.windowMinutes,
+      retryAfterSeconds: 0,
+      recentRequestCount: 0,
+    }
+  }
+
+  const supabase = getRequestClient(req)
+
+  if (!supabase) {
+    return {
+      allowed: false,
+      limit: config.maxRequests,
+      windowMinutes: config.windowMinutes,
+      retryAfterSeconds: config.windowMinutes * 60,
+      recentRequestCount: 0,
+    }
+  }
+
+  const windowStart = new Date(
+    Date.now() - config.windowMinutes * 60 * 1000,
+  ).toISOString()
+
+  const { count, error } = await supabase
+    .from('ai_events')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('feature', feature)
+    .gte('created_at', windowStart)
+
+  if (error) {
+    console.error('Failed to read AI rate limit status', error.message)
+
+    return {
+      allowed: false,
+      limit: config.maxRequests,
+      windowMinutes: config.windowMinutes,
+      retryAfterSeconds: config.windowMinutes * 60,
+      recentRequestCount: 0,
+    }
+  }
+
+  const recentRequestCount = count ?? 0
+  const allowed = recentRequestCount < config.maxRequests
+
+  return {
+    allowed,
+    limit: config.maxRequests,
+    windowMinutes: config.windowMinutes,
+    retryAfterSeconds: allowed ? 0 : config.windowMinutes * 60,
+    recentRequestCount,
+  }
 }
 
 type SubmitAIEventFeedbackInput = {
