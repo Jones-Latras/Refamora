@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import * as ExpoLinking from 'expo-linking'
 import { useEffect, useMemo, useState } from 'react'
 import MapView, { Marker } from 'react-native-maps'
@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { ContactSellerModal } from '../../../components/ContactSellerModal'
 import { EmptyState } from '../../../components/EmptyState'
 import { FulfillmentLabel } from '../../../components/FulfillmentLabel'
+import { ListingCard } from '../../../components/ListingCard'
 import { useToast } from '../../../components/Toast'
 import { useAuth } from '../../../hooks/useAuth'
 import { useRecentlyViewedStore } from '../../../hooks/useRecentlyViewed'
@@ -25,8 +26,8 @@ import {
   getBuyerContactRequests,
   sendContactRequest,
 } from '../../../services/contactService'
-import { getListingById } from '../../../services/listingService'
-import type { ListingDetail } from '../../../types/app'
+import { getListingById, getRelatedListings } from '../../../services/listingService'
+import type { ListingDetail, ListingPreview } from '../../../types/app'
 import { formatDate, formatPrice, titleCase } from '../../../utils/formatters'
 import { palette, radii, shadow } from '../../../utils/theme'
 
@@ -43,6 +44,28 @@ function getAvatarInitials(name?: string | null) {
     .join('')
 }
 
+function formatRelativePostedDate(value: string) {
+  const createdAt = new Date(value)
+  const now = Date.now()
+  const diffMs = Math.max(now - createdAt.getTime(), 0)
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const diffDays = Math.floor(diffHours / 24)
+
+  if (diffHours < 1) {
+    return 'Posted just now'
+  }
+
+  if (diffHours < 24) {
+    return `Posted ${diffHours} hour${diffHours === 1 ? '' : 's'} ago`
+  }
+
+  if (diffDays < 7) {
+    return `Posted ${diffDays} day${diffDays === 1 ? '' : 's'} ago`
+  }
+
+  return `Posted on ${formatDate(value)}`
+}
+
 export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { user, role } = useAuth()
@@ -54,6 +77,7 @@ export default function ListingDetailScreen() {
   const [contactMessage, setContactMessage] = useState('')
   const [isSubmittingContact, setIsSubmittingContact] = useState(false)
   const [hasRequestedContact, setHasRequestedContact] = useState(false)
+  const [relatedListings, setRelatedListings] = useState<ListingPreview[]>([])
 
   useEffect(() => {
     let isMounted = true
@@ -126,6 +150,42 @@ export default function ListingDetailScreen() {
     addRecentlyViewed(listing.id)
   }, [addRecentlyViewed, listing, role])
 
+  useEffect(() => {
+    let isMounted = true
+
+    const loadRelatedListings = async () => {
+      if (!listing) {
+        if (isMounted) {
+          setRelatedListings([])
+        }
+        return
+      }
+
+      const result = await getRelatedListings({
+        listingId: listing.id,
+        wasteType: listing.wasteType,
+        city: listing.city,
+      })
+
+      if (!isMounted) {
+        return
+      }
+
+      if (result.error) {
+        setRelatedListings([])
+        return
+      }
+
+      setRelatedListings(result.data ?? [])
+    }
+
+    void loadRelatedListings()
+
+    return () => {
+      isMounted = false
+    }
+  }, [listing])
+
   const readableWasteType = useMemo(() => {
     if (!listing) {
       return ''
@@ -136,6 +196,21 @@ export default function ListingDetailScreen() {
 
   const canContactSeller =
     role === 'buyer' && !!user && !!listing && user.id !== listing.sellerId
+  const postedLabel = listing ? formatRelativePostedDate(listing.createdAt) : ''
+
+  const handleBackPress = () => {
+    if (router.canGoBack()) {
+      router.back()
+      return
+    }
+
+    if (!user) {
+      router.replace('/(auth)/login')
+      return
+    }
+
+    router.replace(role === 'farmer' ? '/(farmer)/dashboard' : '/(buyer)/feed')
+  }
 
   const handleShareListing = async () => {
     if (!listing) {
@@ -237,6 +312,12 @@ export default function ListingDetailScreen() {
           canContactSeller ? styles.contentWithFooter : null,
         ]}
       >
+        <View style={styles.topBar}>
+          <Pressable onPress={handleBackPress} style={styles.backButton}>
+            <Text style={styles.backButtonText}>Back</Text>
+          </Pressable>
+        </View>
+
         {listing.imageUrl ? (
           <Image source={{ uri: listing.imageUrl }} style={styles.heroImage} />
         ) : (
@@ -257,6 +338,14 @@ export default function ListingDetailScreen() {
             <Pressable onPress={() => void handleShareListing()} style={styles.shareButton}>
               <Text style={styles.shareButtonText}>Share</Text>
             </Pressable>
+          </View>
+          <View style={styles.heroBadgeRow}>
+            <View style={styles.infoBadge}>
+              <Text style={styles.infoBadgeText}>{postedLabel}</Text>
+            </View>
+            <View style={styles.infoBadge}>
+              <Text style={styles.infoBadgeText}>{titleCase(listing.status)}</Text>
+            </View>
           </View>
           <Text style={styles.meta}>
             {listing.city} | {listing.quantity} {listing.unit} | {formatDate(listing.createdAt)}
@@ -336,26 +425,43 @@ export default function ListingDetailScreen() {
         <View style={styles.sellerSection}>
           <Text style={styles.sectionTitle}>Seller</Text>
           {listing.seller ? (
-            <View style={styles.sellerRow}>
-              {listing.seller.avatarUrl ? (
-                <Image
-                  source={{ uri: listing.seller.avatarUrl }}
-                  style={styles.avatarImage}
-                />
-              ) : (
-                <View style={styles.avatarFallback}>
-                  <Text style={styles.avatarText}>
-                    {getAvatarInitials(listing.seller.fullName)}
+            <>
+              <View style={styles.sellerRow}>
+                {listing.seller.avatarUrl ? (
+                  <Image
+                    source={{ uri: listing.seller.avatarUrl }}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <View style={styles.avatarFallback}>
+                    <Text style={styles.avatarText}>
+                      {getAvatarInitials(listing.seller.fullName)}
+                    </Text>
+                  </View>
+                )}
+                <View style={styles.sellerMeta}>
+                  <Text style={styles.sellerName}>{listing.seller.fullName}</Text>
+                  <Text style={styles.sellerLocation}>
+                    {listing.seller.city ?? 'Location not provided'}
                   </Text>
                 </View>
-              )}
-              <View style={styles.sellerMeta}>
-                <Text style={styles.sellerName}>{listing.seller.fullName}</Text>
-                <Text style={styles.sellerLocation}>
-                  {listing.seller.city ?? 'Location not provided'}
-                </Text>
               </View>
-            </View>
+
+              <View style={styles.sellerTrustGrid}>
+                <View style={styles.sellerTrustCard}>
+                  <Text style={styles.sellerTrustValue}>
+                    {listing.seller.listingCount ?? 0}
+                  </Text>
+                  <Text style={styles.sellerTrustLabel}>Listings posted</Text>
+                </View>
+                <View style={styles.sellerTrustCard}>
+                  <Text style={styles.sellerTrustValue}>
+                    {listing.seller.respondedInquiryCount ?? 0}
+                  </Text>
+                  <Text style={styles.sellerTrustLabel}>Buyer replies sent</Text>
+                </View>
+              </View>
+            </>
           ) : (
             <Text style={styles.sectionText}>
               Seller information is unavailable right now.
@@ -371,6 +477,28 @@ export default function ListingDetailScreen() {
                 ? `Phone: ${listing.seller.phone}`
                 : 'This seller has not added a phone number yet.'}
             </Text>
+          </View>
+        ) : null}
+
+        {relatedListings.length > 0 ? (
+          <View style={styles.relatedSection}>
+            <View style={styles.relatedHeader}>
+              <View>
+                <Text style={styles.sectionTitle}>Related listings</Text>
+                <Text style={styles.relatedSubtitle}>
+                  Similar waste listings you can compare right away.
+                </Text>
+              </View>
+            </View>
+            <View style={styles.relatedStack}>
+              {relatedListings.map((item) => (
+                <ListingCard
+                  key={item.id}
+                  listing={item}
+                  onPress={() => router.replace(`/(shared)/listing/${item.id}`)}
+                />
+              ))}
+            </View>
           </View>
         ) : null}
       </ScrollView>
@@ -418,6 +546,24 @@ const styles = StyleSheet.create({
   },
   contentWithFooter: {
     paddingBottom: 120,
+  },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+  },
+  backButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: palette.surface,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: palette.border,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  backButtonText: {
+    color: palette.soil,
+    fontSize: 13,
+    fontWeight: '800',
   },
   loadingState: {
     flex: 1,
@@ -486,6 +632,22 @@ const styles = StyleSheet.create({
     color: palette.muted,
     lineHeight: 22,
   },
+  heroBadgeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  infoBadge: {
+    borderRadius: 999,
+    backgroundColor: '#eef5ef',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  infoBadgeText: {
+    color: palette.sageDark,
+    fontSize: 12,
+    fontWeight: '800',
+  },
   shareButton: {
     alignSelf: 'flex-start',
     backgroundColor: palette.surface,
@@ -513,6 +675,19 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: palette.border,
     paddingTop: 18,
+    gap: 12,
+  },
+  relatedSection: {
+    gap: 12,
+  },
+  relatedHeader: {
+    gap: 4,
+  },
+  relatedSubtitle: {
+    color: palette.muted,
+    lineHeight: 20,
+  },
+  relatedStack: {
     gap: 12,
   },
   sectionTitle: {
@@ -577,6 +752,32 @@ const styles = StyleSheet.create({
   sellerMeta: {
     flex: 1,
     gap: 2,
+  },
+  sellerTrustGrid: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  sellerTrustCard: {
+    flex: 1,
+    backgroundColor: palette.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: palette.border,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    gap: 4,
+    ...shadow,
+  },
+  sellerTrustValue: {
+    color: palette.soil,
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  sellerTrustLabel: {
+    color: palette.muted,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '700',
   },
   sellerName: {
     color: palette.soil,

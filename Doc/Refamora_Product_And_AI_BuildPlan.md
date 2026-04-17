@@ -17,7 +17,7 @@ The goal is simple: keep Refamora useful as a real marketplace first, then use A
 ## Master Checklist
 
 Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
-Latest note: 2026-04-17 buyer feed now shows a direct recently viewed strip, and listing shares preserve the intended route through login and role selection so users can jump back into specific items more easily.
+Latest note: 2026-04-17 the buyer and farmer tab bars now include icons, and listing details now include stronger trust context plus related listings so navigation and discovery both feel more complete.
 
 ### AI Phase 0 - Foundations
 
@@ -117,7 +117,7 @@ The app now has the right screens, but the movement between them still needs to 
 - [x] Add deep linking for listings so shared links open directly to the item
 - [x] Add a share action on listing details
 - [x] Add a recently viewed pathway for buyers that is easy to revisit
-- [ ] Reduce repeated headers and duplicated page titles across remaining screens
+- [~] Reduce repeated headers and duplicated page titles across remaining screens
 
 ### Priority 3: Marketplace Trust And Profile Quality
 
@@ -140,8 +140,8 @@ The buyer side works, but it can become much more useful.
 - [ ] Add a clearer `List / Map` browsing toggle
 - [ ] Add saved filters or favorites
 - [x] Add contact request status states such as `sent`, `seen`, `responded`
-- [ ] Add richer listing details: distance, posted age, seller activity, clearer map preview
-- [ ] Add related listings section on listing details
+- [~] Add richer listing details: distance, posted age, seller activity, clearer map preview
+- [x] Add related listings section on listing details
 
 ### Priority 5: Farmer Operations
 

@@ -32,7 +32,13 @@ function mapListing(row: ListingRow): ListingPreview {
   }
 }
 
-function mapSeller(row: SellerRow | null): SellerProfile | null {
+function mapSeller(
+  row: SellerRow | null,
+  stats?: {
+    listingCount?: number | null
+    respondedInquiryCount?: number | null
+  },
+): SellerProfile | null {
   if (!row) {
     return null
   }
@@ -43,12 +49,14 @@ function mapSeller(row: SellerRow | null): SellerProfile | null {
     city: row.city,
     avatarUrl: row.avatar_url,
     phone: row.phone,
+    listingCount: stats?.listingCount ?? null,
+    respondedInquiryCount: stats?.respondedInquiryCount ?? null,
   }
 }
 
 function mapListingDetail(
   row: ListingRow,
-  seller: SellerRow | null,
+  seller: SellerProfile | null,
 ): ListingDetail {
   return {
     id: row.id,
@@ -68,7 +76,7 @@ function mapListingDetail(
     fulfillmentType: row.fulfillment_type,
     status: row.status,
     createdAt: row.created_at ?? new Date().toISOString(),
-    seller: mapSeller(seller),
+    seller,
   }
 }
 
@@ -165,6 +173,53 @@ export async function getListingPreviewsByIds(
   }
 }
 
+export async function getRelatedListings(input: {
+  listingId: string
+  wasteType: string
+  city?: string | null
+}): Promise<ServiceResult<ListingPreview[]>> {
+  if (!hasSupabaseEnv) {
+    return { data: [], error: null }
+  }
+
+  let query = getSupabaseClient()
+    .from('listings')
+    .select('*')
+    .eq('status', 'active')
+    .eq('waste_type', input.wasteType)
+    .neq('id', input.listingId)
+    .order('created_at', { ascending: false })
+    .limit(4)
+
+  if (input.city?.trim()) {
+    query = query.eq('city', input.city.trim())
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    return { data: [], error }
+  }
+
+  if ((data?.length ?? 0) > 0 || !input.city?.trim()) {
+    return { data: data?.map(mapListing) ?? [], error: null }
+  }
+
+  const fallback = await getSupabaseClient()
+    .from('listings')
+    .select('*')
+    .eq('status', 'active')
+    .eq('waste_type', input.wasteType)
+    .neq('id', input.listingId)
+    .order('created_at', { ascending: false })
+    .limit(4)
+
+  return {
+    data: fallback.data?.map(mapListing) ?? [],
+    error: fallback.error,
+  }
+}
+
 export async function getListingById(
   listingId: string,
 ): Promise<ServiceResult<ListingDetail>> {
@@ -188,7 +243,24 @@ export async function getListingById(
     .eq('id', data.seller_id)
     .maybeSingle()
 
-  return { data: mapListingDetail(data, seller), error: null }
+  const [{ count: listingCount }, { count: respondedInquiryCount }] = await Promise.all([
+    getSupabaseClient()
+      .from('listings')
+      .select('id', { count: 'exact', head: true })
+      .eq('seller_id', data.seller_id),
+    getSupabaseClient()
+      .from('contact_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('seller_id', data.seller_id)
+      .eq('status', 'responded'),
+  ])
+
+  const sellerProfile = mapSeller(seller, {
+    listingCount: listingCount ?? 0,
+    respondedInquiryCount: respondedInquiryCount ?? 0,
+  })
+
+  return { data: mapListingDetail(data, sellerProfile), error: null }
 }
 
 export async function createListing(

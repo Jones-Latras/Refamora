@@ -1,11 +1,40 @@
 import { Tabs } from 'expo-router'
+import { Text } from 'react-native'
 
 import { palette } from '../../utils/theme'
+
+function getFarmerTabIcon(
+  routeName: string,
+  color: string,
+  size: number,
+  focused: boolean,
+) {
+  const iconByRoute: Record<string, string> = {
+    dashboard: '⌂',
+    'create-listing': '+',
+    'my-listings': '▤',
+    requests: '✉',
+    profile: '◉',
+  }
+
+  return (
+    <Text
+      style={{
+        color,
+        fontSize: size,
+        fontWeight: focused ? '800' : '700',
+        lineHeight: size + 2,
+      }}
+    >
+      {iconByRoute[routeName] ?? '•'}
+    </Text>
+  )
+}
 
 export default function FarmerLayout() {
   return (
     <Tabs
-      screenOptions={{
+      screenOptions={({ route }) => ({
         tabBarActiveTintColor: palette.sageDark,
         tabBarInactiveTintColor: palette.muted,
         tabBarHideOnKeyboard: true,
@@ -20,13 +49,18 @@ export default function FarmerLayout() {
           fontSize: 12,
           fontWeight: '700',
         },
+        tabBarIconStyle: {
+          marginBottom: 2,
+        },
+        tabBarIcon: ({ color, size, focused }) =>
+          getFarmerTabIcon(route.name, color, size, focused),
         headerShadowVisible: false,
         headerTintColor: palette.soil,
         headerStyle: { backgroundColor: palette.cream },
         headerBackTitleVisible: false,
         headerTitleStyle: { fontWeight: '700', fontSize: 17 },
         sceneStyle: { backgroundColor: palette.cream },
-      }}
+      })}
     >
       <Tabs.Screen
         name="dashboard"

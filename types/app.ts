@@ -38,6 +38,8 @@ export type SellerProfile = {
   city: string | null
   avatarUrl: string | null
   phone: string | null
+  listingCount: number | null
+  respondedInquiryCount: number | null
 }
 
 export type ListingDetail = {
