@@ -1,6 +1,7 @@
 import type {
   BuyerSearchAssistOutput,
   ListingAssistOutput,
+  PhotoCheckOutput,
   WasteValueAdviceOutput,
 } from './aiTypes.ts'
 
@@ -69,8 +70,13 @@ export const wasteValueAdviceOutputJsonSchema = {
       type: ['string', 'null'],
       description: 'A short note about what makes this waste valuable.',
     },
+    sourceBasis: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Curated basis used to ground the advice.',
+    },
   },
-  required: ['uses', 'cautions', 'marketTip'],
+  required: ['uses', 'cautions', 'marketTip', 'sourceBasis'],
 } as const
 
 export const buyerSearchAssistOutputJsonSchema = {
@@ -105,6 +111,55 @@ export const buyerSearchAssistOutputJsonSchema = {
     },
   },
   required: ['wasteType', 'fulfillmentType', 'minPrice', 'maxPrice', 'search', 'notes'],
+} as const
+
+export const photoCheckOutputJsonSchema = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    qualityScore: {
+      type: 'number',
+      description: '0 to 100 estimate of how usable the listing photo is.',
+    },
+    readiness: {
+      type: 'string',
+      enum: ['good', 'needs_review', 'retake'],
+      description: 'Whether the photo looks good, needs review, or should be retaken.',
+    },
+    retakeSuggestions: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Short practical suggestions for retaking the photo.',
+    },
+    likelyWasteType: {
+      type: ['string', 'null'],
+      description: 'Likely waste category if the material is recognizable.',
+    },
+    likelyWasteTypeConfidence: {
+      type: 'string',
+      enum: ['high', 'medium', 'low', 'unknown'],
+      description: 'Confidence in the likely waste category.',
+    },
+    moderationStatus: {
+      type: 'string',
+      enum: ['clear', 'review'],
+      description: 'Whether the image appears safe for normal marketplace use.',
+    },
+    notes: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Short quality or moderation notes.',
+    },
+  },
+  required: [
+    'qualityScore',
+    'readiness',
+    'retakeSuggestions',
+    'likelyWasteType',
+    'likelyWasteTypeConfidence',
+    'moderationStatus',
+    'notes',
+  ],
 } as const
 
 function asString(value: unknown, fallback = ''): string {
@@ -159,6 +214,7 @@ export function normalizeWasteValueAdviceOutput(
     uses: asStringArray(Reflect.get(raw, 'uses')).slice(0, 3),
     cautions: asStringArray(Reflect.get(raw, 'cautions')).slice(0, 2),
     marketTip: asNullableString(Reflect.get(raw, 'marketTip')),
+    sourceBasis: asStringArray(Reflect.get(raw, 'sourceBasis')).slice(0, 3),
   }
 }
 
@@ -181,6 +237,42 @@ export function normalizeBuyerSearchAssistOutput(
     minPrice: typeof minPrice === 'number' ? minPrice : null,
     maxPrice: typeof maxPrice === 'number' ? maxPrice : null,
     search: asNullableString(Reflect.get(raw, 'search')),
+    notes: asStringArray(Reflect.get(raw, 'notes')).slice(0, 3),
+  }
+}
+
+export function normalizePhotoCheckOutput(value: unknown): PhotoCheckOutput {
+  const raw = typeof value === 'object' && value ? value : {}
+  const qualityScore = Reflect.get(raw, 'qualityScore')
+  const readiness = Reflect.get(raw, 'readiness')
+  const likelyWasteTypeConfidence = Reflect.get(
+    raw,
+    'likelyWasteTypeConfidence',
+  )
+  const moderationStatus = Reflect.get(raw, 'moderationStatus')
+
+  return {
+    qualityScore:
+      typeof qualityScore === 'number'
+        ? Math.max(0, Math.min(100, Math.round(qualityScore)))
+        : 50,
+    readiness:
+      readiness === 'good' || readiness === 'retake'
+        ? readiness
+        : 'needs_review',
+    retakeSuggestions: asStringArray(Reflect.get(raw, 'retakeSuggestions')).slice(
+      0,
+      3,
+    ),
+    likelyWasteType: asNullableString(Reflect.get(raw, 'likelyWasteType')),
+    likelyWasteTypeConfidence:
+      likelyWasteTypeConfidence === 'high' ||
+      likelyWasteTypeConfidence === 'medium' ||
+      likelyWasteTypeConfidence === 'low'
+        ? likelyWasteTypeConfidence
+        : 'unknown',
+    moderationStatus:
+      moderationStatus === 'review' ? 'review' : 'clear',
     notes: asStringArray(Reflect.get(raw, 'notes')).slice(0, 3),
   }
 }

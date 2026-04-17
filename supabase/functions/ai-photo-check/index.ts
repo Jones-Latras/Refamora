@@ -4,9 +4,9 @@ import {
   getAIRateLimitStatus,
   logAIEvent,
 } from '../_shared/aiEventLogger.ts'
-import { adviseWasteValue } from '../_shared/aiService.ts'
+import { checkListingPhoto } from '../_shared/aiService.ts'
 import { getAuthenticatedFarmer } from '../_shared/auth.ts'
-import type { WasteValueAdviceInput } from '../_shared/aiTypes.ts'
+import type { PhotoCheckInput } from '../_shared/aiTypes.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -44,14 +44,14 @@ serve(async (req) => {
   const rateLimit = await getAIRateLimitStatus({
     req,
     userId: auth.user.id,
-    feature: 'waste_value_advisor',
+    feature: 'photo_quality_checker',
   })
 
   if (!rateLimit.allowed) {
     await logAIEvent({
       req,
       userId: auth.user.id,
-      feature: 'waste_value_advisor',
+      feature: 'photo_quality_checker',
       requestStatus: 'error',
       metadata: {
         rateLimited: true,
@@ -63,7 +63,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        error: `Waste advisor is busy right now. Please wait a few minutes and try again. Limit: ${rateLimit.limit} requests per ${rateLimit.windowMinutes} minutes.`,
+        error: `Photo checker is busy right now. Please wait a few minutes and try again. Limit: ${rateLimit.limit} requests per ${rateLimit.windowMinutes} minutes.`,
       }),
       {
         status: 429,
@@ -77,26 +77,27 @@ serve(async (req) => {
   }
 
   const startedAt = Date.now()
-  let input: WasteValueAdviceInput | null = null
+  let input: PhotoCheckInput | null = null
 
   try {
-    input = (await req.json()) as WasteValueAdviceInput
-    const result = await adviseWasteValue(input)
+    input = (await req.json()) as PhotoCheckInput
+    const result = await checkListingPhoto(input)
     const latencyMs = Date.now() - startedAt
     const eventId = await logAIEvent({
       req,
       userId: auth.user.id,
-      feature: 'waste_value_advisor',
+      feature: 'photo_quality_checker',
       provider: result.provider,
       fallbackUsed: result.fallbackUsed,
       requestStatus: 'success',
       latencyMs,
       metadata: {
         wasteType: input.wasteType,
-        city: input.city,
-        useCount: result.result.uses.length,
-        cautionCount: result.result.cautions.length,
-        sourceBasisCount: result.result.sourceBasis.length,
+        qualityScore: result.result.qualityScore,
+        readiness: result.result.readiness,
+        moderationStatus: result.result.moderationStatus,
+        likelyWasteType: result.result.likelyWasteType,
+        likelyWasteTypeConfidence: result.result.likelyWasteTypeConfidence,
       },
     })
 
@@ -117,12 +118,12 @@ serve(async (req) => {
   } catch (error) {
     const latencyMs = Date.now() - startedAt
     const message =
-      error instanceof Error ? error.message : 'Waste value advice failed.'
+      error instanceof Error ? error.message : 'Photo quality check failed.'
 
     await logAIEvent({
       req,
       userId: auth.user.id,
-      feature: 'waste_value_advisor',
+      feature: 'photo_quality_checker',
       requestStatus: 'error',
       latencyMs,
       metadata: {

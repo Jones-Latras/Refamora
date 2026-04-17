@@ -2,6 +2,7 @@ import type {
   AIService,
   BuyerSearchAssistInput,
   ListingAssistInput,
+  PhotoCheckInput,
   WasteValueAdviceInput,
 } from '../aiTypes.ts'
 
@@ -10,9 +11,12 @@ import {
   listingAssistOutputJsonSchema,
   normalizeBuyerSearchAssistOutput,
   normalizeListingAssistOutput,
+  normalizePhotoCheckOutput,
   normalizeWasteValueAdviceOutput,
+  photoCheckOutputJsonSchema,
   wasteValueAdviceOutputJsonSchema,
 } from '../aiSchemas.ts'
+import { getWasteKnowledge } from '../wasteKnowledge.ts'
 
 function getLocalGemmaConfig() {
   return {
@@ -42,6 +46,8 @@ function buildListingAssistPrompt(input: ListingAssistInput) {
 }
 
 function buildWasteValueAdvicePrompt(input: WasteValueAdviceInput) {
+  const knowledge = getWasteKnowledge(input.wasteType)
+
   return [
     'You are Refamora waste-to-value advisor.',
     'Suggest short, practical, realistic ways a farmer can understand the value of this agricultural waste.',
@@ -51,6 +57,18 @@ function buildWasteValueAdvicePrompt(input: WasteValueAdviceInput) {
     '',
     `Waste type: ${input.wasteType}`,
     `City: ${input.city ?? 'unknown'}`,
+    knowledge
+      ? `Curated known uses: ${knowledge.curatedUses.join(', ')}`
+      : 'Curated known uses: unavailable',
+    knowledge
+      ? `Curated cautions: ${knowledge.curatedCautions.join(', ')}`
+      : 'Curated cautions: unavailable',
+    knowledge
+      ? `Curated market context: ${knowledge.marketContext}`
+      : 'Curated market context: unavailable',
+    knowledge
+      ? `Curated source basis: ${knowledge.sourceBasis.join(', ')}`
+      : 'Curated source basis: Refamora AI-only interpretation',
   ].join('\n')
 }
 
@@ -64,6 +82,20 @@ function buildBuyerSearchPrompt(input: BuyerSearchAssistInput) {
     'Return only JSON that matches the provided schema.',
     '',
     `Buyer query: ${input.query}`,
+  ].join('\n')
+}
+
+function buildPhotoCheckPrompt(input: PhotoCheckInput) {
+  return [
+    'You are Refamora photo quality checker.',
+    'Review the uploaded marketplace image for clarity, framing, lighting, and whether the agricultural waste is recognizable.',
+    'Return a quality score from 0 to 100.',
+    'Use readiness=retake when the image is too unclear, too dark, too far, or otherwise weak for a listing.',
+    'Set moderationStatus=review only if the image appears unsafe, unrelated, or suspicious for a marketplace photo.',
+    'Only suggest a likelyWasteType if the image is recognizable enough.',
+    'Return only JSON that matches the provided schema.',
+    '',
+    `Expected waste type: ${input.wasteType ?? 'unknown'}`,
   ].join('\n')
 }
 
@@ -100,6 +132,7 @@ export const localGemmaProvider: AIService = {
     return normalizeListingAssistOutput(JSON.parse(text))
   },
   async adviseWasteValue(input) {
+    const knowledge = getWasteKnowledge(input.wasteType)
     const config = getLocalGemmaConfig()
     const response = await fetch(`${config.baseUrl}/api/generate`, {
       method: 'POST',
@@ -127,7 +160,25 @@ export const localGemmaProvider: AIService = {
       throw new Error('Local Gemma returned an empty response.')
     }
 
-    return normalizeWasteValueAdviceOutput(JSON.parse(text))
+    const normalized = normalizeWasteValueAdviceOutput(JSON.parse(text))
+
+    return {
+      ...normalized,
+      uses:
+        normalized.uses.length > 0
+          ? normalized.uses
+          : knowledge?.curatedUses.slice(0, 3) ?? [],
+      cautions:
+        normalized.cautions.length > 0
+          ? normalized.cautions
+          : knowledge?.curatedCautions.slice(0, 2) ?? [],
+      marketTip: normalized.marketTip ?? knowledge?.marketContext ?? null,
+      sourceBasis:
+        knowledge?.sourceBasis ??
+        (normalized.sourceBasis.length > 0
+          ? normalized.sourceBasis
+          : ['Refamora AI-only interpretation']),
+    }
   },
   async parseBuyerSearch(input) {
     const config = getLocalGemmaConfig()
@@ -158,6 +209,37 @@ export const localGemmaProvider: AIService = {
     }
 
     return normalizeBuyerSearchAssistOutput(JSON.parse(text))
+  },
+  async checkListingPhoto(input) {
+    const config = getLocalGemmaConfig()
+    const response = await fetch(`${config.baseUrl}/api/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(config.timeoutMs),
+      body: JSON.stringify({
+        model: config.model,
+        prompt: buildPhotoCheckPrompt(input),
+        format: photoCheckOutputJsonSchema,
+        stream: false,
+        images: [input.imageBase64],
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Local Gemma request failed with ${response.status}.`)
+    }
+
+    const payload = await response.json()
+    const text =
+      typeof payload?.response === 'string' ? payload.response.trim() : ''
+
+    if (!text) {
+      throw new Error('Local Gemma returned an empty response.')
+    }
+
+    return normalizePhotoCheckOutput(JSON.parse(text))
   },
 }
 

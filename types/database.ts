@@ -19,6 +19,7 @@ export type Database = {
             | 'listing_copilot'
             | 'waste_value_advisor'
             | 'buyer_search_assistant'
+            | 'photo_quality_checker'
           provider: 'local_gemma' | 'gemini' | null
           fallback_used: boolean
           request_status: 'success' | 'error'
@@ -34,6 +35,7 @@ export type Database = {
             | 'listing_copilot'
             | 'waste_value_advisor'
             | 'buyer_search_assistant'
+            | 'photo_quality_checker'
           provider?: 'local_gemma' | 'gemini' | null
           fallback_used?: boolean
           request_status?: 'success' | 'error'
@@ -48,6 +50,7 @@ export type Database = {
             | 'listing_copilot'
             | 'waste_value_advisor'
             | 'buyer_search_assistant'
+            | 'photo_quality_checker'
           provider?: 'local_gemma' | 'gemini' | null
           fallback_used?: boolean
           request_status?: 'success' | 'error'

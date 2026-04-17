@@ -78,6 +78,12 @@ export const buyerSearchAssistInputSchema = z.object({
   query: z.string().min(3, 'Enter a more specific search request.'),
 })
 
+export const photoCheckInputSchema = z.object({
+  imageBase64: z.string().min(1, 'Listing photo is required.'),
+  imageMimeType: z.string().nullable(),
+  wasteType: z.string().nullable(),
+})
+
 export const listingAssistOutputSchema = z.object({
   improvedTitle: z.string(),
   improvedDescription: z.string(),
@@ -100,6 +106,7 @@ export const wasteValueAdviceOutputSchema = z.object({
   uses: z.array(z.string()),
   cautions: z.array(z.string()),
   marketTip: z.string().nullable(),
+  sourceBasis: z.array(z.string()),
 })
 
 export const wasteValueAdviceResultSchema = z.object({
@@ -127,12 +134,32 @@ export const buyerSearchAssistResultSchema = z.object({
   result: buyerSearchAssistOutputSchema,
 })
 
+export const photoCheckOutputSchema = z.object({
+  qualityScore: z.number().min(0).max(100),
+  readiness: z.enum(['good', 'needs_review', 'retake']),
+  retakeSuggestions: z.array(z.string()),
+  likelyWasteType: z.string().nullable(),
+  likelyWasteTypeConfidence: z
+    .enum(['high', 'medium', 'low', 'unknown']),
+  moderationStatus: z.enum(['clear', 'review']),
+  notes: z.array(z.string()),
+})
+
+export const photoCheckResultSchema = z.object({
+  eventId: z.string().uuid().nullable(),
+  latencyMs: z.number().int().nonnegative().nullable(),
+  provider: z.enum(['local_gemma', 'gemini']),
+  fallbackUsed: z.boolean(),
+  result: photoCheckOutputSchema,
+})
+
 export const aiFeedbackInputSchema = z.object({
   eventId: z.string().uuid(),
   feature: z.enum([
     'listing_copilot',
     'waste_value_advisor',
     'buyer_search_assistant',
+    'photo_quality_checker',
   ]),
   helpful: z.boolean(),
 })
@@ -143,6 +170,7 @@ export const aiFeedbackResultSchema = z.object({
     'listing_copilot',
     'waste_value_advisor',
     'buyer_search_assistant',
+    'photo_quality_checker',
   ]),
   helpful: z.boolean(),
 })
@@ -169,3 +197,4 @@ export type ListingAssistFormValues = z.infer<typeof listingAssistInputSchema>
 export type AIFeedbackFormValues = z.infer<typeof aiFeedbackInputSchema>
 export type WasteValueAdviceFormValues = z.infer<typeof wasteValueAdviceInputSchema>
 export type BuyerSearchAssistFormValues = z.infer<typeof buyerSearchAssistInputSchema>
+export type PhotoCheckFormValues = z.infer<typeof photoCheckInputSchema>

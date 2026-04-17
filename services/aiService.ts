@@ -7,6 +7,8 @@ import type {
   AIHealthResult,
   ListingAssistInput,
   ListingAssistResult,
+  PhotoCheckInput,
+  PhotoCheckResult,
   ServiceResult,
   WasteValueAdviceInput,
   WasteValueAdviceResult,
@@ -21,6 +23,8 @@ import {
   buyerSearchAssistResultSchema,
   listingAssistInputSchema,
   listingAssistResultSchema,
+  photoCheckInputSchema,
+  photoCheckResultSchema,
   wasteValueAdviceInputSchema,
   wasteValueAdviceResultSchema,
 } from '../utils/schemas'
@@ -182,6 +186,50 @@ export async function getBuyerSearchAssist(
     return {
       data: null,
       error: new Error('Buyer search AI response did not match the expected format.'),
+    }
+  }
+
+  return { data: parsedResult.data, error: null }
+}
+
+export async function getPhotoCheck(
+  input: PhotoCheckInput,
+): Promise<ServiceResult<PhotoCheckResult>> {
+  const parsedInput = photoCheckInputSchema.safeParse(input)
+
+  if (!parsedInput.success) {
+    return {
+      data: null,
+      error: new Error(
+        parsedInput.error.issues[0]?.message ?? 'Invalid photo check input.',
+      ),
+    }
+  }
+
+  if (!hasSupabaseEnv) {
+    return {
+      data: null,
+      error: new Error('Supabase is not configured yet.'),
+    }
+  }
+
+  const { data, error } = await getSupabaseClient().functions.invoke(
+    'ai-photo-check',
+    {
+      body: parsedInput.data,
+    },
+  )
+
+  if (error) {
+    return { data: null, error }
+  }
+
+  const parsedResult = photoCheckResultSchema.safeParse(data)
+
+  if (!parsedResult.success) {
+    return {
+      data: null,
+      error: new Error('Photo check response did not match the expected format.'),
     }
   }
 

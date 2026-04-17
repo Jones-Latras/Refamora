@@ -17,7 +17,7 @@ The goal is simple: keep Refamora useful as a real marketplace first, then use A
 ## Master Checklist
 
 Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
-Latest note: 2026-04-17 the buyer feed now includes a Search with AI flow that converts natural-language queries into structured marketplace filters, shows the interpreted filters back to the user, and only applies them after confirmation. Buyer search now falls back cleanly to normal search if AI parsing fails.
+Latest note: 2026-04-17 the listing flow now includes an on-demand AI Photo Check through the shared provider layer. It returns a quality score, retake suggestions, and a likely waste category when confidence is high enough. The first practical slice of Phase 4 is now complete with Local Gemma primary and Gemini as optional fallback.
 
 ### AI Phase 0 - Foundations
 
@@ -48,7 +48,7 @@ Latest note: 2026-04-17 the buyer feed now includes a Search with AI flow that c
 - [x] Add AI-generated value suggestions beside waste type selection
 - [x] Show practical downstream uses and cautions
 - [x] Keep suggestions short and educational
-- [ ] Add source strategy if later tied to curated domain content
+- [x] Add source strategy if later tied to curated domain content
 
 ### AI Phase 3 - Buyer Search Assistant
 
@@ -60,9 +60,9 @@ Latest note: 2026-04-17 the buyer feed now includes a Search with AI flow that c
 
 ### AI Phase 4 - Photo Analysis And Moderation
 
-- [ ] Add `Check photo` before upload confirmation
-- [ ] Return image quality score and retake suggestions
-- [ ] Return likely waste category if confidence is high enough
+- [x] Add `Check photo` before upload confirmation
+- [x] Return image quality score and retake suggestions
+- [x] Return likely waste category if confidence is high enough
 - [ ] Add moderation checks for text and image content
 - [ ] Add admin review queue for flagged listings
 
@@ -523,12 +523,12 @@ Refamora impact:
 - [x] Add `Improve with AI` action in create listing flow
 - [x] Accept title, description, waste type, quantity, and optional photo
 - [x] Return structured suggestions:
-  - [ ] improved title
-  - [ ] improved description
-  - [ ] detected missing fields
-  - [ ] suggested category
-  - [ ] suggested units
-  - [ ] short publish-readiness notes
+  - [x] improved title
+  - [x] improved description
+  - [x] detected missing fields
+  - [x] suggested category
+  - [x] suggested units
+  - [x] short publish-readiness notes
 - [x] Keep all AI output editable before save
 - [x] Add feedback buttons such as `use suggestion` and `not helpful`
 
@@ -542,7 +542,7 @@ Implementation note:
 - [x] Add AI-generated value suggestions beside waste type selection
 - [x] Show practical downstream uses and cautions
 - [x] Keep suggestions short and educational
-- [ ] Add source strategy if later tied to curated domain content
+- [x] Add source strategy if later tied to curated domain content
 
 ### AI Phase 3: Buyer Search Assistant
 
@@ -559,15 +559,15 @@ Implementation note:
 
 ### AI Phase 4: Photo Analysis And Moderation
 
-- [ ] Add `Check photo` before upload confirmation
-- [ ] Return image quality score and retake suggestions
-- [ ] Return likely waste category if confidence is high enough
+- [x] Add `Check photo` before upload confirmation
+- [x] Return image quality score and retake suggestions
+- [x] Return likely waste category if confidence is high enough
 - [ ] Add moderation checks for text and image content
 - [ ] Add admin review queue for flagged listings
 
 Implementation note:
 
-- this phase can stay Gemini-first if local image capability is weaker than local text capability
+- this phase now runs through the same provider-agnostic service layer, with Local Gemma as primary and Gemini as the optional fallback when enabled
 
 ### AI Phase 5: Messaging Support
 

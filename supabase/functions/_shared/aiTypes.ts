@@ -3,6 +3,7 @@ export type AIFeature =
   | 'listing_copilot'
   | 'waste_value_advisor'
   | 'buyer_search_assistant'
+  | 'photo_quality_checker'
 
 export type ListingAssistInput = {
   title: string
@@ -26,6 +27,12 @@ export type BuyerSearchAssistInput = {
   query: string
 }
 
+export type PhotoCheckInput = {
+  imageBase64: string
+  imageMimeType: string | null
+  wasteType: string | null
+}
+
 export type ListingAssistOutput = {
   improvedTitle: string
   improvedDescription: string
@@ -40,6 +47,7 @@ export type WasteValueAdviceOutput = {
   uses: string[]
   cautions: string[]
   marketTip: string | null
+  sourceBasis: string[]
 }
 
 export type BuyerSearchAssistOutput = {
@@ -48,6 +56,16 @@ export type BuyerSearchAssistOutput = {
   minPrice: number | null
   maxPrice: number | null
   search: string | null
+  notes: string[]
+}
+
+export type PhotoCheckOutput = {
+  qualityScore: number
+  readiness: 'good' | 'needs_review' | 'retake'
+  retakeSuggestions: string[]
+  likelyWasteType: string | null
+  likelyWasteTypeConfidence: 'high' | 'medium' | 'low' | 'unknown'
+  moderationStatus: 'clear' | 'review'
   notes: string[]
 }
 
@@ -75,6 +93,14 @@ export type BuyerSearchAssistResult = {
   result: BuyerSearchAssistOutput
 }
 
+export type PhotoCheckResult = {
+  eventId: string | null
+  latencyMs: number | null
+  provider: AIProvider
+  fallbackUsed: boolean
+  result: PhotoCheckOutput
+}
+
 export type AIFeedbackInput = {
   eventId: string
   feature: AIFeature
@@ -93,6 +119,7 @@ export type AIService = {
   parseBuyerSearch(
     input: BuyerSearchAssistInput,
   ): Promise<BuyerSearchAssistOutput>
+  checkListingPhoto(input: PhotoCheckInput): Promise<PhotoCheckOutput>
 }
 
 export type AIProviderHealth = {

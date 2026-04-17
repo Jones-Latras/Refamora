@@ -5,6 +5,8 @@ import type {
   AIHealthResult,
   ListingAssistInput,
   ListingAssistResult,
+  PhotoCheckInput,
+  PhotoCheckResult,
   WasteValueAdviceInput,
   WasteValueAdviceResult,
 } from './aiTypes.ts'
@@ -142,6 +144,43 @@ export async function parseBuyerSearch(
         provider === 'local_gemma'
           ? await localGemmaProvider.parseBuyerSearch(input)
           : await geminiProvider.parseBuyerSearch(input)
+
+      return {
+        eventId: null,
+        latencyMs: null,
+        provider,
+        fallbackUsed: index > 0,
+        result,
+      }
+    } catch (error) {
+      errors.push(
+        `${provider}: ${error instanceof Error ? error.message : 'Unknown provider error.'}`,
+      )
+    }
+  }
+
+  throw new Error(errors.join(' | '))
+}
+
+export async function checkListingPhoto(
+  input: PhotoCheckInput,
+): Promise<PhotoCheckResult> {
+  const order = getProviderOrder()
+
+  if (order.length === 0) {
+    throw new Error('No AI providers are enabled.')
+  }
+
+  const errors: string[] = []
+
+  for (let index = 0; index < order.length; index += 1) {
+    const provider = order[index]
+
+    try {
+      const result =
+        provider === 'local_gemma'
+          ? await localGemmaProvider.checkListingPhoto(input)
+          : await geminiProvider.checkListingPhoto(input)
 
       return {
         eventId: null,

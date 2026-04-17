@@ -21,6 +21,7 @@ npx supabase db push
 After the base schema is in place, also apply [migrations/20260417_ai_events.sql](./migrations/20260417_ai_events.sql) to enable AI event logging and feedback capture.
 Then apply [migrations/20260417_ai_events_waste_value_advisor.sql](./migrations/20260417_ai_events_waste_value_advisor.sql) to allow waste advisor events in the same analytics table.
 Then apply [migrations/20260417_ai_events_buyer_search_assistant.sql](./migrations/20260417_ai_events_buyer_search_assistant.sql) to allow buyer search assistant events in the same analytics table.
+Then apply [migrations/20260417_ai_events_photo_quality_checker.sql](./migrations/20260417_ai_events_photo_quality_checker.sql) to allow photo checker events in the same analytics table.
 
 ## Regenerate TypeScript types
 
@@ -51,6 +52,7 @@ The repo now also contains a first AI edge function scaffold:
 - `functions/ai-feedback`
 - `functions/ai-waste-advice`
 - `functions/ai-search-assist`
+- `functions/ai-photo-check`
 - shared provider layer in `functions/_shared`
 - `localGemmaProvider` as the primary provider
 - `geminiProvider` as the optional fallback
@@ -79,4 +81,6 @@ The current rate limiter uses `ai_events` as the request log and enforces a per-
 
 On the app side, the farmer dashboard reads `ai_events` through RLS to show request volume, average latency, helpfulness rate, and provider mix for recent listing copilot usage.
 The listing editor also uses the AI layer for a Waste-To-Value Advisor beside waste type selection, returning short uses, cautions, and a market tip for the selected material.
+The waste advisor is now grounded with a small curated Refamora knowledge base so the response can surface a visible `Grounded in` basis instead of being prompt-only.
 The buyer feed also includes a Search with AI flow that interprets natural-language search into structured filters, shows the interpretation back to the user, and only applies it after confirmation.
+The listing editor now also includes an on-demand Photo Check that reviews image clarity, suggests retakes, and can surface a likely waste type when the image is clear enough.
