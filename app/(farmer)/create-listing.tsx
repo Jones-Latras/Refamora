@@ -193,7 +193,9 @@ export default function CreateListingScreen() {
         <View style={styles.wrapper}>
           <EmptyState
             title="Listing not found"
-            description="The listing you wanted to duplicate could not be loaded."
+            description="The source listing for this duplicate flow could not be loaded. It may have been deleted, unpublished, or is no longer available in your account."
+            actionLabel="Start a blank listing"
+            onAction={() => router.replace('/(farmer)/create-listing')}
           />
         </View>
       </SafeAreaView>

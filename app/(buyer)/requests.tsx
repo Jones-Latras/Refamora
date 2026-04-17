@@ -1,3 +1,4 @@
+import { router } from 'expo-router'
 import { useFocusEffect } from '@react-navigation/native'
 import { useCallback, useState } from 'react'
 import { FlatList, StyleSheet, Text, View } from 'react-native'
@@ -61,7 +62,9 @@ export default function BuyerRequestsScreen() {
         <View style={styles.list}>
           <EmptyState
             title="No contact requests yet"
-            description="When you contact a seller, the request and revealed phone number will appear here."
+            description="Once you contact a seller, this screen will track the request status and show any phone number unlocked after the inquiry."
+            actionLabel="Browse listings"
+            onAction={() => router.push('/(buyer)/feed')}
           />
         </View>
       )}

@@ -379,7 +379,7 @@ export default function MyListingsScreen() {
         <View style={styles.list}>
           <EmptyState
             title="No listings yet"
-            description="Create your first listing to start showing availability, pricing, and status."
+            description="You have not published a listing yet. Create one to show buyers your waste type, quantity, location, and current availability."
             actionLabel="Create your first listing"
             onAction={() => router.push('/(farmer)/create-listing')}
           />

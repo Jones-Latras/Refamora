@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
-import { ToastProvider } from '../components/Toast'
+import { ToastProvider, useToast } from '../components/Toast'
 import { AuthProvider, useAuth } from '../hooks/useAuth'
 import { palette } from '../utils/theme'
 
@@ -20,7 +20,8 @@ function normalizeRedirectPath(pathname: string) {
 }
 
 function SplashGate() {
-  const { user, role, isLoading } = useAuth()
+  const { user, role, isLoading, notice, clearNotice } = useAuth()
+  const { showToast } = useToast()
   const pathname = usePathname()
   const router = useRouter()
   const segments = useSegments()
@@ -34,6 +35,19 @@ function SplashGate() {
     const inAuthGroup = currentGroup === '(auth)'
     const onRoot = pathname === '/'
     const redirectPath = normalizeRedirectPath(pathname)
+
+    if (!user && notice?.type === 'session_expired') {
+      showToast({
+        title: 'Session expired',
+        message:
+          redirectPath !== '/'
+            ? 'Please sign in again. We kept your place so you can continue where you left off.'
+            : notice.message,
+        variant: 'info',
+        durationMs: 4200,
+      })
+      clearNotice()
+    }
 
     if (!user) {
       if (!inAuthGroup) {
@@ -60,7 +74,7 @@ function SplashGate() {
         role === 'farmer' ? '/(farmer)/dashboard' : '/(buyer)/feed',
       )
     }
-  }, [isLoading, pathname, role, router, segments, user])
+  }, [clearNotice, isLoading, notice, pathname, role, router, segments, showToast, user])
 
   if (isLoading) {
     return (

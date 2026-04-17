@@ -3,21 +3,32 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
 
 import type { UserRole } from '../types/app'
 
-import { getSession } from '../services/authService'
+import {
+  consumeSignedOutNoticeSuppression,
+  getSession,
+} from '../services/authService'
 import { getUserRole } from '../services/profileService'
 import { hasSupabaseEnv, supabase } from '../services/supabase'
+
+type AuthNotice = {
+  type: 'session_expired'
+  message: string
+}
 
 type AuthContextValue = {
   user: User | null
   session: Session | null
   role: UserRole | null
   isLoading: boolean
+  notice: AuthNotice | null
+  clearNotice: () => void
   refreshRole: () => Promise<void>
 }
 
@@ -28,6 +39,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [role, setRole] = useState<UserRole | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [notice, setNotice] = useState<AuthNotice | null>(null)
+  const sessionRef = useRef<Session | null>(null)
 
   const loadRole = async (userId: string) => {
     const nextRole = await getUserRole(userId)
@@ -53,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setIsLoading(true)
       setSession(currentSession)
+      sessionRef.current = currentSession
       setUser(currentSession?.user ?? null)
 
       if (currentSession?.user) {
@@ -76,19 +90,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_, nextSession) => {
+    } = supabase.auth.onAuthStateChange(async (event, nextSession) => {
       if (!isMounted) {
         return
       }
 
+      const wasAuthenticated = Boolean(sessionRef.current?.user)
+      const isIntentionalSignOut =
+        event === 'SIGNED_OUT' ? consumeSignedOutNoticeSuppression() : false
+
       setIsLoading(true)
       setSession(nextSession)
+      sessionRef.current = nextSession
       setUser(nextSession?.user ?? null)
 
       if (nextSession?.user) {
         await loadRole(nextSession.user.id)
       } else {
         setRole(null)
+      }
+
+      if (
+        event === 'SIGNED_OUT' &&
+        wasAuthenticated &&
+        !nextSession &&
+        !isIntentionalSignOut
+      ) {
+        setNotice({
+          type: 'session_expired',
+          message: 'Your session expired. Please sign in again to continue.',
+        })
       }
 
       if (isMounted) {
@@ -109,6 +140,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         role,
         isLoading,
+        notice,
+        clearNotice: () => setNotice(null),
         refreshRole: async () => {
           if (user) {
             await loadRole(user.id)

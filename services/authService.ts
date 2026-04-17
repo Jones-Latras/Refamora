@@ -3,6 +3,7 @@ import type { AuthError, Session, User } from '@supabase/supabase-js'
 import { getSupabaseClient, hasSupabaseEnv } from './supabase'
 
 type AuthResult = { user: User | null; error: AuthError | Error | null }
+let suppressNextSignedOutNotice = false
 
 export async function signUp(
   email: string,
@@ -48,11 +49,19 @@ export async function signIn(
 }
 
 export async function signOut() {
+  suppressNextSignedOutNotice = true
+
   if (!hasSupabaseEnv) {
     return { error: null }
   }
 
-  return getSupabaseClient().auth.signOut()
+  const result = await getSupabaseClient().auth.signOut()
+
+  if (result.error) {
+    suppressNextSignedOutNotice = false
+  }
+
+  return result
 }
 
 export async function updatePassword(password: string) {
@@ -71,4 +80,10 @@ export async function getSession(): Promise<Session | null> {
   const { data } = await getSupabaseClient().auth.getSession()
 
   return data.session
+}
+
+export function consumeSignedOutNoticeSuppression() {
+  const shouldSuppress = suppressNextSignedOutNotice
+  suppressNextSignedOutNotice = false
+  return shouldSuppress
 }

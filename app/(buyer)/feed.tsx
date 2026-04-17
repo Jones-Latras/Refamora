@@ -536,7 +536,7 @@ export default function FeedScreen() {
         ) : (
           <EmptyState
             title="No listings match your search"
-            description="This is the feed empty state the plan calls for in the polish phase."
+            description="Try widening your price range, changing the waste type, or switching to Map to explore nearby listings that are still available."
             actionLabel="Open map view"
             onAction={() => router.push('/(buyer)/map')}
           />

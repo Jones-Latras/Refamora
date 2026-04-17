@@ -253,8 +253,12 @@ export default function ProfileScreen() {
       <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
         <View style={styles.emptyWrapper}>
           <EmptyState
-            title="Profile details are empty"
-            description="Add your phone number and city to complete your account."
+            title="Profile setup is not ready yet"
+            description="We could not load your saved profile details right now. Try refreshing this screen to pull your name, city, and contact information again."
+            actionLabel="Try again"
+            onAction={() => {
+              void refetch()
+            }}
           />
         </View>
       </SafeAreaView>

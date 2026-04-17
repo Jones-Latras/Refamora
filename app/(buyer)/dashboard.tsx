@@ -159,7 +159,7 @@ export default function BuyerDashboardScreen() {
           ) : (
             <EmptyState
               title="No saved listings yet"
-              description="Save any listing from its detail page to keep your best options in one place."
+              description="When you tap Save on a listing, it will stay here so you can compare your best options without searching again."
               actionLabel="Browse the feed"
               onAction={() => router.push('/(buyer)/feed')}
             />
@@ -193,7 +193,7 @@ export default function BuyerDashboardScreen() {
           ) : (
             <EmptyState
               title="No recently viewed listings yet"
-              description="Open any listing from the feed or map and it will appear here."
+              description="Listings you open from the feed or map will appear here, making it easy to return to the ones you were comparing."
               actionLabel="Browse the feed"
               onAction={() => router.push('/(buyer)/feed')}
             />
@@ -226,7 +226,9 @@ export default function BuyerDashboardScreen() {
           ) : (
             <EmptyState
               title="No contact requests sent"
-              description="Open a listing and use Contact Seller to start an inquiry."
+              description="You have not contacted any sellers yet. Open a listing and use Contact Seller when you want to ask about availability, pickup, or price."
+              actionLabel="Browse the feed"
+              onAction={() => router.push('/(buyer)/feed')}
             />
           )}
         </View>

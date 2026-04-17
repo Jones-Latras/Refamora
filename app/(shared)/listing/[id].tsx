@@ -452,7 +452,16 @@ export default function ListingDetailScreen() {
         <View style={styles.emptyWrapper}>
           <EmptyState
             title="Listing not available"
-            description="This listing could not be loaded or may no longer be active."
+            description="This listing could not be loaded. It may have been removed, sold, or shared with an outdated link."
+            actionLabel={user ? (role === 'farmer' ? 'Back to dashboard' : 'Browse listings') : 'Sign in'}
+            onAction={() => {
+              if (!user) {
+                router.replace('/(auth)/login')
+                return
+              }
+
+              router.replace(role === 'farmer' ? '/(farmer)/dashboard' : '/(buyer)/feed')
+            }}
           />
         </View>
       </SafeAreaView>

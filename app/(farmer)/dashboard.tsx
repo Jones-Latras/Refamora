@@ -661,7 +661,11 @@ export default function FarmerDashboardScreen() {
           ) : (
             <EmptyState
               title="No inquiries yet"
-              description="Buyers who message you about your listings will appear here."
+              description={
+                listings.length === 0
+                  ? 'You do not have a live listing yet. Publish one first so buyers can start sending questions and requests.'
+                  : 'Your listings are live, but no buyer has reached out yet. New questions will appear here as soon as someone contacts you.'
+              }
               actionLabel={listings.length === 0 ? 'Create first listing' : undefined}
               onAction={
                 listings.length === 0

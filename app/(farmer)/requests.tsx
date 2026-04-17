@@ -1,4 +1,5 @@
 import { useFocusEffect } from '@react-navigation/native'
+import { router } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -308,7 +309,9 @@ export default function FarmerRequestsScreen() {
         <View style={styles.list}>
           <EmptyState
             title="No buyer inquiries yet"
-            description="Buyer questions and contact requests will appear here once someone reaches out about your listings."
+            description="When buyers ask about your active listings, their questions will appear here with AI summary and reply tools ready to help."
+            actionLabel="Manage listings"
+            onAction={() => router.push('/(farmer)/my-listings')}
           />
         </View>
       )}

@@ -150,7 +150,9 @@ export default function EditListingScreen() {
         <View style={styles.wrapper}>
           <EmptyState
             title="Listing not found"
-            description="This listing could not be loaded for editing."
+            description="This listing could not be opened for editing. It may have been removed, or your session no longer has access to it."
+            actionLabel="Back to my listings"
+            onAction={() => router.replace('/(farmer)/my-listings')}
           />
         </View>
       </SafeAreaView>
