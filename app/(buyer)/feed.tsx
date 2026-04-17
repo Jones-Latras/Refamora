@@ -20,6 +20,7 @@ import { ListingCard } from '../../components/ListingCard'
 import { SkeletonCard } from '../../components/SkeletonCard'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
+import { useBuyerLocationStore } from '../../hooks/useBuyerLocation'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useBuyerListings } from '../../hooks/useListings'
 import { useBuyerFeedStore } from '../../hooks/useBuyerFeedState'
@@ -27,7 +28,9 @@ import { useProfile } from '../../hooks/useProfile'
 import { useRecentlyViewedStore } from '../../hooks/useRecentlyViewed'
 import { getBuyerSearchAssist } from '../../services/aiService'
 import { getListingPreviewsByIds } from '../../services/listingService'
+import { requestCurrentCoordinates } from '../../services/locationService'
 import type { BuyerSearchAssistResult } from '../../types/app'
+import { formatDistanceAway, getDistanceKm } from '../../utils/location'
 import { palette, radii } from '../../utils/theme'
 import { WASTE_TYPES } from '../../utils/wasteTypes'
 
@@ -112,6 +115,9 @@ export default function FeedScreen() {
   const { profile } = useProfile(user?.id)
   const { showToast } = useToast()
   const recentlyViewedIds = useRecentlyViewedStore((state) => state.listingIds)
+  const buyerCoordinates = useBuyerLocationStore((state) => state.coordinates)
+  const setBuyerCoordinates = useBuyerLocationStore((state) => state.setCoordinates)
+  const clearBuyerCoordinates = useBuyerLocationStore((state) => state.clearCoordinates)
   const isFeedStateHydrated = useBuyerFeedStore((state) => state.hydrated)
   const query = useBuyerFeedStore((state) => state.query)
   const setQuery = useBuyerFeedStore((state) => state.setQuery)
@@ -119,6 +125,7 @@ export default function FeedScreen() {
   const setFilters = useBuyerFeedStore((state) => state.setFilters)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [isAiSearchLoading, setIsAiSearchLoading] = useState(false)
+  const [isLocationLoading, setIsLocationLoading] = useState(false)
   const [aiSearchResult, setAiSearchResult] =
     useState<BuyerSearchAssistResult | null>(null)
   const [recentListings, setRecentListings] = useState<
@@ -147,6 +154,43 @@ export default function FeedScreen() {
   const interpretedLabels = useMemo(
     () => formatAiSearchLabels(aiSearchResult),
     [aiSearchResult],
+  )
+  const listingsWithDistance = useMemo(
+    () =>
+      data
+        .map((listing) => ({
+          listing,
+          distanceKm:
+            buyerCoordinates &&
+            listing.latitude != null &&
+            listing.longitude != null
+              ? getDistanceKm(buyerCoordinates, {
+                  latitude: listing.latitude,
+                  longitude: listing.longitude,
+                })
+              : null,
+        }))
+        .sort((left, right) => {
+          if (left.distanceKm == null && right.distanceKm == null) {
+            return 0
+          }
+
+          if (left.distanceKm == null) {
+            return 1
+          }
+
+          if (right.distanceKm == null) {
+            return -1
+          }
+
+          return left.distanceKm - right.distanceKm
+        }),
+    [buyerCoordinates, data],
+  )
+  const mappedDistanceCount = useMemo(
+    () =>
+      listingsWithDistance.filter((item) => item.distanceKm != null).length,
+    [listingsWithDistance],
   )
 
   const loadRecentListings = useCallback(async () => {
@@ -224,6 +268,25 @@ export default function FeedScreen() {
     setQuery(aiSearchResult.result.search ?? '')
     setAiSearchResult(null)
     showToast('AI filters applied. You can still adjust them manually.', 'success')
+  }
+
+  const handleUseMyLocation = async () => {
+    setIsLocationLoading(true)
+
+    const result = await requestCurrentCoordinates()
+
+    setIsLocationLoading(false)
+
+    if (result.error || !result.data) {
+      showToast(
+        result.error?.message ?? 'Unable to get your current location right now.',
+        'error',
+      )
+      return
+    }
+
+    setBuyerCoordinates(result.data)
+    showToast('Your location is on. Nearby listings are shown first.', 'success')
   }
 
   return (
@@ -327,6 +390,42 @@ export default function FeedScreen() {
             </Pressable>
           </View>
 
+          <View style={styles.locationRow}>
+            <Pressable
+              onPress={() => void handleUseMyLocation()}
+              style={[
+                styles.locationButton,
+                buyerCoordinates ? styles.locationButtonActive : null,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.locationButtonText,
+                  buyerCoordinates ? styles.locationButtonTextActive : null,
+                ]}
+              >
+                {isLocationLoading
+                  ? 'Getting your location...'
+                  : buyerCoordinates
+                    ? 'Refresh my location'
+                    : 'Use my location'}
+              </Text>
+            </Pressable>
+            {buyerCoordinates ? (
+              <Pressable onPress={clearBuyerCoordinates} style={styles.locationClearButton}>
+                <Text style={styles.locationClearButtonText}>Clear</Text>
+              </Pressable>
+            ) : null}
+          </View>
+
+          <Text style={styles.locationHint}>
+            {buyerCoordinates
+              ? `Nearest listings are shown first for ${mappedDistanceCount} mapped result${
+                  mappedDistanceCount === 1 ? '' : 's'
+                }.`
+              : 'Turn on location to see how far listings are from you.'}
+          </Text>
+
           {aiSearchResult ? (
             <View style={styles.aiReviewCard}>
               <Text style={styles.aiReviewTitle}>AI interpreted your search</Text>
@@ -408,10 +507,10 @@ export default function FeedScreen() {
             <SkeletonCard />
             <SkeletonCard />
           </View>
-        ) : data.length > 0 ? (
+        ) : listingsWithDistance.length > 0 ? (
           <FlatList
-            data={data}
-            keyExtractor={(item) => item.id}
+            data={listingsWithDistance}
+            keyExtractor={(item) => item.listing.id}
             contentContainerStyle={styles.list}
             onEndReached={loadMore}
             onEndReachedThreshold={0.8}
@@ -424,8 +523,13 @@ export default function FeedScreen() {
             }
             renderItem={({ item }) => (
               <ListingCard
-                listing={item}
-                onPress={() => router.push(`/(shared)/listing/${item.id}`)}
+                listing={item.listing}
+                distanceLabel={
+                  item.distanceKm != null
+                    ? formatDistanceAway(item.distanceKm)
+                    : null
+                }
+                onPress={() => router.push(`/(shared)/listing/${item.listing.id}`)}
               />
             )}
           />
@@ -582,6 +686,48 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     flexWrap: 'wrap',
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  locationButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: palette.surface,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: palette.border,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  locationButtonActive: {
+    backgroundColor: '#e4efe6',
+    borderColor: 'rgba(58, 102, 72, 0.18)',
+  },
+  locationButtonText: {
+    color: palette.clay,
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  locationButtonTextActive: {
+    color: palette.sageDark,
+  },
+  locationClearButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+  },
+  locationClearButtonText: {
+    color: palette.muted,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  locationHint: {
+    color: palette.muted,
+    fontSize: 12,
+    lineHeight: 18,
   },
   aiSearchButton: {
     alignSelf: 'flex-start',

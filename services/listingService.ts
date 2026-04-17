@@ -24,6 +24,8 @@ function mapListing(row: ListingRow): ListingPreview {
     unit: row.unit,
     quantity: row.quantity,
     city: row.city ?? 'Unknown location',
+    latitude: row.latitude,
+    longitude: row.longitude,
     imageUrl: row.image_url,
     status: row.status,
     sellerName: null,

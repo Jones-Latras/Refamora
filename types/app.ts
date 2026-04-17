@@ -25,6 +25,8 @@ export type ListingPreview = {
   unit: string
   quantity: number
   city: string
+  latitude: number | null
+  longitude: number | null
   imageUrl: string | null
   status: ListingStatus
   sellerName: string | null

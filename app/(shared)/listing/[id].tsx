@@ -21,15 +21,18 @@ import { FulfillmentLabel } from '../../../components/FulfillmentLabel'
 import { ListingCard } from '../../../components/ListingCard'
 import { useToast } from '../../../components/Toast'
 import { useAuth } from '../../../hooks/useAuth'
+import { useBuyerLocationStore } from '../../../hooks/useBuyerLocation'
 import { useRecentlyViewedStore } from '../../../hooks/useRecentlyViewed'
 import { useSavedListingsStore } from '../../../hooks/useSavedListings'
 import {
   getBuyerContactRequests,
   sendContactRequest,
 } from '../../../services/contactService'
+import { requestCurrentCoordinates } from '../../../services/locationService'
 import { getListingById, getRelatedListings } from '../../../services/listingService'
 import type { ListingDetail, ListingPreview } from '../../../types/app'
 import { formatDate, formatPrice, titleCase } from '../../../utils/formatters'
+import { formatDistanceAway, getDistanceKm } from '../../../utils/location'
 import { palette, radii, shadow } from '../../../utils/theme'
 
 function getAvatarInitials(name?: string | null) {
@@ -72,10 +75,13 @@ export default function ListingDetailScreen() {
   const { user, role } = useAuth()
   const { showToast } = useToast()
   const addRecentlyViewed = useRecentlyViewedStore((state) => state.addListing)
+  const buyerCoordinates = useBuyerLocationStore((state) => state.coordinates)
+  const setBuyerCoordinates = useBuyerLocationStore((state) => state.setCoordinates)
   const savedListingIds = useSavedListingsStore((state) => state.listingIds)
   const toggleSavedListing = useSavedListingsStore((state) => state.toggleListing)
   const [listing, setListing] = useState<ListingDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isLocationLoading, setIsLocationLoading] = useState(false)
   const [isContactModalVisible, setIsContactModalVisible] = useState(false)
   const [contactMessage, setContactMessage] = useState('')
   const [isSubmittingContact, setIsSubmittingContact] = useState(false)
@@ -196,6 +202,23 @@ export default function ListingDetailScreen() {
 
     return titleCase(listing.wasteType.replace(/_/g, ' '))
   }, [listing])
+  const locationDistanceLabel = useMemo(() => {
+    if (
+      !buyerCoordinates ||
+      !listing ||
+      listing.latitude == null ||
+      listing.longitude == null
+    ) {
+      return null
+    }
+
+    return formatDistanceAway(
+      getDistanceKm(buyerCoordinates, {
+        latitude: listing.latitude,
+        longitude: listing.longitude,
+      }),
+    )
+  }, [buyerCoordinates, listing])
 
   const canContactSeller =
     role === 'buyer' && !!user && !!listing && user.id !== listing.sellerId
@@ -245,6 +268,25 @@ export default function ListingDetailScreen() {
       nextSaved ? 'Listing saved for later.' : 'Listing removed from saved.',
       'success',
     )
+  }
+
+  const handleUseMyLocation = async () => {
+    setIsLocationLoading(true)
+
+    const result = await requestCurrentCoordinates()
+
+    setIsLocationLoading(false)
+
+    if (result.error || !result.data) {
+      showToast(
+        result.error?.message ?? 'Unable to get your current location right now.',
+        'error',
+      )
+      return
+    }
+
+    setBuyerCoordinates(result.data)
+    showToast('Distance estimates are now available for mapped listings.', 'success')
   }
 
   const handleSubmitContactRequest = async () => {
@@ -383,6 +425,11 @@ export default function ListingDetailScreen() {
             <View style={styles.infoBadge}>
               <Text style={styles.infoBadgeText}>{titleCase(listing.status)}</Text>
             </View>
+            {locationDistanceLabel ? (
+              <View style={styles.infoBadge}>
+                <Text style={styles.infoBadgeText}>{locationDistanceLabel}</Text>
+              </View>
+            ) : null}
           </View>
           <Text style={styles.meta}>
             {listing.city} | {listing.quantity} {listing.unit} | {formatDate(listing.createdAt)}
@@ -426,6 +473,17 @@ export default function ListingDetailScreen() {
             <Text style={styles.sectionText}>
               {listing.address ?? `${listing.city} listing location`}
             </Text>
+            {locationDistanceLabel ? (
+              <Text style={styles.locationDistance}>{locationDistanceLabel}</Text>
+            ) : role !== 'farmer' ? (
+              <Pressable onPress={() => void handleUseMyLocation()} style={styles.locationAction}>
+                <Text style={styles.locationActionText}>
+                  {isLocationLoading
+                    ? 'Getting your location...'
+                    : 'Use my location to estimate distance'}
+                </Text>
+              </Pressable>
+            ) : null}
             <Pressable
               onPress={() =>
                 void Linking.openURL(
@@ -746,6 +804,25 @@ const styles = StyleSheet.create({
   sectionText: {
     color: palette.muted,
     lineHeight: 22,
+  },
+  locationDistance: {
+    color: palette.sageDark,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  locationAction: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: '#eef5ef',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  locationActionText: {
+    color: palette.sageDark,
+    fontSize: 13,
+    fontWeight: '800',
   },
   locationMap: {
     width: '100%',

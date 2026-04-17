@@ -8,10 +8,15 @@ import { palette, radii, shadow } from '../utils/theme'
 
 type ListingCardProps = {
   listing: ListingPreview
+  distanceLabel?: string | null
   onPress?: () => void
 }
 
-export function ListingCard({ listing, onPress }: ListingCardProps) {
+export function ListingCard({
+  listing,
+  distanceLabel,
+  onPress,
+}: ListingCardProps) {
   return (
     <Pressable onPress={onPress} style={styles.card}>
       {listing.imageUrl ? (
@@ -40,6 +45,7 @@ export function ListingCard({ listing, onPress }: ListingCardProps) {
         <Text style={styles.meta}>
           {listing.city} • {listing.quantity} {listing.unit}
         </Text>
+        {distanceLabel ? <Text style={styles.distance}>{distanceLabel}</Text> : null}
         <Text style={styles.price}>{formatPrice(listing.price, listing.unit)}</Text>
         <View style={styles.footer}>
           <FulfillmentLabel type={listing.fulfillmentType} />
@@ -95,6 +101,11 @@ const styles = StyleSheet.create({
   meta: {
     color: palette.muted,
     fontSize: 14,
+  },
+  distance: {
+    color: palette.sageDark,
+    fontSize: 13,
+    fontWeight: '700',
   },
   price: {
     color: palette.sageDark,
