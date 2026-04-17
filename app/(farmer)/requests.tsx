@@ -1,6 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native'
 import { useCallback, useMemo, useState } from 'react'
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { ContactRequestCard } from '../../components/ContactRequestCard'
@@ -37,6 +37,14 @@ function toInquiryAssistItem(request: ContactRequestSummary): InquiryAssistItem 
   }
 }
 
+type ListingInquiryGroup = {
+  listingId: string
+  listingTitle: string
+  requests: ContactRequestSummary[]
+  pendingCount: number
+  respondedCount: number
+}
+
 export default function FarmerRequestsScreen() {
   const { user } = useAuth()
   const { showToast } = useToast()
@@ -49,6 +57,7 @@ export default function FarmerRequestsScreen() {
   const [editableReply, setEditableReply] = useState('')
   const [isSummaryModalVisible, setIsSummaryModalVisible] = useState(false)
   const [isReplyModalVisible, setIsReplyModalVisible] = useState(false)
+  const [summaryTitle, setSummaryTitle] = useState('AI inquiry summary')
 
   const loadRequests = useCallback(async () => {
     if (!user) {
@@ -81,6 +90,38 @@ export default function FarmerRequestsScreen() {
     () => requests.filter((request) => request.status === 'pending').length,
     [requests],
   )
+  const groupedRequests = useMemo<ListingInquiryGroup[]>(() => {
+    const groups = new Map<string, ListingInquiryGroup>()
+
+    for (const request of requests) {
+      const existing = groups.get(request.listingId)
+
+      if (existing) {
+        existing.requests.push(request)
+        if (request.status === 'pending') {
+          existing.pendingCount += 1
+        }
+        if (request.status === 'responded') {
+          existing.respondedCount += 1
+        }
+        continue
+      }
+
+      groups.set(request.listingId, {
+        listingId: request.listingId,
+        listingTitle: request.listingTitle,
+        requests: [request],
+        pendingCount: request.status === 'pending' ? 1 : 0,
+        respondedCount: request.status === 'responded' ? 1 : 0,
+      })
+    }
+
+    return [...groups.values()].sort((left, right) => {
+      const leftNewest = left.requests[0]?.createdAt ?? ''
+      const rightNewest = right.requests[0]?.createdAt ?? ''
+      return new Date(rightNewest).getTime() - new Date(leftNewest).getTime()
+    })
+  }, [requests])
 
   const handleMarkAllSeen = async () => {
     if (!user) {
@@ -103,8 +144,11 @@ export default function FarmerRequestsScreen() {
     showToast('Inquiries marked as seen.', 'success')
   }
 
-  const handleSummarize = async () => {
-    if (requests.length === 0) {
+  const handleSummarize = async (
+    scopedRequests: ContactRequestSummary[] = requests,
+    title = 'AI inquiry summary',
+  ) => {
+    if (scopedRequests.length === 0) {
       showToast('No inquiries to summarize yet.', 'info')
       return
     }
@@ -113,7 +157,7 @@ export default function FarmerRequestsScreen() {
 
     try {
       const result = await getInquirySummary({
-        inquiries: requests.map(toInquiryAssistItem),
+        inquiries: scopedRequests.map(toInquiryAssistItem),
       })
 
       if (result.error || !result.data) {
@@ -121,6 +165,7 @@ export default function FarmerRequestsScreen() {
         return
       }
 
+      setSummaryTitle(title)
       setSummaryResult(result.data)
       setIsSummaryModalVisible(true)
     } finally {
@@ -207,27 +252,59 @@ export default function FarmerRequestsScreen() {
           <Text style={styles.helper}>Loading buyer inquiries...</Text>
         </View>
       ) : requests.length > 0 ? (
-        <FlatList
-          data={requests}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
-          renderItem={({ item }) => (
-            <ContactRequestCard
-              request={item}
-              role="seller"
-              actionLabel={isReplyLoading ? 'Generating reply...' : 'Draft reply'}
-              onActionPress={() => void handleDraftReply(item)}
-              secondaryActionLabel={
-                item.status === 'responded' ? undefined : 'Mark responded'
-              }
-              onSecondaryActionPress={
-                item.status === 'responded'
-                  ? undefined
-                  : () => void handleMarkResponded(item)
-              }
-            />
-          )}
-        />
+        <ScrollView contentContainerStyle={styles.list}>
+          {groupedRequests.map((group) => (
+            <View key={group.listingId} style={styles.groupCard}>
+              <View style={styles.groupHeader}>
+                <View style={styles.groupHeaderText}>
+                  <Text style={styles.groupTitle}>{group.listingTitle}</Text>
+                  <Text style={styles.groupMeta}>
+                    {group.requests.length} request
+                    {group.requests.length === 1 ? '' : 's'} | {group.pendingCount}{' '}
+                    pending | {group.respondedCount} responded
+                  </Text>
+                </View>
+                <Pressable
+                  disabled={isSummaryLoading}
+                  onPress={() =>
+                    void handleSummarize(
+                      group.requests,
+                      `AI summary for ${group.listingTitle}`,
+                    )
+                  }
+                  style={[
+                    styles.groupAction,
+                    isSummaryLoading ? styles.disabledButton : null,
+                  ]}
+                >
+                  <Text style={styles.groupActionText}>
+                    {isSummaryLoading ? 'Summarizing...' : 'Summarize'}
+                  </Text>
+                </Pressable>
+              </View>
+
+              <View style={styles.groupStack}>
+                {group.requests.map((item) => (
+                  <ContactRequestCard
+                    key={item.id}
+                    request={item}
+                    role="seller"
+                    actionLabel={isReplyLoading ? 'Generating reply...' : 'Draft reply'}
+                    onActionPress={() => void handleDraftReply(item)}
+                    secondaryActionLabel={
+                      item.status === 'responded' ? undefined : 'Mark responded'
+                    }
+                    onSecondaryActionPress={
+                      item.status === 'responded'
+                        ? undefined
+                        : () => void handleMarkResponded(item)
+                    }
+                  />
+                ))}
+              </View>
+            </View>
+          ))}
+        </ScrollView>
       ) : (
         <View style={styles.list}>
           <EmptyState
@@ -239,7 +316,7 @@ export default function FarmerRequestsScreen() {
 
       <InquiryAiModal
         isVisible={isSummaryModalVisible}
-        title="AI inquiry summary"
+        title={summaryTitle}
         subtitle="A quick overview of what needs your attention first."
         body={summaryResult?.result.summary ?? ''}
         bullets={[
@@ -340,5 +417,50 @@ const styles = StyleSheet.create({
   list: {
     padding: 24,
     gap: 16,
+  },
+  groupCard: {
+    gap: 12,
+    backgroundColor: '#f7faf6',
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: palette.border,
+    padding: 14,
+  },
+  groupHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  groupHeaderText: {
+    flex: 1,
+    gap: 4,
+  },
+  groupTitle: {
+    color: palette.soil,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  groupMeta: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  groupAction: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    backgroundColor: palette.surface,
+    borderWidth: 1,
+    borderColor: palette.border,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  groupActionText: {
+    color: palette.sageDark,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  groupStack: {
+    gap: 10,
   },
 })
