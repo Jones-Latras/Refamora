@@ -192,30 +192,13 @@ export default function FeedScreen() {
             </View>
           </View>
 
-          <View style={styles.quickNavRow}>
+          <View style={styles.activityShortcutRow}>
             <Pressable
               onPress={() => router.push('/(buyer)/dashboard')}
-              style={styles.quickNavButton}
+              style={styles.activityShortcut}
             >
-              <Text style={styles.quickNavButtonText}>Dashboard</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push('/(buyer)/requests')}
-              style={styles.quickNavButton}
-            >
-              <Text style={styles.quickNavButtonText}>Requests</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push('/(buyer)/map')}
-              style={[styles.quickNavButton, styles.quickNavButtonAccent]}
-            >
-              <Text
-                style={[
-                  styles.quickNavButtonText,
-                  styles.quickNavButtonTextAccent,
-                ]}
-              >
-                Map
+              <Text style={styles.activityShortcutText}>
+                View your recent activity
               </Text>
             </Pressable>
           </View>
@@ -425,31 +408,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: palette.ink,
   },
-  quickNavRow: {
-    flexDirection: 'row',
-    gap: 8,
+  activityShortcutRow: {
+    alignItems: 'flex-start',
   },
-  quickNavButton: {
-    flex: 1,
+  activityShortcut: {
     borderRadius: 999,
     borderWidth: 1,
     borderColor: palette.border,
     backgroundColor: palette.surface,
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  quickNavButtonAccent: {
-    backgroundColor: '#e4efe6',
-    borderColor: 'rgba(58, 102, 72, 0.14)',
-  },
-  quickNavButtonText: {
+  activityShortcutText: {
     color: palette.clay,
     fontSize: 13,
     fontWeight: '800',
-  },
-  quickNavButtonTextAccent: {
-    color: palette.sageDark,
   },
   filterRow: {
     flexDirection: 'row',

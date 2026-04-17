@@ -68,21 +68,6 @@ export default function BuyerDashboardScreen() {
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.topActions}>
-          <Pressable
-            onPress={() => router.push('/(buyer)/map')}
-            style={styles.secondaryButton}
-          >
-            <Text style={styles.secondaryButtonText}>Open map</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push('/(buyer)/profile')}
-            style={styles.profileButton}
-          >
-            <Text style={styles.profileButtonText}>Edit profile</Text>
-          </Pressable>
-        </View>
-
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View>
@@ -160,36 +145,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 24,
     gap: 18,
-  },
-  topActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  profileButton: {
-    flex: 1,
-    backgroundColor: palette.sage,
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  profileButtonText: {
-    color: palette.cream,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  secondaryButton: {
-    flex: 1,
-    backgroundColor: palette.surface,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: palette.border,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  secondaryButtonText: {
-    color: palette.clay,
-    fontWeight: '800',
-    textAlign: 'center',
   },
   section: {
     gap: 14,

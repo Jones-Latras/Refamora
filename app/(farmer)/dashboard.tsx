@@ -364,20 +364,6 @@ export default function FarmerDashboardScreen() {
           </Pressable>
         </View>
 
-        <Pressable
-          onPress={() => router.push('/(farmer)/requests')}
-          style={styles.inboxShortcut}
-        >
-          <View style={styles.inboxShortcutText}>
-            <Text style={styles.inboxShortcutTitle}>Inquiry inbox</Text>
-            <Text style={styles.inboxShortcutSubtitle}>
-              Open the seller inbox with AI summaries, draft replies, and
-              response status tools.
-            </Text>
-          </View>
-          <Text style={styles.inboxShortcutLink}>Open</Text>
-        </Pressable>
-
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View>
@@ -385,6 +371,7 @@ export default function FarmerDashboardScreen() {
               <Text style={styles.sectionSubtitle}>
                 {pendingInquiryCount} pending request
                 {pendingInquiryCount === 1 ? '' : 's'}
+                {'\n'}Open the Requests tab for AI summaries and draft replies.
               </Text>
             </View>
             <View style={styles.sectionActions}>
@@ -738,37 +725,6 @@ const styles = StyleSheet.create({
     color: palette.clay,
     fontWeight: '800',
     fontSize: 14,
-  },
-  inboxShortcut: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    backgroundColor: '#eef6ed',
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: 'rgba(58, 102, 72, 0.12)',
-    paddingHorizontal: 16,
-    paddingVertical: 15,
-  },
-  inboxShortcutText: {
-    flex: 1,
-    gap: 4,
-  },
-  inboxShortcutTitle: {
-    color: palette.sageDark,
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  inboxShortcutSubtitle: {
-    color: '#5f7166',
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  inboxShortcutLink: {
-    color: palette.sageDark,
-    fontSize: 13,
-    fontWeight: '900',
   },
   section: {
     gap: 12,
