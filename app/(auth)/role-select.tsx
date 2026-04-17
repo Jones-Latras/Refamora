@@ -1,4 +1,4 @@
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import type { User } from '@supabase/supabase-js'
@@ -29,6 +29,8 @@ const roles: {
 export default function RoleSelectScreen() {
   const { user, refreshRole } = useAuth()
   const { showToast } = useToast()
+  const params = useLocalSearchParams<{ redirect?: string }>()
+  const redirect = typeof params.redirect === 'string' ? params.redirect : null
 
   const buildProfileFromUser = (authUser: User, role: UserRole) => {
     const metadata = authUser.user_metadata ?? {}
@@ -62,7 +64,9 @@ export default function RoleSelectScreen() {
 
     await refreshRole()
     showToast('Role saved successfully.', 'success')
-    router.replace(role === 'farmer' ? '/(farmer)/dashboard' : '/(buyer)/feed')
+    router.replace(
+      redirect ?? (role === 'farmer' ? '/(farmer)/dashboard' : '/(buyer)/feed'),
+    )
   }
 
   return (

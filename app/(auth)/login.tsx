@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link, router } from 'expo-router'
+import { Link, router, useLocalSearchParams } from 'expo-router'
 import { Controller, useForm } from 'react-hook-form'
 import {
   Image,
@@ -23,6 +23,8 @@ import { palette, radii, shadow } from '../../utils/theme'
 
 export default function LoginScreen() {
   const { showToast } = useToast()
+  const params = useLocalSearchParams<{ redirect?: string }>()
+  const redirect = typeof params.redirect === 'string' ? params.redirect : '/'
   const {
     control,
     handleSubmit,
@@ -44,7 +46,7 @@ export default function LoginScreen() {
     }
 
     showToast('Signed in successfully.', 'success')
-    router.replace('/')
+    router.replace(redirect)
   })
 
   return (
@@ -128,7 +130,14 @@ export default function LoginScreen() {
 
               <View style={styles.footer}>
                 <Text style={styles.footerText}>Need an account?</Text>
-                <Link href="/(auth)/signup" style={styles.footerLink}>
+                <Link
+                  href={{
+                    pathname: '/(auth)/signup',
+                    params:
+                      redirect !== '/' ? { redirect } : undefined,
+                  }}
+                  style={styles.footerLink}
+                >
                   Create one here
                 </Link>
               </View>

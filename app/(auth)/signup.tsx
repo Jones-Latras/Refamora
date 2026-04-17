@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { Controller, useForm } from 'react-hook-form'
 import {
   KeyboardAvoidingView,
@@ -21,6 +21,8 @@ import { palette } from '../../utils/theme'
 
 export default function SignUpScreen() {
   const { showToast } = useToast()
+  const params = useLocalSearchParams<{ redirect?: string }>()
+  const redirect = typeof params.redirect === 'string' ? params.redirect : '/'
   const {
     control,
     handleSubmit,
@@ -48,7 +50,10 @@ export default function SignUpScreen() {
     }
 
     showToast('Account created. Pick your role next.', 'success')
-    router.replace('/(auth)/role-select')
+    router.replace({
+      pathname: '/(auth)/role-select',
+      params: redirect !== '/' ? { redirect } : undefined,
+    })
   })
 
   return (

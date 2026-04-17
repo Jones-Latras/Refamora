@@ -7,6 +7,18 @@ import { ToastProvider } from '../components/Toast'
 import { AuthProvider, useAuth } from '../hooks/useAuth'
 import { palette } from '../utils/theme'
 
+function normalizeRedirectPath(pathname: string) {
+  if (!pathname || pathname === '/') {
+    return '/'
+  }
+
+  if (pathname.startsWith('/(auth)')) {
+    return '/'
+  }
+
+  return pathname
+}
+
 function SplashGate() {
   const { user, role, isLoading } = useAuth()
   const pathname = usePathname()
@@ -21,17 +33,24 @@ function SplashGate() {
     const currentGroup = segments[0]
     const inAuthGroup = currentGroup === '(auth)'
     const onRoot = pathname === '/'
+    const redirectPath = normalizeRedirectPath(pathname)
 
     if (!user) {
       if (!inAuthGroup) {
-        router.replace('/(auth)/login')
+        router.replace({
+          pathname: '/(auth)/login',
+          params: redirectPath !== '/' ? { redirect: redirectPath } : undefined,
+        })
       }
       return
     }
 
     if (!role) {
       if (pathname !== '/(auth)/role-select') {
-        router.replace('/(auth)/role-select')
+        router.replace({
+          pathname: '/(auth)/role-select',
+          params: redirectPath !== '/' ? { redirect: redirectPath } : undefined,
+        })
       }
       return
     }

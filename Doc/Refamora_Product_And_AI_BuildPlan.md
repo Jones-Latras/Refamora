@@ -17,7 +17,7 @@ The goal is simple: keep Refamora useful as a real marketplace first, then use A
 ## Master Checklist
 
 Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
-Latest note: 2026-04-17 the buyer and farmer areas now have persistent tab navigation, and the redundant screen-level navigation buttons are being trimmed so users see one clearer movement system instead of stacked shortcuts.
+Latest note: 2026-04-17 listing shares now preserve the intended listing route through login and role selection, so shared item links can return users to the exact listing after authentication.
 
 ### AI Phase 0 - Foundations
 
@@ -114,8 +114,8 @@ The app now has the right screens, but the movement between them still needs to 
 - [~] Standardize buyer navigation around `Home`, `Map`, `Requests`, and `Profile`
 - [~] Standardize farmer navigation around `Home`, `Create`, `Listings`, `Requests`, and `Profile`
 - [~] Replace one-off action buttons with clearer persistent navigation where possible
-- [ ] Add deep linking for listings so shared links open directly to the item
-- [ ] Add a share action on listing details
+- [x] Add deep linking for listings so shared links open directly to the item
+- [x] Add a share action on listing details
 - [ ] Add a recently viewed pathway for buyers that is easy to revisit
 - [ ] Reduce repeated headers and duplicated page titles across remaining screens
 

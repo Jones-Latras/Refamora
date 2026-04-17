@@ -1,4 +1,5 @@
 import { useLocalSearchParams } from 'expo-router'
+import * as ExpoLinking from 'expo-linking'
 import { useEffect, useMemo, useState } from 'react'
 import MapView, { Marker } from 'react-native-maps'
 import {
@@ -6,6 +7,7 @@ import {
   Image,
   Linking,
   Pressable,
+  Share,
   ScrollView,
   StyleSheet,
   Text,
@@ -135,6 +137,24 @@ export default function ListingDetailScreen() {
   const canContactSeller =
     role === 'buyer' && !!user && !!listing && user.id !== listing.sellerId
 
+  const handleShareListing = async () => {
+    if (!listing) {
+      return
+    }
+
+    const listingUrl = ExpoLinking.createURL(`/listing/${listing.id}`)
+
+    try {
+      await Share.share({
+        message: `Check this Refamora listing: ${listing.title}\n${listingUrl}`,
+        url: listingUrl,
+        title: listing.title,
+      })
+    } catch {
+      showToast('Unable to open the share sheet right now.', 'error')
+    }
+  }
+
   const handleSubmitContactRequest = async () => {
     if (!user || !listing) {
       showToast('Sign in before contacting a seller.', 'error')
@@ -226,9 +246,18 @@ export default function ListingDetailScreen() {
         )}
 
         <View style={styles.heroContent}>
-          <Text style={styles.eyebrow}>{readableWasteType}</Text>
-          <Text style={styles.title}>{listing.title}</Text>
-          <Text style={styles.price}>{formatPrice(listing.price, listing.unit)}</Text>
+          <View style={styles.heroHeaderRow}>
+            <View style={styles.heroTextBlock}>
+              <Text style={styles.eyebrow}>{readableWasteType}</Text>
+              <Text style={styles.title}>{listing.title}</Text>
+              <Text style={styles.price}>
+                {formatPrice(listing.price, listing.unit)}
+              </Text>
+            </View>
+            <Pressable onPress={() => void handleShareListing()} style={styles.shareButton}>
+              <Text style={styles.shareButtonText}>Share</Text>
+            </Pressable>
+          </View>
           <Text style={styles.meta}>
             {listing.city} | {listing.quantity} {listing.unit} | {formatDate(listing.createdAt)}
           </Text>
@@ -425,6 +454,16 @@ const styles = StyleSheet.create({
   heroContent: {
     gap: 8,
   },
+  heroHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  heroTextBlock: {
+    flex: 1,
+    gap: 8,
+  },
   eyebrow: {
     color: palette.harvest,
     textTransform: 'uppercase',
@@ -446,6 +485,20 @@ const styles = StyleSheet.create({
   meta: {
     color: palette.muted,
     lineHeight: 22,
+  },
+  shareButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: palette.surface,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: palette.border,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  shareButtonText: {
+    color: palette.sageDark,
+    fontSize: 13,
+    fontWeight: '800',
   },
   section: {
     backgroundColor: palette.surface,
