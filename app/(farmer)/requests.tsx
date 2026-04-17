@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { ContactRequestCard } from '../../components/ContactRequestCard'
 import { EmptyState } from '../../components/EmptyState'
 import { InquiryAiModal } from '../../components/InquiryAiModal'
+import { RequestsScreenSkeleton } from '../../components/ScreenSkeleton'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
 import {
@@ -248,9 +249,7 @@ export default function FarmerRequestsScreen() {
       </View>
 
       {isLoading ? (
-        <View style={styles.center}>
-          <Text style={styles.helper}>Loading buyer inquiries...</Text>
-        </View>
+        <RequestsScreenSkeleton />
       ) : requests.length > 0 ? (
         <ScrollView contentContainerStyle={styles.list}>
           {groupedRequests.map((group) => (
@@ -405,14 +404,6 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.7,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  helper: {
-    color: palette.muted,
   },
   list: {
     padding: 24,

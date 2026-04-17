@@ -3,7 +3,6 @@ import * as ExpoLinking from 'expo-linking'
 import { useEffect, useMemo, useState } from 'react'
 import MapView, { Marker } from 'react-native-maps'
 import {
-  ActivityIndicator,
   Image,
   Linking,
   Pressable,
@@ -21,6 +20,7 @@ import { FulfillmentLabel } from '../../../components/FulfillmentLabel'
 import { ListingCard } from '../../../components/ListingCard'
 import { ListingReportModal } from '../../../components/ListingReportModal'
 import { ListingStatusBadge } from '../../../components/ListingStatusBadge'
+import { ListingDetailScreenSkeleton } from '../../../components/ScreenSkeleton'
 import { useToast } from '../../../components/Toast'
 import { useAuth } from '../../../hooks/useAuth'
 import { useBuyerLocationStore } from '../../../hooks/useBuyerLocation'
@@ -441,10 +441,7 @@ export default function ListingDetailScreen() {
   if (isLoading) {
     return (
       <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
-        <View style={styles.loadingState}>
-          <ActivityIndicator color={palette.sage} size="small" />
-          <Text style={styles.loadingText}>Loading listing details...</Text>
-        </View>
+        <ListingDetailScreenSkeleton />
       </SafeAreaView>
     )
   }
@@ -855,16 +852,6 @@ const styles = StyleSheet.create({
     color: palette.soil,
     fontSize: 13,
     fontWeight: '800',
-  },
-  loadingState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  loadingText: {
-    color: palette.sageDark,
-    fontWeight: '600',
   },
   emptyWrapper: {
     flex: 1,

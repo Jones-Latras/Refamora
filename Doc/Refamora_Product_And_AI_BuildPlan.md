@@ -17,7 +17,7 @@ The goal is simple: keep Refamora useful as a real marketplace first, then use A
 ## Master Checklist
 
 Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
-Latest note: 2026-04-17 buyer discovery now includes save, distance, map improvements, richer seller trust details on listing pages, a visible seller-verification placeholder, a real report-listing flow, stronger success feedback after key actions, and clearer image-upload failure messages for size, type, and network issues, while farmer operations now show listing performance, grouped inquiry inboxes, per-listing activity timelines, seller reminders, bulk status cleanup, duplicate listing support, resumable listing drafts, shared profile completion prompts across the app, a visible publish-readiness panel that stops weak listings before publish, stronger validation for phone, city, quantity, and price formats, and clearer listing status badges for active, sold, unavailable, and draft states.
+Latest note: 2026-04-17 buyer discovery now includes save, distance, map improvements, richer seller trust details on listing pages, a visible seller-verification placeholder, a real report-listing flow, stronger success feedback after key actions, clearer image-upload failure messages for size, type, and network issues, and consistent loading skeletons across dashboards, profile, listing details, and requests, while farmer operations now show listing performance, grouped inquiry inboxes, per-listing activity timelines, seller reminders, bulk status cleanup, duplicate listing support, resumable listing drafts, shared profile completion prompts across the app, a visible publish-readiness panel that stops weak listings before publish, stronger validation for phone, city, quantity, and price formats, and clearer listing status badges for active, sold, unavailable, and draft states.
 
 ### AI Phase 0 - Foundations
 
@@ -101,7 +101,7 @@ These are the highest-value non-AI improvements because they protect the core ma
 - [ ] Add full error boundary coverage with retry states
 - [ ] Audit all submit flows for missing-field focus and scroll-to-error behavior
 - [ ] Add offline banner and graceful offline handling for feed, map, and profile surfaces
-- [ ] Add loading skeleton consistency across dashboards, profile, listing details, and requests
+- [x] Add loading skeleton consistency across dashboards, profile, listing details, and requests
 - [ ] Add empty-state copy that reflects real state, not generic fallback text
 - [x] Add stronger success feedback after create listing, update listing, send inquiry, and save profile
 - [x] Add image-upload failure handling with clearer size, type, and network messages

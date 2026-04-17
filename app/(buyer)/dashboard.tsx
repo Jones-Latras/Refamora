@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { ContactRequestCard } from '../../components/ContactRequestCard'
 import { EmptyState } from '../../components/EmptyState'
 import { ListingCard } from '../../components/ListingCard'
+import { DashboardScreenSkeleton } from '../../components/ScreenSkeleton'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
 import { useProfile } from '../../hooks/useProfile'
@@ -21,12 +22,13 @@ import { palette } from '../../utils/theme'
 export default function BuyerDashboardScreen() {
   const { user } = useAuth()
   const { showToast } = useToast()
-  const { profile } = useProfile(user?.id)
+  const { profile, isLoading: isProfileLoading } = useProfile(user?.id)
   const recentlyViewedIds = useRecentlyViewedStore((state) => state.listingIds)
   const savedListingIds = useSavedListingsStore((state) => state.listingIds)
   const [requests, setRequests] = useState<ContactRequestSummary[]>([])
   const [recentListings, setRecentListings] = useState<ListingPreview[]>([])
   const [savedListings, setSavedListings] = useState<ListingPreview[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const profileCompletion = useMemo(() => getProfileCompletion(profile, 'buyer'), [profile])
 
   const loadRequests = useCallback(async () => {
@@ -80,15 +82,33 @@ export default function BuyerDashboardScreen() {
     setSavedListings(result.data ?? [])
   }, [savedListingIds, showToast])
 
+  const loadDashboard = useCallback(async () => {
+    setIsLoading(true)
+    await Promise.all([loadRequests(), loadRecentListings(), loadSavedListings()])
+    setIsLoading(false)
+  }, [loadRecentListings, loadRequests, loadSavedListings])
+
   useFocusEffect(
     useCallback(() => {
-      void loadRequests()
-      void loadRecentListings()
-      void loadSavedListings()
-    }, [loadRecentListings, loadRequests, loadSavedListings]),
+      void loadDashboard()
+    }, [loadDashboard]),
   )
 
   const recentRequests = requests.slice(0, 3)
+  const shouldShowSkeleton =
+    isProfileLoading ||
+    (isLoading &&
+      requests.length === 0 &&
+      recentListings.length === 0 &&
+      savedListings.length === 0)
+
+  if (shouldShowSkeleton) {
+    return (
+      <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
+        <DashboardScreenSkeleton />
+      </SafeAreaView>
+    )
+  }
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>

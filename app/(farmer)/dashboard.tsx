@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { ContactRequestCard } from '../../components/ContactRequestCard'
 import { EmptyState } from '../../components/EmptyState'
 import { ListingStatusBadge } from '../../components/ListingStatusBadge'
+import { DashboardScreenSkeleton } from '../../components/ScreenSkeleton'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
 import { useListingDraftStore } from '../../hooks/useListingDrafts'
@@ -178,7 +179,7 @@ function ListingPreviewCard({
 
 export default function FarmerDashboardScreen() {
   const { user } = useAuth()
-  const { profile } = useProfile(user?.id)
+  const { profile, isLoading: isProfileLoading } = useProfile(user?.id)
   const { showToast } = useToast()
   const savedDraft = useListingDraftStore((state) =>
     user?.id ? state.draftsByUser[user.id] ?? null : null,
@@ -189,6 +190,7 @@ export default function FarmerDashboardScreen() {
   const [listingPerformance, setListingPerformance] = useState<
     ListingPerformanceSummary[]
   >([])
+  const [isLoading, setIsLoading] = useState(true)
 
   const loadDashboard = useCallback(async () => {
     if (!user) {
@@ -196,9 +198,11 @@ export default function FarmerDashboardScreen() {
       setInquiries([])
       setAiAnalytics(null)
       setListingPerformance([])
+      setIsLoading(false)
       return
     }
 
+    setIsLoading(true)
     const [listingsResult, inquiriesResult, analyticsResult, performanceResult] =
       await Promise.all([
       getFarmerListings(user.id),
@@ -227,6 +231,7 @@ export default function FarmerDashboardScreen() {
     setInquiries(inquiriesResult.data ?? [])
     setAiAnalytics(analyticsResult.data)
     setListingPerformance(performanceResult.data ?? [])
+    setIsLoading(false)
   }, [showToast, user])
 
   useFocusEffect(
@@ -395,6 +400,22 @@ export default function FarmerDashboardScreen() {
     savedDraft,
     staleListings,
   ])
+
+  const shouldShowSkeleton =
+    isProfileLoading ||
+    (isLoading &&
+      listings.length === 0 &&
+      inquiries.length === 0 &&
+      aiAnalytics == null &&
+      listingPerformance.length === 0)
+
+  if (shouldShowSkeleton) {
+    return (
+      <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={styles.safeArea}>
+        <DashboardScreenSkeleton />
+      </SafeAreaView>
+    )
+  }
 
   return (
     <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={styles.safeArea}>

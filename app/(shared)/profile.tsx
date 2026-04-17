@@ -2,7 +2,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { router } from 'expo-router'
 import { Controller, useForm } from 'react-hook-form'
 import {
-  ActivityIndicator,
   Image,
   Pressable,
   ScrollView,
@@ -15,6 +14,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { EmptyState } from '../../components/EmptyState'
 import { FormField } from '../../components/FormField'
+import { ProfileScreenSkeleton } from '../../components/ScreenSkeleton'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
 import { useProfile } from '../../hooks/useProfile'
@@ -243,10 +243,7 @@ export default function ProfileScreen() {
   if (isLoading) {
     return (
       <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
-        <View style={styles.loadingState}>
-          <ActivityIndicator color={palette.sage} size="small" />
-          <Text style={styles.loadingText}>Loading profile...</Text>
-        </View>
+        <ProfileScreenSkeleton />
       </SafeAreaView>
     )
   }
@@ -512,16 +509,6 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingBottom: 32,
-  },
-  loadingState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  loadingText: {
-    color: palette.muted,
-    fontWeight: '600',
   },
   emptyWrapper: {
     flex: 1,
