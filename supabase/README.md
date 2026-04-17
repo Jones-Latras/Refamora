@@ -72,3 +72,5 @@ Set these in Supabase before deploying AI functions:
 If you deploy functions remotely, note that `LOCAL_GEMMA_BASE_URL` must point to a reachable host from the function runtime. For live hackathon demos on one machine, local or self-hosted execution is the safer path.
 
 The current rate limiter uses `ai_events` as the request log and enforces a per-user rolling window on the listing copilot endpoint.
+
+On the app side, the farmer dashboard reads `ai_events` through RLS to show request volume, average latency, helpfulness rate, and provider mix for recent listing copilot usage.

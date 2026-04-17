@@ -1,4 +1,5 @@
 import type {
+  AIAnalyticsSummary,
   AIFeedbackInput,
   AIFeedbackResult,
   AIHealthResult,
@@ -6,6 +7,7 @@ import type {
   ListingAssistResult,
   ServiceResult,
 } from '../types/app'
+import type { Tables } from '../types/database'
 
 import {
   aiFeedbackInputSchema,
@@ -16,6 +18,8 @@ import {
 } from '../utils/schemas'
 
 import { getSupabaseClient, hasSupabaseEnv } from './supabase'
+
+type AIEventRow = Tables<'ai_events'>
 
 export async function assistListing(
   input: ListingAssistInput,
@@ -129,4 +133,88 @@ export async function submitAIFeedback(
   }
 
   return { data: parsedResult.data, error: null }
+}
+
+export async function getListingCopilotAnalytics(
+  userId: string,
+  periodDays = 7,
+): Promise<ServiceResult<AIAnalyticsSummary>> {
+  if (!hasSupabaseEnv) {
+    return {
+      data: {
+        feature: 'listing_copilot',
+        periodDays,
+        totalRequests: 0,
+        successfulRequests: 0,
+        failedRequests: 0,
+        averageLatencyMs: null,
+        helpfulRate: null,
+        feedbackCount: 0,
+        localGemmaRequests: 0,
+        geminiRequests: 0,
+        lastUsedAt: null,
+      },
+      error: null,
+    }
+  }
+
+  const windowStart = new Date(
+    Date.now() - periodDays * 24 * 60 * 60 * 1000,
+  ).toISOString()
+
+  const { data, error } = await getSupabaseClient()
+    .from('ai_events')
+    .select(
+      'request_status, latency_ms, helpful, provider, created_at, feature, user_id',
+    )
+    .eq('user_id', userId)
+    .eq('feature', 'listing_copilot')
+    .gte('created_at', windowStart)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    return { data: null, error }
+  }
+
+  const rows = (data ?? []) as AIEventRow[]
+  const successfulRows = rows.filter((row) => row.request_status === 'success')
+  const failedRows = rows.filter((row) => row.request_status === 'error')
+  const latencyRows = successfulRows.filter(
+    (row) => typeof row.latency_ms === 'number',
+  )
+  const feedbackRows = rows.filter((row) => typeof row.helpful === 'boolean')
+  const helpfulRows = feedbackRows.filter((row) => row.helpful === true)
+
+  const averageLatencyMs =
+    latencyRows.length > 0
+      ? Math.round(
+          latencyRows.reduce((sum, row) => sum + (row.latency_ms ?? 0), 0) /
+            latencyRows.length,
+        )
+      : null
+
+  const helpfulRate =
+    feedbackRows.length > 0
+      ? Math.round((helpfulRows.length / feedbackRows.length) * 100)
+      : null
+
+  return {
+    data: {
+      feature: 'listing_copilot',
+      periodDays,
+      totalRequests: rows.length,
+      successfulRequests: successfulRows.length,
+      failedRequests: failedRows.length,
+      averageLatencyMs,
+      helpfulRate,
+      feedbackCount: feedbackRows.length,
+      localGemmaRequests: successfulRows.filter(
+        (row) => row.provider === 'local_gemma',
+      ).length,
+      geminiRequests: successfulRows.filter((row) => row.provider === 'gemini')
+        .length,
+      lastUsedAt: rows[0]?.created_at ?? null,
+    },
+    error: null,
+  }
 }

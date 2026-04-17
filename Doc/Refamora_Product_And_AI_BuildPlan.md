@@ -17,7 +17,7 @@ The goal is simple: keep Refamora useful as a real marketplace first, then use A
 ## Master Checklist
 
 Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
-Latest note: 2026-04-17 listing copilot feedback, `ai_events` logging, provider/latency tracking, and a configurable per-user AI rate limit are now connected. Farmers can request AI help, see availability before using it, keep or reject a suggestion, and get throttled safely if the assistant is overused during a demo.
+Latest note: 2026-04-17 the farmer dashboard now includes a listing copilot analytics card powered by `ai_events`, showing request volume, average latency, helpful rate, and provider usage for recent AI activity. The copilot is now guarded by availability checks, feedback capture, request logging, and per-user throttling.
 
 ### AI Phase 0 - Foundations
 
@@ -32,7 +32,7 @@ Latest note: 2026-04-17 listing copilot feedback, `ai_events` logging, provider/
 - [x] Add rate limiting and request logging
 - [x] Add schemas for AI outputs using Zod
 - [x] Add feature flagging so AI can be turned off safely
-- [~] Add analytics for AI request volume, latency, and acceptance rate
+- [x] Add analytics for AI request volume, latency, and acceptance rate
 - [x] Log which provider served each AI response
 
 ### AI Phase 1 - Listing Copilot
@@ -513,7 +513,7 @@ Refamora impact:
 - [x] Add rate limiting and request logging
 - [x] Add schemas for AI outputs using Zod
 - [x] Add feature flagging so AI can be turned off safely
-- [~] Add analytics for AI request volume, latency, and acceptance rate
+- [x] Add analytics for AI request volume, latency, and acceptance rate
 - [x] Log which provider served each AI response
 
 ### AI Phase 1: Listing Copilot

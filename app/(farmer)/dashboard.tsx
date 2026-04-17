@@ -13,8 +13,13 @@ import {
   getSellerInquiries,
   markSellerInquiriesSeen,
 } from '../../services/contactService'
+import { getListingCopilotAnalytics } from '../../services/aiService'
 import { getFarmerListings } from '../../services/listingService'
-import type { ContactRequestSummary, ListingPreview } from '../../types/app'
+import type {
+  AIAnalyticsSummary,
+  ContactRequestSummary,
+  ListingPreview,
+} from '../../types/app'
 import { formatDate, formatPrice } from '../../utils/formatters'
 import { palette, radii, shadow } from '../../utils/theme'
 
@@ -45,6 +50,18 @@ function getInitials(name?: string | null, fallback = 'R') {
     .slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase())
     .join('')
+}
+
+function formatLatency(value: number | null) {
+  if (value == null) {
+    return '--'
+  }
+
+  if (value < 1000) {
+    return `${value} ms`
+  }
+
+  return `${(value / 1000).toFixed(1)} s`
 }
 
 type MetricCardProps = {
@@ -130,17 +147,20 @@ export default function FarmerDashboardScreen() {
   const { showToast } = useToast()
   const [listings, setListings] = useState<ListingPreview[]>([])
   const [inquiries, setInquiries] = useState<ContactRequestSummary[]>([])
+  const [aiAnalytics, setAiAnalytics] = useState<AIAnalyticsSummary | null>(null)
 
   const loadDashboard = useCallback(async () => {
     if (!user) {
       setListings([])
       setInquiries([])
+      setAiAnalytics(null)
       return
     }
 
-    const [listingsResult, inquiriesResult] = await Promise.all([
+    const [listingsResult, inquiriesResult, analyticsResult] = await Promise.all([
       getFarmerListings(user.id),
       getSellerInquiries(user.id),
+      getListingCopilotAnalytics(user.id),
     ])
 
     if (listingsResult.error) {
@@ -151,8 +171,13 @@ export default function FarmerDashboardScreen() {
       showToast(inquiriesResult.error.message, 'error')
     }
 
+    if (analyticsResult.error) {
+      showToast(analyticsResult.error.message, 'error')
+    }
+
     setListings(listingsResult.data ?? [])
     setInquiries(inquiriesResult.data ?? [])
+    setAiAnalytics(analyticsResult.data)
   }, [showToast, user])
 
   useFocusEffect(
@@ -262,6 +287,66 @@ export default function FarmerDashboardScreen() {
             tone={pendingInquiryCount > 0 ? 'attention' : 'default'}
           />
           <MetricCard label="Sold items" value={soldCount.toString()} />
+        </View>
+
+        <View style={styles.aiCard}>
+          <View style={styles.aiCardHeader}>
+            <View>
+              <Text style={styles.aiCardTitle}>Listing copilot</Text>
+              <Text style={styles.aiCardSubtitle}>
+                Last {aiAnalytics?.periodDays ?? 7} days
+              </Text>
+            </View>
+            <View style={styles.aiCardBadge}>
+              <Text style={styles.aiCardBadgeText}>AI</Text>
+            </View>
+          </View>
+
+          {aiAnalytics && aiAnalytics.totalRequests > 0 ? (
+            <>
+              <View style={styles.aiStatGrid}>
+                <View style={styles.aiStatCell}>
+                  <Text style={styles.aiStatValue}>
+                    {aiAnalytics.totalRequests}
+                  </Text>
+                  <Text style={styles.aiStatLabel}>Requests</Text>
+                </View>
+                <View style={styles.aiStatCell}>
+                  <Text style={styles.aiStatValue}>
+                    {formatLatency(aiAnalytics.averageLatencyMs)}
+                  </Text>
+                  <Text style={styles.aiStatLabel}>Avg response</Text>
+                </View>
+                <View style={styles.aiStatCell}>
+                  <Text style={styles.aiStatValue}>
+                    {aiAnalytics.helpfulRate == null
+                      ? '--'
+                      : `${aiAnalytics.helpfulRate}%`}
+                  </Text>
+                  <Text style={styles.aiStatLabel}>Helpful rate</Text>
+                </View>
+                <View style={styles.aiStatCell}>
+                  <Text style={styles.aiStatValue}>
+                    {aiAnalytics.failedRequests}
+                  </Text>
+                  <Text style={styles.aiStatLabel}>Failed</Text>
+                </View>
+              </View>
+
+              <Text style={styles.aiCardMeta}>
+                Local Gemma {aiAnalytics.localGemmaRequests} | Gemini{' '}
+                {aiAnalytics.geminiRequests} | Feedback {aiAnalytics.feedbackCount}
+              </Text>
+            </>
+          ) : (
+            <View style={styles.aiEmptyCard}>
+              <Text style={styles.aiEmptyTitle}>No AI activity yet</Text>
+              <Text style={styles.aiEmptyText}>
+                Use Improve with AI while creating a listing to start tracking
+                request volume, speed, and helpfulness.
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.primaryActions}>
@@ -520,6 +605,89 @@ const styles = StyleSheet.create({
     color: palette.clay,
     fontSize: 11,
     fontWeight: '800',
+  },
+  aiCard: {
+    backgroundColor: '#eef6ed',
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(58, 102, 72, 0.12)',
+    padding: 16,
+    gap: 14,
+  },
+  aiCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  aiCardTitle: {
+    color: palette.sageDark,
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  aiCardSubtitle: {
+    color: '#5f7166',
+    marginTop: 2,
+    fontSize: 12,
+  },
+  aiCardBadge: {
+    borderRadius: 999,
+    backgroundColor: palette.surface,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  aiCardBadgeText: {
+    color: palette.sageDark,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  aiStatGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  aiStatCell: {
+    width: '47%',
+    minHeight: 78,
+    backgroundColor: palette.surface,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(58, 102, 72, 0.08)',
+    padding: 12,
+    justifyContent: 'space-between',
+  },
+  aiStatValue: {
+    color: palette.soil,
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  aiStatLabel: {
+    color: palette.muted,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  aiCardMeta: {
+    color: '#5f7166',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  aiEmptyCard: {
+    backgroundColor: palette.surface,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(58, 102, 72, 0.08)',
+    padding: 14,
+    gap: 4,
+  },
+  aiEmptyTitle: {
+    color: palette.sageDark,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  aiEmptyText: {
+    color: '#5f7166',
+    fontSize: 13,
+    lineHeight: 19,
   },
   primaryActions: {
     flexDirection: 'row',

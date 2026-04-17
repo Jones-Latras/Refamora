@@ -141,3 +141,17 @@ export type AIHealthResult = {
   primaryProvider: AIProvider | null
   providers: AIProviderHealth[]
 }
+
+export type AIAnalyticsSummary = {
+  feature: AIFeature
+  periodDays: number
+  totalRequests: number
+  successfulRequests: number
+  failedRequests: number
+  averageLatencyMs: number | null
+  helpfulRate: number | null
+  feedbackCount: number
+  localGemmaRequests: number
+  geminiRequests: number
+  lastUsedAt: string | null
+}
