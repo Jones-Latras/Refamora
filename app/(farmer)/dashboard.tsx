@@ -68,10 +68,23 @@ function formatLatency(value: number | null) {
   return `${(value / 1000).toFixed(1)} s`
 }
 
+function getListingAgeInDays(createdAt: string) {
+  const diffMs = Date.now() - new Date(createdAt).getTime()
+  return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)))
+}
+
 type MetricCardProps = {
   label: string
   value: string
   tone?: 'default' | 'attention'
+}
+
+type ReminderItem = {
+  id: string
+  title: string
+  description: string
+  actionLabel: string
+  onPress: () => void
 }
 
 function MetricCard({ label, value, tone = 'default' }: MetricCardProps) {
@@ -292,6 +305,78 @@ export default function FarmerDashboardScreen() {
     () => listings.find((listing) => listing.id === strongestListing?.listingId)?.title ?? null,
     [listings, strongestListing?.listingId],
   )
+  const staleListings = useMemo(
+    () =>
+      listings.filter((listing) => {
+        if (listing.status !== 'active') {
+          return false
+        }
+
+        const ageInDays = getListingAgeInDays(listing.createdAt)
+        const performance = performanceByListing.get(listing.id)
+
+        if (ageInDays < 14) {
+          return false
+        }
+
+        return (performance?.inquiryCount ?? 0) === 0 || (performance?.viewCount ?? 0) <= 3
+      }),
+    [listings, performanceByListing],
+  )
+  const dashboardReminders = useMemo<ReminderItem[]>(() => {
+    const reminders: ReminderItem[] = []
+
+    if (profileIncomplete) {
+      reminders.push({
+        id: 'profile',
+        title: 'Complete your seller profile',
+        description:
+          'Add your photo, phone number, and city so buyers can trust your listings faster.',
+        actionLabel: 'Finish profile',
+        onPress: () => router.push('/(farmer)/profile'),
+      })
+    }
+
+    if (pendingInquiryCount > 0) {
+      reminders.push({
+        id: 'pending-inquiries',
+        title: 'Reply to new buyer inquiries',
+        description: `${pendingInquiryCount} buyer inquiry${
+          pendingInquiryCount === 1 ? '' : 'ies'
+        } still need attention in your inbox.`,
+        actionLabel: 'Open requests',
+        onPress: () => router.push('/(farmer)/requests'),
+      })
+    }
+
+    if (staleListings.length > 0) {
+      const targetListing = staleListings[0]
+      const ageInDays = getListingAgeInDays(targetListing.createdAt)
+
+      reminders.push({
+        id: 'stale-listing',
+        title: 'Refresh a stale listing',
+        description: `${targetListing.title} has been active for ${ageInDays} day${
+          ageInDays === 1 ? '' : 's'
+        } with low activity.`,
+        actionLabel: 'Edit listing',
+        onPress: () => router.push(`/(farmer)/edit-listing/${targetListing.id}`),
+      })
+    }
+
+    if (activeCount === 0 && listings.length > 0) {
+      reminders.push({
+        id: 'no-active-listings',
+        title: 'Bring a listing back online',
+        description:
+          'You have listings, but none are active right now. Reactivate one so buyers can find you.',
+        actionLabel: 'Manage listings',
+        onPress: () => router.push('/(farmer)/my-listings'),
+      })
+    }
+
+    return reminders.slice(0, 3)
+  }, [activeCount, listings.length, pendingInquiryCount, profileIncomplete, staleListings])
 
   return (
     <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={styles.safeArea}>
@@ -357,6 +442,33 @@ export default function FarmerDashboardScreen() {
           />
           <MetricCard label="Sold items" value={soldCount.toString()} />
         </View>
+
+        {dashboardReminders.length > 0 ? (
+          <View style={styles.reminderCard}>
+            <View style={styles.reminderHeader}>
+              <Text style={styles.reminderTitle}>Needs your attention</Text>
+              <Text style={styles.reminderSubtitle}>
+                Quick actions to keep your seller profile and listings moving.
+              </Text>
+            </View>
+
+            <View style={styles.reminderStack}>
+              {dashboardReminders.map((reminder) => (
+                <View key={reminder.id} style={styles.reminderItem}>
+                  <View style={styles.reminderText}>
+                    <Text style={styles.reminderItemTitle}>{reminder.title}</Text>
+                    <Text style={styles.reminderItemDescription}>
+                      {reminder.description}
+                    </Text>
+                  </View>
+                  <Pressable onPress={reminder.onPress} style={styles.reminderAction}>
+                    <Text style={styles.reminderActionText}>{reminder.actionLabel}</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
 
         <View style={styles.performanceCard}>
           <View style={styles.performanceHeader}>
@@ -719,6 +831,66 @@ const styles = StyleSheet.create({
   metricBadgeText: {
     color: palette.clay,
     fontSize: 11,
+    fontWeight: '800',
+  },
+  reminderCard: {
+    backgroundColor: '#fff7ea',
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(176, 126, 40, 0.2)',
+    padding: 16,
+    gap: 14,
+    ...shadow,
+  },
+  reminderHeader: {
+    gap: 4,
+  },
+  reminderTitle: {
+    color: palette.soil,
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  reminderSubtitle: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  reminderStack: {
+    gap: 10,
+  },
+  reminderItem: {
+    gap: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(176, 126, 40, 0.12)',
+    padding: 12,
+  },
+  reminderText: {
+    gap: 4,
+  },
+  reminderItemTitle: {
+    color: palette.soil,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  reminderItemDescription: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  reminderAction: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    backgroundColor: palette.surface,
+    borderWidth: 1,
+    borderColor: palette.border,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  reminderActionText: {
+    color: palette.clay,
+    fontSize: 12,
     fontWeight: '800',
   },
   performanceCard: {

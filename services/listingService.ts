@@ -1,4 +1,5 @@
 import type {
+  ListingActivityItem,
   ListingDetail,
   ListingFilters,
   ListingPerformanceSummary,
@@ -386,6 +387,114 @@ export async function getSellerListingPerformance(
   }
 }
 
+export async function getSellerListingActivity(
+  sellerId: string,
+): Promise<ServiceResult<ListingActivityItem[]>> {
+  if (!hasSupabaseEnv) {
+    return { data: [], error: null }
+  }
+
+  const { data: listings, error: listingsError } = await getSupabaseClient()
+    .from('listings')
+    .select('id, title, created_at')
+    .eq('seller_id', sellerId)
+
+  if (listingsError) {
+    return { data: [], error: listingsError }
+  }
+
+  const listingIds = (listings ?? []).map((listing) => listing.id)
+
+  if (listingIds.length === 0) {
+    return { data: [], error: null }
+  }
+
+  const [viewEvents, inquiryEvents] = await Promise.all([
+    getSupabaseClient()
+      .from('listing_engagement_events')
+      .select('id, listing_id, buyer_id, created_at')
+      .in('listing_id', listingIds)
+      .eq('event_type', 'view')
+      .order('created_at', { ascending: false }),
+    getSupabaseClient()
+      .from('contact_requests')
+      .select('id, listing_id, buyer_id, created_at, status')
+      .in('listing_id', listingIds)
+      .order('created_at', { ascending: false }),
+  ])
+
+  if (viewEvents.error) {
+    return { data: [], error: viewEvents.error }
+  }
+
+  if (inquiryEvents.error) {
+    return { data: [], error: inquiryEvents.error }
+  }
+
+  const buyerIds = [
+    ...(viewEvents.data ?? []).map((event) => event.buyer_id),
+    ...(inquiryEvents.data ?? []).map((event) => event.buyer_id),
+  ]
+
+  const uniqueBuyerIds = [...new Set(buyerIds)]
+  const { data: buyers, error: buyersError } = uniqueBuyerIds.length
+    ? await getSupabaseClient()
+        .from('users')
+        .select('id, full_name')
+        .in('id', uniqueBuyerIds)
+    : { data: [], error: null }
+
+  if (buyersError) {
+    return { data: [], error: buyersError }
+  }
+
+  const listingTitleById = new Map(
+    (listings ?? []).map((listing) => [listing.id, listing.title]),
+  )
+  const buyerNameById = new Map(
+    (buyers ?? []).map((buyer) => [buyer.id, buyer.full_name]),
+  )
+
+  const activity: ListingActivityItem[] = [
+    ...(listings ?? []).map((listing) => ({
+      id: `created-${listing.id}`,
+      listingId: listing.id,
+      type: 'listing_created' as const,
+      createdAt: listing.created_at ?? new Date().toISOString(),
+      title: 'Listing published',
+      description: `${listing.title} is now visible to buyers.`,
+    })),
+    ...((viewEvents.data ?? []).map((event) => ({
+      id: `view-${event.id}`,
+      listingId: event.listing_id,
+      type: 'listing_viewed' as const,
+      createdAt: event.created_at,
+      title: 'Listing viewed',
+      description: `${
+        buyerNameById.get(event.buyer_id) ?? 'A buyer'
+      } opened this listing.`,
+    })) satisfies ListingActivityItem[]),
+    ...((inquiryEvents.data ?? []).map((event) => ({
+      id: `inquiry-${event.id}`,
+      listingId: event.listing_id,
+      type: 'inquiry_received' as const,
+      createdAt: event.created_at,
+      title: 'Inquiry received',
+      description: `${
+        buyerNameById.get(event.buyer_id) ?? 'A buyer'
+      } sent an inquiry for ${listingTitleById.get(event.listing_id) ?? 'this listing'}.`,
+    })) satisfies ListingActivityItem[]),
+  ]
+
+  return {
+    data: activity.sort(
+      (left, right) =>
+        new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+    ),
+    error: null,
+  }
+}
+
 export async function createListing(
   listing: TablesInsert<'listings'>,
 ): Promise<ServiceResult<ListingRow>> {
@@ -442,6 +551,27 @@ export async function setListingStatus(
   status: ListingStatus,
 ) {
   return updateListing(listingId, { status })
+}
+
+export async function setListingsStatus(
+  listingIds: string[],
+  status: ListingStatus,
+): Promise<ServiceResult<ListingRow[]>> {
+  if (!hasSupabaseEnv) {
+    return { data: null, error: new Error('Supabase is not configured yet.') }
+  }
+
+  if (listingIds.length === 0) {
+    return { data: [], error: null }
+  }
+
+  const { data, error } = await getSupabaseClient()
+    .from('listings')
+    .update({ status })
+    .in('id', listingIds)
+    .select()
+
+  return { data: data ?? [], error }
 }
 
 export async function getListingPins(): Promise<ServiceResult<ListingPin[]>> {

@@ -1,38 +1,100 @@
-import { router } from 'expo-router'
-import { useMemo } from 'react'
+import { useLocalSearchParams, router } from 'expo-router'
+import { useEffect, useMemo, useState } from 'react'
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
+import { EmptyState } from '../../components/EmptyState'
 import { ListingEditor } from '../../components/ListingEditor'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
-import { createListing } from '../../services/listingService'
+import {
+  createListing,
+  getListingById,
+} from '../../services/listingService'
 import { uploadListingImage } from '../../services/storageService'
+import type { ListingDetail } from '../../types/app'
 import type { ListingFormValues } from '../../utils/schemas'
+import { palette } from '../../utils/theme'
 
 function isRemoteImage(value?: string | null) {
   return typeof value === 'string' && /^https?:\/\//.test(value)
 }
 
 export default function CreateListingScreen() {
+  const { duplicateFromId } = useLocalSearchParams<{ duplicateFromId?: string }>()
   const { user } = useAuth()
   const { showToast } = useToast()
+  const [sourceListing, setSourceListing] = useState<ListingDetail | null>(null)
+  const [isLoadingDuplicate, setIsLoadingDuplicate] = useState(Boolean(duplicateFromId))
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadDuplicateSource = async () => {
+      if (!duplicateFromId) {
+        if (isMounted) {
+          setSourceListing(null)
+          setIsLoadingDuplicate(false)
+        }
+        return
+      }
+
+      setIsLoadingDuplicate(true)
+      const result = await getListingById(duplicateFromId)
+
+      if (!isMounted) {
+        return
+      }
+
+      if (result.error) {
+        showToast(result.error.message, 'error')
+      }
+
+      setSourceListing(result.data)
+      setIsLoadingDuplicate(false)
+    }
+
+    void loadDuplicateSource()
+
+    return () => {
+      isMounted = false
+    }
+  }, [duplicateFromId, showToast])
 
   const initialValues = useMemo<ListingFormValues>(
-    () => ({
-      title: '',
-      description: '',
-      waste_type: 'rice_straw',
-      price: 0,
-      quantity: 1,
-      unit: 'kg',
-      city: '',
-      address: '',
-      latitude: null,
-      longitude: null,
-      fulfillment_type: 'pickup',
-      accept_offers: false,
-      image_url: null,
-    }),
-    [],
+    () =>
+      sourceListing
+        ? {
+            title: `${sourceListing.title} Copy`,
+            description: sourceListing.description ?? '',
+            waste_type: sourceListing.wasteType as ListingFormValues['waste_type'],
+            price: sourceListing.price,
+            quantity: sourceListing.quantity,
+            unit: sourceListing.unit,
+            city: sourceListing.city,
+            address: sourceListing.address ?? '',
+            latitude: sourceListing.latitude,
+            longitude: sourceListing.longitude,
+            fulfillment_type: sourceListing.fulfillmentType,
+            accept_offers: sourceListing.acceptOffers,
+            image_url: sourceListing.imageUrl,
+          }
+        : {
+            title: '',
+            description: '',
+            waste_type: 'rice_straw',
+            price: 0,
+            quantity: 1,
+            unit: 'kg',
+            city: '',
+            address: '',
+            latitude: null,
+            longitude: null,
+            fulfillment_type: 'pickup',
+            accept_offers: false,
+            image_url: null,
+          },
+    [sourceListing],
   )
 
   const handleSubmitValues = async (values: ListingFormValues) => {
@@ -81,8 +143,38 @@ export default function CreateListingScreen() {
     router.replace('/(farmer)/my-listings')
   }
 
+  if (isLoadingDuplicate) {
+    return (
+      <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
+        <View style={styles.center}>
+          <ActivityIndicator color={palette.sage} size="small" />
+          <Text style={styles.helper}>Preparing duplicate listing...</Text>
+        </View>
+      </SafeAreaView>
+    )
+  }
+
+  if (duplicateFromId && !sourceListing) {
+    return (
+      <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
+        <View style={styles.wrapper}>
+          <EmptyState
+            title="Listing not found"
+            description="The listing you wanted to duplicate could not be loaded."
+          />
+        </View>
+      </SafeAreaView>
+    )
+  }
+
   return (
     <ListingEditor
+      heroTitle={sourceListing ? 'Duplicate listing' : undefined}
+      heroSubtitle={
+        sourceListing
+          ? 'Start from an existing listing, then adjust the details before publishing.'
+          : undefined
+      }
       submitLabel="Publish Listing"
       submittingLabel="Saving listing..."
       initialValues={initialValues}
@@ -92,3 +184,23 @@ export default function CreateListingScreen() {
     />
   )
 }
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: palette.cream,
+  },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  helper: {
+    color: palette.muted,
+  },
+  wrapper: {
+    flex: 1,
+    padding: 24,
+  },
+})

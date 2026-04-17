@@ -82,6 +82,15 @@ export type ListingPerformanceSummary = {
   lastInquiryAt: string | null
 }
 
+export type ListingActivityItem = {
+  id: string
+  listingId: string
+  type: 'listing_created' | 'listing_viewed' | 'inquiry_received'
+  createdAt: string
+  title: string
+  description: string
+}
+
 export type ContactRequestSummary = {
   id: string
   listingId: string

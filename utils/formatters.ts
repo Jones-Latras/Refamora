@@ -14,6 +14,19 @@ export function formatDate(value?: string | null) {
   }).format(new Date(value))
 }
 
+export function formatDateTime(value?: string | null) {
+  if (!value) {
+    return 'Just now'
+  }
+
+  return new Intl.DateTimeFormat('en-PH', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
 export function titleCase(value: string) {
   return value
     .split(' ')
