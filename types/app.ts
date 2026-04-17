@@ -88,6 +88,7 @@ export type AIFeature =
   | 'listing_copilot'
   | 'waste_value_advisor'
   | 'buyer_search_assistant'
+  | 'listing_moderation'
   | 'photo_quality_checker'
 
 export type ListingAssistInput = {
@@ -168,6 +169,17 @@ export type PhotoCheckInput = {
   wasteType: string | null
 }
 
+export type ListingModerationInput = {
+  title: string
+  description: string
+  wasteType: string | null
+  city: string | null
+  price: number | null
+  unit: string | null
+  imageBase64?: string | null
+  imageMimeType?: string | null
+}
+
 export type PhotoCheckOutput = {
   qualityScore: number
   readiness: 'good' | 'needs_review' | 'retake'
@@ -178,12 +190,28 @@ export type PhotoCheckOutput = {
   notes: string[]
 }
 
+export type ListingModerationOutput = {
+  decision: 'allow' | 'review' | 'block'
+  safeToPublish: boolean
+  reasons: string[]
+  fieldWarnings: string[]
+  imageWarnings: string[]
+}
+
 export type PhotoCheckResult = {
   eventId: string | null
   latencyMs: number | null
   provider: AIProvider
   fallbackUsed: boolean
   result: PhotoCheckOutput
+}
+
+export type ListingModerationResult = {
+  eventId: string | null
+  latencyMs: number | null
+  provider: AIProvider
+  fallbackUsed: boolean
+  result: ListingModerationOutput
 }
 
 export type AIFeedbackInput = {

@@ -2,14 +2,17 @@ import type {
   AIService,
   BuyerSearchAssistInput,
   ListingAssistInput,
+  ListingModerationInput,
   PhotoCheckInput,
   WasteValueAdviceInput,
 } from '../aiTypes.ts'
 
 import {
   buyerSearchAssistOutputJsonSchema,
+  listingModerationOutputJsonSchema,
   listingAssistOutputJsonSchema,
   normalizeBuyerSearchAssistOutput,
+  normalizeListingModerationOutput,
   normalizeListingAssistOutput,
   normalizePhotoCheckOutput,
   normalizeWasteValueAdviceOutput,
@@ -95,6 +98,28 @@ function buildPhotoCheckPrompt(input: PhotoCheckInput) {
     'Return only JSON that matches the schema.',
     '',
     `Expected waste type: ${input.wasteType ?? 'unknown'}`,
+  ].join('\n')
+}
+
+function buildListingModerationPrompt(input: ListingModerationInput) {
+  return [
+    'You are Refamora listing moderation assistant.',
+    'Review this agriwaste marketplace listing for unsafe, abusive, illegal, clearly off-topic, misleading, or suspicious content.',
+    'Use decision=allow for normal marketplace listings, even if the writing is imperfect.',
+    'Use decision=review when something looks suspicious, inconsistent, or possibly unrelated and the user should fix it before publishing.',
+    'Use decision=block only for clearly unsafe, abusive, sexual, violent, illegal, scammy, or completely unrelated content.',
+    'safeToPublish must be true only when decision=allow.',
+    'Return only JSON that matches the schema.',
+    '',
+    `Title: ${input.title}`,
+    `Description: ${input.description}`,
+    `Waste type: ${input.wasteType ?? 'unknown'}`,
+    `City: ${input.city ?? 'unknown'}`,
+    `Price: ${input.price ?? 'unknown'}`,
+    `Unit: ${input.unit ?? 'unknown'}`,
+    input.imageBase64
+      ? 'Image attached: yes'
+      : 'Image attached: no, review text fields only',
   ].join('\n')
 }
 
@@ -293,6 +318,62 @@ export const geminiProvider: AIService = {
     }
 
     return normalizePhotoCheckOutput(JSON.parse(text))
+  },
+  async moderateListing(input) {
+    const config = getGeminiConfig()
+
+    if (!config.apiKey) {
+      throw new Error('Missing GEMINI_API_KEY.')
+    }
+
+    const parts: Array<
+      | { text: string }
+      | { inlineData: { mimeType: string; data: string } }
+    > = [{ text: buildListingModerationPrompt(input) }]
+
+    if (input.imageBase64) {
+      parts.push({
+        inlineData: {
+          mimeType: input.imageMimeType ?? 'image/jpeg',
+          data: input.imageBase64,
+        },
+      })
+    }
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(config.timeoutMs),
+        body: JSON.stringify({
+          contents: [
+            {
+              parts,
+            },
+          ],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            responseJsonSchema: listingModerationOutputJsonSchema,
+          },
+        }),
+      },
+    )
+
+    if (!response.ok) {
+      throw new Error(`Gemini request failed with ${response.status}.`)
+    }
+
+    const payload = await response.json()
+    const text = payload?.candidates?.[0]?.content?.parts?.[0]?.text
+
+    if (typeof text !== 'string' || !text.trim()) {
+      throw new Error('Gemini returned an empty response.')
+    }
+
+    return normalizeListingModerationOutput(JSON.parse(text))
   },
 }
 

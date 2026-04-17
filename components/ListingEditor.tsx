@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import type {
   AIHealthResult,
   ListingAssistResult,
+  ListingModerationResult,
   PhotoCheckResult,
   WasteValueAdviceResult,
 } from '../types/app'
@@ -17,6 +18,7 @@ import type { WasteTypeValue } from '../utils/wasteTypes'
 import {
   assistListing,
   getAIHealth,
+  moderateListing,
   getPhotoCheck,
   getWasteValueAdvice,
   submitAIFeedback,
@@ -74,11 +76,14 @@ export function ListingEditor({
   const [isAiApplying, setIsAiApplying] = useState(false)
   const [isWasteAdviceLoading, setIsWasteAdviceLoading] = useState(false)
   const [isPhotoCheckLoading, setIsPhotoCheckLoading] = useState(false)
+  const [isModerationLoading, setIsModerationLoading] = useState(false)
   const [isSubmittingAiFeedback, setIsSubmittingAiFeedback] = useState(false)
   const [aiAssistResult, setAiAssistResult] =
     useState<ListingAssistResult | null>(null)
   const [wasteAdviceResult, setWasteAdviceResult] =
     useState<WasteValueAdviceResult | null>(null)
+  const [moderationResult, setModerationResult] =
+    useState<ListingModerationResult | null>(null)
   const [photoCheckResult, setPhotoCheckResult] =
     useState<PhotoCheckResult | null>(null)
   const [aiDraftSnapshot, setAiDraftSnapshot] =
@@ -160,6 +165,10 @@ export function ListingEditor({
   const selectedUnit = watch('unit')
   const wasteSuggestions = getWasteSuggestions(selectedWasteType)
   const selectedImage = watch('image_url')
+  const titleValue = watch('title')
+  const descriptionValue = watch('description')
+  const cityValue = watch('city')
+  const priceValue = watch('price')
   const primaryAiProviderLabel =
     aiHealth?.primaryProvider === 'local_gemma'
       ? 'Local Gemma'
@@ -192,6 +201,18 @@ export function ListingEditor({
     setPhotoCheckResult(null)
   }, [selectedImage])
 
+  useEffect(() => {
+    setModerationResult(null)
+  }, [
+    titleValue,
+    descriptionValue,
+    selectedWasteType,
+    selectedImage,
+    cityValue,
+    priceValue,
+    selectedUnit,
+  ])
+
   const registerFieldPosition =
     (fieldName: keyof ListingFormValues) =>
     (event: { nativeEvent: { layout: { y: number } } }) => {
@@ -213,6 +234,14 @@ export function ListingEditor({
 
   const onSubmit = handleSubmit(
     async (values) => {
+      if (aiListingAssistEnabled) {
+        const canContinue = await runListingModeration(values)
+
+        if (!canContinue) {
+          return
+        }
+      }
+
       await onSubmitValues(values)
     },
     (fieldErrors) => {
@@ -241,6 +270,71 @@ export function ListingEditor({
 
     setValue('image_url', imageUri, { shouldValidate: true })
     onInfo('Image ready for upload.')
+  }
+
+  const runListingModeration = async (values: ListingFormValues) => {
+    if (moderationResult?.result.safeToPublish) {
+      return true
+    }
+
+    if (isCheckingAIHealth) {
+      return false
+    }
+
+    if (!aiHealth?.available) {
+      onInfo('AI moderation is unavailable right now. Continuing without it.')
+      return true
+    }
+
+    setIsModerationLoading(true)
+
+    try {
+      let imageBase64: string | null = null
+      let imageMimeType: string | null = null
+
+      if (values.image_url && !values.image_url.startsWith('http')) {
+        imageBase64 = await readImageAsBase64(values.image_url)
+        imageMimeType = 'image/jpeg'
+      }
+
+      const result = await moderateListing({
+        title: values.title.trim(),
+        description: values.description.trim(),
+        wasteType: values.waste_type ?? null,
+        city: values.city.trim() || null,
+        price: Number.isFinite(Number(values.price)) ? Number(values.price) : null,
+        unit: values.unit.trim() || null,
+        imageBase64,
+        imageMimeType,
+      })
+
+      if (result.error || !result.data) {
+        onInfo('AI moderation is unavailable right now. Continuing without it.')
+        return true
+      }
+
+      setModerationResult(result.data)
+
+      if (result.data.result.decision === 'allow') {
+        onInfo('Safety check passed. Publishing listing.')
+        return true
+      }
+
+      const primaryReason =
+        result.data.result.reasons[0] ??
+        (result.data.result.decision === 'block'
+          ? 'This listing was blocked by the safety check.'
+          : 'Please review the flagged listing details before publishing.')
+
+      onError(primaryReason)
+      scrollViewRef.current?.scrollToEnd({ animated: true })
+      return false
+    } catch {
+      onInfo('AI moderation is unavailable right now. Continuing without it.')
+      return true
+    } finally {
+      setIsModerationLoading(false)
+    }
   }
 
   const handleWasteValueAdvice = async () => {
@@ -1130,13 +1224,108 @@ export function ListingEditor({
             </Text>
           </Pressable>
 
+          {aiListingAssistEnabled ? (
+            <View style={styles.moderationCard}>
+              <View style={styles.moderationHeader}>
+                <View style={styles.moderationTextBlock}>
+                  <Text style={styles.moderationTitle}>Listing safety check</Text>
+                  <Text style={styles.moderationSubtitle}>
+                    Refamora reviews your listing text and image before publish.
+                  </Text>
+                </View>
+                {isModerationLoading ? (
+                  <View style={styles.moderationBadgePending}>
+                    <Text style={styles.moderationBadgeText}>Checking</Text>
+                  </View>
+                ) : moderationResult ? (
+                  <View
+                    style={[
+                      styles.moderationBadge,
+                      moderationResult.result.decision === 'allow'
+                        ? styles.moderationBadgeAllow
+                        : moderationResult.result.decision === 'block'
+                          ? styles.moderationBadgeBlock
+                          : styles.moderationBadgeReview,
+                    ]}
+                  >
+                    <Text style={styles.moderationBadgeText}>
+                      {moderationResult.result.decision === 'allow'
+                        ? 'Ready'
+                        : moderationResult.result.decision === 'block'
+                          ? 'Blocked'
+                          : 'Needs review'}
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={styles.moderationBadgePending}>
+                    <Text style={styles.moderationBadgeText}>Runs on publish</Text>
+                  </View>
+                )}
+              </View>
+
+              {moderationResult ? (
+                <View style={styles.moderationResultCard}>
+                  <Text style={styles.moderationMeta}>
+                    Provider:{' '}
+                    {moderationResult.provider === 'local_gemma'
+                      ? 'Local Gemma'
+                      : 'Gemini'}
+                    {moderationResult.fallbackUsed ? ' | fallback used' : ''}
+                  </Text>
+
+                  {moderationResult.result.reasons.length > 0 ? (
+                    <View style={styles.moderationListBlock}>
+                      <Text style={styles.moderationListLabel}>Decision notes</Text>
+                      {moderationResult.result.reasons.map((item) => (
+                        <Text key={item} style={styles.moderationListItem}>
+                          - {item}
+                        </Text>
+                      ))}
+                    </View>
+                  ) : null}
+
+                  {moderationResult.result.fieldWarnings.length > 0 ? (
+                    <View style={styles.moderationListBlock}>
+                      <Text style={styles.moderationListLabel}>Text warnings</Text>
+                      {moderationResult.result.fieldWarnings.map((item) => (
+                        <Text key={item} style={styles.moderationListItem}>
+                          - {item}
+                        </Text>
+                      ))}
+                    </View>
+                  ) : null}
+
+                  {moderationResult.result.imageWarnings.length > 0 ? (
+                    <View style={styles.moderationListBlock}>
+                      <Text style={styles.moderationListLabel}>Image warnings</Text>
+                      {moderationResult.result.imageWarnings.map((item) => (
+                        <Text key={item} style={styles.moderationListItem}>
+                          - {item}
+                        </Text>
+                      ))}
+                    </View>
+                  ) : null}
+                </View>
+              ) : (
+                <Text style={styles.moderationHint}>
+                  Publish will automatically run the AI safety check and stop if the
+                  listing needs review.
+                </Text>
+              )}
+            </View>
+          ) : null}
+
           <Pressable
-            disabled={isSubmitting}
+            disabled={isSubmitting || isModerationLoading}
             onPress={onSubmit}
             style={styles.primaryButton}
           >
             <Text style={styles.primaryButtonText}>
-              {isSubmitting ? submittingLabel : submitLabel}
+              {isSubmitting
+                ? submittingLabel
+                : isModerationLoading
+                  ? 'Running safety check...'
+                  : submitLabel}
             </Text>
           </Pressable>
         </View>
@@ -1577,6 +1766,89 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     fontWeight: '700',
+  },
+  moderationCard: {
+    gap: 12,
+    backgroundColor: '#f8f5ee',
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(87, 68, 42, 0.12)',
+    padding: 14,
+  },
+  moderationHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  moderationTextBlock: {
+    flex: 1,
+    gap: 4,
+  },
+  moderationTitle: {
+    color: palette.soil,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  moderationSubtitle: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  moderationBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  moderationBadgePending: {
+    borderRadius: 999,
+    backgroundColor: 'rgba(87, 68, 42, 0.08)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  moderationBadgeAllow: {
+    backgroundColor: 'rgba(58, 102, 72, 0.14)',
+  },
+  moderationBadgeReview: {
+    backgroundColor: 'rgba(176, 126, 40, 0.14)',
+  },
+  moderationBadgeBlock: {
+    backgroundColor: 'rgba(160, 69, 50, 0.12)',
+  },
+  moderationBadgeText: {
+    color: palette.soil,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  moderationHint: {
+    color: palette.muted,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  moderationResultCard: {
+    gap: 10,
+    backgroundColor: palette.surface,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(87, 68, 42, 0.08)',
+    padding: 14,
+  },
+  moderationMeta: {
+    color: palette.muted,
+    fontSize: 12,
+  },
+  moderationListBlock: {
+    gap: 6,
+  },
+  moderationListLabel: {
+    color: palette.soil,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  moderationListItem: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 19,
   },
   toggleCard: {
     backgroundColor: palette.surface,

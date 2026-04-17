@@ -7,6 +7,8 @@ import type {
   AIHealthResult,
   ListingAssistInput,
   ListingAssistResult,
+  ListingModerationInput,
+  ListingModerationResult,
   PhotoCheckInput,
   PhotoCheckResult,
   ServiceResult,
@@ -23,6 +25,8 @@ import {
   buyerSearchAssistResultSchema,
   listingAssistInputSchema,
   listingAssistResultSchema,
+  listingModerationInputSchema,
+  listingModerationResultSchema,
   photoCheckInputSchema,
   photoCheckResultSchema,
   wasteValueAdviceInputSchema,
@@ -230,6 +234,53 @@ export async function getPhotoCheck(
     return {
       data: null,
       error: new Error('Photo check response did not match the expected format.'),
+    }
+  }
+
+  return { data: parsedResult.data, error: null }
+}
+
+export async function moderateListing(
+  input: ListingModerationInput,
+): Promise<ServiceResult<ListingModerationResult>> {
+  const parsedInput = listingModerationInputSchema.safeParse(input)
+
+  if (!parsedInput.success) {
+    return {
+      data: null,
+      error: new Error(
+        parsedInput.error.issues[0]?.message ??
+          'Invalid listing moderation input.',
+      ),
+    }
+  }
+
+  if (!hasSupabaseEnv) {
+    return {
+      data: null,
+      error: new Error('Supabase is not configured yet.'),
+    }
+  }
+
+  const { data, error } = await getSupabaseClient().functions.invoke(
+    'ai-listing-moderation',
+    {
+      body: parsedInput.data,
+    },
+  )
+
+  if (error) {
+    return { data: null, error }
+  }
+
+  const parsedResult = listingModerationResultSchema.safeParse(data)
+
+  if (!parsedResult.success) {
+    return {
+      data: null,
+      error: new Error(
+        'Listing moderation response did not match the expected format.',
+      ),
     }
   }
 

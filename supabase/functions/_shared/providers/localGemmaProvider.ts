@@ -2,14 +2,17 @@ import type {
   AIService,
   BuyerSearchAssistInput,
   ListingAssistInput,
+  ListingModerationInput,
   PhotoCheckInput,
   WasteValueAdviceInput,
 } from '../aiTypes.ts'
 
 import {
   buyerSearchAssistOutputJsonSchema,
+  listingModerationOutputJsonSchema,
   listingAssistOutputJsonSchema,
   normalizeBuyerSearchAssistOutput,
+  normalizeListingModerationOutput,
   normalizeListingAssistOutput,
   normalizePhotoCheckOutput,
   normalizeWasteValueAdviceOutput,
@@ -96,6 +99,28 @@ function buildPhotoCheckPrompt(input: PhotoCheckInput) {
     'Return only JSON that matches the provided schema.',
     '',
     `Expected waste type: ${input.wasteType ?? 'unknown'}`,
+  ].join('\n')
+}
+
+function buildListingModerationPrompt(input: ListingModerationInput) {
+  return [
+    'You are Refamora listing moderation assistant.',
+    'Review this agriwaste marketplace listing for unsafe, abusive, illegal, clearly off-topic, misleading, or suspicious content.',
+    'Use decision=allow for normal marketplace listings, even if the writing is imperfect.',
+    'Use decision=review when something looks suspicious, inconsistent, or possibly unrelated and the user should fix it before publishing.',
+    'Use decision=block only for clearly unsafe, abusive, sexual, violent, illegal, scammy, or completely unrelated content.',
+    'safeToPublish must be true only when decision=allow.',
+    'Return only JSON that matches the provided schema.',
+    '',
+    `Title: ${input.title}`,
+    `Description: ${input.description}`,
+    `Waste type: ${input.wasteType ?? 'unknown'}`,
+    `City: ${input.city ?? 'unknown'}`,
+    `Price: ${input.price ?? 'unknown'}`,
+    `Unit: ${input.unit ?? 'unknown'}`,
+    input.imageBase64
+      ? 'Image attached: yes'
+      : 'Image attached: no, review text fields only',
   ].join('\n')
 }
 
@@ -240,6 +265,37 @@ export const localGemmaProvider: AIService = {
     }
 
     return normalizePhotoCheckOutput(JSON.parse(text))
+  },
+  async moderateListing(input) {
+    const config = getLocalGemmaConfig()
+    const response = await fetch(`${config.baseUrl}/api/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(config.timeoutMs),
+      body: JSON.stringify({
+        model: config.model,
+        prompt: buildListingModerationPrompt(input),
+        format: listingModerationOutputJsonSchema,
+        stream: false,
+        images: input.imageBase64 ? [input.imageBase64] : undefined,
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Local Gemma request failed with ${response.status}.`)
+    }
+
+    const payload = await response.json()
+    const text =
+      typeof payload?.response === 'string' ? payload.response.trim() : ''
+
+    if (!text) {
+      throw new Error('Local Gemma returned an empty response.')
+    }
+
+    return normalizeListingModerationOutput(JSON.parse(text))
   },
 }
 

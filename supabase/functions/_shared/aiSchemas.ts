@@ -1,5 +1,6 @@
 import type {
   BuyerSearchAssistOutput,
+  ListingModerationOutput,
   ListingAssistOutput,
   PhotoCheckOutput,
   WasteValueAdviceOutput,
@@ -162,6 +163,44 @@ export const photoCheckOutputJsonSchema = {
   ],
 } as const
 
+export const listingModerationOutputJsonSchema = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    decision: {
+      type: 'string',
+      enum: ['allow', 'review', 'block'],
+      description: 'Whether the listing should be allowed, reviewed, or blocked.',
+    },
+    safeToPublish: {
+      type: 'boolean',
+      description: 'True only when the listing looks safe to publish right now.',
+    },
+    reasons: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Short top-level reasons for the decision.',
+    },
+    fieldWarnings: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Warnings about listing title, description, price, or other text fields.',
+    },
+    imageWarnings: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Warnings about the listing image if one was provided.',
+    },
+  },
+  required: [
+    'decision',
+    'safeToPublish',
+    'reasons',
+    'fieldWarnings',
+    'imageWarnings',
+  ],
+} as const
+
 function asString(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value.trim() : fallback
 }
@@ -274,5 +313,28 @@ export function normalizePhotoCheckOutput(value: unknown): PhotoCheckOutput {
     moderationStatus:
       moderationStatus === 'review' ? 'review' : 'clear',
     notes: asStringArray(Reflect.get(raw, 'notes')).slice(0, 3),
+  }
+}
+
+export function normalizeListingModerationOutput(
+  value: unknown,
+): ListingModerationOutput {
+  const raw = typeof value === 'object' && value ? value : {}
+  const decision = Reflect.get(raw, 'decision')
+
+  const normalizedDecision =
+    decision === 'block' || decision === 'review' ? decision : 'allow'
+
+  return {
+    decision: normalizedDecision,
+    safeToPublish:
+      normalizedDecision === 'allow'
+        ? true
+        : Reflect.get(raw, 'safeToPublish') === true
+          ? true
+          : false,
+    reasons: asStringArray(Reflect.get(raw, 'reasons')).slice(0, 3),
+    fieldWarnings: asStringArray(Reflect.get(raw, 'fieldWarnings')).slice(0, 4),
+    imageWarnings: asStringArray(Reflect.get(raw, 'imageWarnings')).slice(0, 4),
   }
 }

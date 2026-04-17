@@ -5,6 +5,8 @@ import type {
   AIHealthResult,
   ListingAssistInput,
   ListingAssistResult,
+  ListingModerationInput,
+  ListingModerationResult,
   PhotoCheckInput,
   PhotoCheckResult,
   WasteValueAdviceInput,
@@ -144,6 +146,43 @@ export async function parseBuyerSearch(
         provider === 'local_gemma'
           ? await localGemmaProvider.parseBuyerSearch(input)
           : await geminiProvider.parseBuyerSearch(input)
+
+      return {
+        eventId: null,
+        latencyMs: null,
+        provider,
+        fallbackUsed: index > 0,
+        result,
+      }
+    } catch (error) {
+      errors.push(
+        `${provider}: ${error instanceof Error ? error.message : 'Unknown provider error.'}`,
+      )
+    }
+  }
+
+  throw new Error(errors.join(' | '))
+}
+
+export async function moderateListing(
+  input: ListingModerationInput,
+): Promise<ListingModerationResult> {
+  const order = getProviderOrder()
+
+  if (order.length === 0) {
+    throw new Error('No AI providers are enabled.')
+  }
+
+  const errors: string[] = []
+
+  for (let index = 0; index < order.length; index += 1) {
+    const provider = order[index]
+
+    try {
+      const result =
+        provider === 'local_gemma'
+          ? await localGemmaProvider.moderateListing(input)
+          : await geminiProvider.moderateListing(input)
 
       return {
         eventId: null,
