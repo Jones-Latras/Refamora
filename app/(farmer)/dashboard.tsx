@@ -2,6 +2,7 @@ import { useFocusEffect } from '@react-navigation/native'
 import { router } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Feather } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { ContactRequestCard } from '../../components/ContactRequestCard'
@@ -451,8 +452,7 @@ export default function FarmerDashboardScreen() {
                 </View>
               )}
               <View style={styles.avatarEditBadge}>
-                <View style={styles.avatarEditGlyph} />
-                <View style={styles.avatarEditNib} />
+                <Feather name="edit-2" size={12} color={palette.cream} style={{ marginLeft: 1 }} />
               </View>
             </Pressable>
 
@@ -709,29 +709,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarEditGlyph: {
-    width: 10,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: palette.cream,
-    transform: [{ rotate: '-45deg' }],
-  },
-  avatarEditNib: {
-    position: 'absolute',
-    right: 5,
-    bottom: 5,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 3,
-    borderRightWidth: 0,
-    borderTopWidth: 2,
-    borderBottomWidth: 2,
-    borderLeftColor: palette.cream,
-    borderTopColor: 'transparent',
-    borderBottomColor: 'transparent',
-    borderRightColor: 'transparent',
-    transform: [{ rotate: '-45deg' }],
-  },
+
   identityText: {
     flex: 1,
     gap: 2,
