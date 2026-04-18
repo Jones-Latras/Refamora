@@ -381,31 +381,35 @@ export default function ContactConversationScreen() {
               </Pressable>
             ) : null}
 
-            <TextInput
-              multiline
-              numberOfLines={4}
-              editable={!isSending}
-              placeholder={
-                role === 'farmer'
-                  ? 'Write your reply to the buyer.'
-                  : 'Write a follow-up message to the seller.'
-              }
-              placeholderTextColor="#9c8c79"
-              style={styles.composerInput}
-              textAlignVertical="top"
-              value={composerValue}
-              onChangeText={setComposerValue}
-            />
+            <View style={styles.composerRow}>
+              <View style={styles.composerInputShell}>
+                <TextInput
+                  multiline
+                  numberOfLines={3}
+                  editable={!isSending}
+                  placeholder={
+                    role === 'farmer'
+                      ? 'Write your reply to the buyer.'
+                      : 'Write a follow-up message to the seller.'
+                  }
+                  placeholderTextColor="#9c8c79"
+                  style={styles.composerInput}
+                  textAlignVertical="center"
+                  value={composerValue}
+                  onChangeText={setComposerValue}
+                />
+              </View>
 
-            <Pressable
-              disabled={isSending}
-              onPress={() => void handleSend()}
-              style={[styles.sendButton, isSending ? styles.disabledButton : null]}
-            >
-              <Text style={styles.sendButtonText}>
-                {isSending ? 'Sending...' : role === 'farmer' ? 'Send reply' : 'Send message'}
-              </Text>
-            </Pressable>
+              <Pressable
+                disabled={isSending}
+                onPress={() => void handleSend()}
+                style={[styles.sendButton, isSending ? styles.disabledButton : null]}
+              >
+                <Text style={styles.sendButtonText}>
+                  {isSending ? '...' : '>'}
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -589,46 +593,63 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   composerCard: {
-    backgroundColor: palette.surface,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: palette.border,
-    padding: 14,
-    gap: 12,
-    ...shadow,
+    gap: 10,
+    paddingTop: 6,
   },
   draftButton: {
     alignSelf: 'flex-start',
     borderRadius: 999,
     backgroundColor: '#eef6ed',
+    borderWidth: 1,
+    borderColor: 'rgba(58, 102, 72, 0.12)',
     paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingVertical: 8,
   },
   draftButtonText: {
     color: palette.sageDark,
     fontSize: 12,
     fontWeight: '800',
   },
-  composerInput: {
-    minHeight: 100,
+  composerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 10,
+  },
+  composerInputShell: {
+    flex: 1,
+    minHeight: 54,
+    maxHeight: 116,
+    borderRadius: 28,
     borderWidth: 1,
     borderColor: palette.border,
-    borderRadius: radii.md,
-    paddingHorizontal: 14,
+    backgroundColor: '#fffdf9',
+    paddingHorizontal: 16,
+    paddingVertical: 2,
+    ...shadow,
+  },
+  composerInput: {
+    minHeight: 50,
+    maxHeight: 108,
     paddingVertical: 12,
     color: palette.ink,
-    backgroundColor: '#fffcf6',
+    fontSize: 14,
+    lineHeight: 20,
   },
   sendButton: {
-    minHeight: 48,
-    borderRadius: radii.md,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: palette.sage,
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'flex-end',
+    ...shadow,
   },
   sendButtonText: {
     color: palette.cream,
-    fontWeight: '800',
+    fontWeight: '900',
+    fontSize: 20,
+    lineHeight: 20,
   },
   disabledButton: {
     opacity: 0.72,
