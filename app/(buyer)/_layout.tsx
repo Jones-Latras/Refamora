@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router'
-import { Text } from 'react-native'
+import { Feather } from '@expo/vector-icons'
 
 import { palette } from '../../utils/theme'
 
@@ -9,26 +9,29 @@ function getBuyerTabIcon(
   size: number,
   focused: boolean,
 ) {
-  const iconByRoute: Record<string, string> = {
-    feed: '\u2302',
-    'saved-listings': '\u2605',
-    map: '\u2316',
-    requests: '\u2709',
-    profile: '\u25C9',
+  let iconName: React.ComponentProps<typeof Feather>['name'] = 'home'
+
+  switch (routeName) {
+    case 'feed':
+      iconName = 'home'
+      break
+    case 'saved-listings':
+      iconName = 'bookmark'
+      break
+    case 'map':
+      iconName = 'map'
+      break
+    case 'requests':
+      iconName = 'message-square'
+      break
+    case 'profile':
+      iconName = 'user'
+      break
+    default:
+      iconName = 'home'
   }
 
-  return (
-    <Text
-      style={{
-        color,
-        fontSize: size,
-        fontWeight: focused ? '800' : '700',
-        lineHeight: size + 2,
-      }}
-    >
-      {iconByRoute[routeName] ?? '\u2022'}
-    </Text>
-  )
+  return <Feather name={iconName} size={size} color={color} />
 }
 
 export default function BuyerLayout() {
