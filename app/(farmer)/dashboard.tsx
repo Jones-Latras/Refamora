@@ -559,21 +559,24 @@ export default function FarmerDashboardScreen() {
         <View style={styles.primaryActions}>
           <Pressable
             onPress={() => router.push('/(farmer)/create-listing')}
-            style={styles.primaryButton}
+            style={[styles.primaryButton, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
           >
-            <Text style={styles.primaryButtonText}>+ Create Listing</Text>
+            <Feather name="plus-circle" size={16} color={palette.cream} />
+            <Text style={styles.primaryButtonText}>Create Listing</Text>
           </Pressable>
           <Pressable
             onPress={() => router.push('/(farmer)/my-listings')}
-            style={styles.secondaryButton}
+            style={[styles.secondaryButton, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
           >
+            <Feather name="list" size={16} color={palette.clay} />
             <Text style={styles.secondaryButtonText}>Manage Listings</Text>
           </Pressable>
         </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Feather name="message-square" size={18} color={palette.soil} />
               <Text style={styles.sectionTitle}>Recent messages</Text>
             </View>
             <View style={styles.sectionActions}>
@@ -619,7 +622,8 @@ export default function FarmerDashboardScreen() {
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Feather name="grid" size={18} color={palette.soil} />
               <Text style={styles.sectionTitle}>Your listings</Text>
             </View>
             <Pressable onPress={() => router.push('/(farmer)/my-listings')}>

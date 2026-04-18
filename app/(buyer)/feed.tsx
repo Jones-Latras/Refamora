@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native'
+import { Feather } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { EmptyState } from '../../components/EmptyState'
@@ -352,6 +353,7 @@ export default function FeedScreen() {
           </View>
 
           <View style={styles.searchShell}>
+            <Feather name="search" size={16} color="#9e9183" />
             <TextInput
               value={query}
               onChangeText={handleQueryChange}
@@ -363,7 +365,7 @@ export default function FeedScreen() {
               onPress={() => setIsFilterOpen(true)}
               style={styles.searchFilterButton}
             >
-              <Text style={styles.filterGlyph}>≡</Text>
+              <Feather name="sliders" size={14} color={palette.clay} style={{marginRight: 2}} />
               <Text style={styles.searchFilterButtonText}>
                 {activeFilterCount > 0 ? `Filters (${activeFilterCount})` : 'Filters'}
               </Text>
@@ -382,7 +384,7 @@ export default function FeedScreen() {
                 }}
                 style={styles.searchClearButton}
               >
-                <Text style={styles.searchClearButtonText}>Clear</Text>
+                <Feather name="x" size={16} color={palette.muted} />
               </Pressable>
             ) : null}
           </View>
@@ -394,8 +396,9 @@ export default function FeedScreen() {
           >
             <Pressable
               onPress={() => router.push('/(buyer)/dashboard')}
-              style={styles.activityShortcut}
+              style={[styles.activityShortcut, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
             >
+              <Feather name="clock" size={14} color={palette.clay} />
               <Text style={styles.activityShortcutText}>
                 View your recent activity
               </Text>
@@ -403,8 +406,9 @@ export default function FeedScreen() {
             <Pressable
               disabled={isOffline}
               onPress={() => void handleAiSearch()}
-              style={[styles.aiSearchButton, isOffline ? styles.disabledButton : null]}
+              style={[styles.aiSearchButton, isOffline ? styles.disabledButton : null, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
             >
+              <Feather name="sparkles" size={14} color={palette.sageDark} />
               <Text style={styles.aiSearchButtonText}>
                 {isOffline
                   ? 'AI search offline'
@@ -418,8 +422,10 @@ export default function FeedScreen() {
               style={[
                 styles.locationButton,
                 buyerCoordinates ? styles.locationButtonActive : null,
+                { flexDirection: 'row', alignItems: 'center', gap: 6 }
               ]}
             >
+              <Feather name="map-pin" size={14} color={buyerCoordinates ? palette.sageDark : palette.clay} />
               <Text
                 style={[
                   styles.locationButtonText,
