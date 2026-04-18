@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
 import { router } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
@@ -465,6 +466,7 @@ export default function MyListingsScreen() {
           <View style={styles.draftHeader}>
             <View style={styles.draftText}>
               <View style={styles.draftTitleRow}>
+                <Feather name="file-text" size={14} color={palette.clay} />
                 <Text style={styles.draftTitle}>
                   {savedDraft.values.title.trim() || 'Untitled draft listing'}
                 </Text>
@@ -477,9 +479,10 @@ export default function MyListingsScreen() {
             </View>
             <Pressable
               onPress={() => router.push('/(farmer)/create-listing')}
-              style={styles.draftAction}
+              style={[styles.draftAction, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
             >
-              <Text style={styles.draftActionText}>Resume draft</Text>
+              <Feather name="edit-3" size={12} color={palette.clay} />
+              <Text style={styles.draftActionText}>Resume</Text>
             </Pressable>
           </View>
         </View>
@@ -489,14 +492,18 @@ export default function MyListingsScreen() {
         <View style={styles.bulkCard}>
           <View style={styles.bulkHeader}>
             <View style={styles.bulkText}>
-              <Text style={styles.bulkTitle}>Older active listings</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Feather name="alert-circle" size={14} color={palette.harvest} />
+                <Text style={styles.bulkTitle}>Older active listings</Text>
+              </View>
               <Text style={styles.bulkDescription}>
                 {olderActiveListings.length} listing
                 {olderActiveListings.length === 1 ? '' : 's'} have been live for 30+
                 days and may need a status cleanup.
               </Text>
             </View>
-            <Pressable onPress={openBulkStatusMenu} style={styles.bulkAction}>
+            <Pressable onPress={openBulkStatusMenu} style={[styles.bulkAction, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}>
+              <Feather name="refresh-cw" size={12} color={palette.clay} />
               <Text style={styles.bulkActionText}>Bulk update</Text>
             </Pressable>
           </View>
@@ -585,10 +592,11 @@ export default function MyListingsScreen() {
                       </Text>
                     </View>
                   </View>
-                  <View style={styles.manageToggle}>
+                  <View style={[styles.manageToggle, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
                     <Text style={styles.manageToggleText}>
                       {isExpanded ? 'Hide' : 'Manage'}
                     </Text>
+                    <Feather name={isExpanded ? 'chevron-up' : 'chevron-down'} size={14} color={palette.sageDark} />
                   </View>
                 </Pressable>
 
@@ -596,18 +604,21 @@ export default function MyListingsScreen() {
                   <View style={styles.expandedPanel}>
                     <View style={styles.performanceRow}>
                       <View style={styles.performanceChip}>
+                        <Feather name="eye" size={14} color={palette.sageDark} style={{ marginBottom: 2 }} />
                         <Text style={styles.performanceValue}>
                           {listingPerformance?.viewCount ?? 0}
                         </Text>
                         <Text style={styles.performanceLabel}>Views</Text>
                       </View>
                       <View style={styles.performanceChip}>
+                        <Feather name="message-circle" size={14} color={palette.sageDark} style={{ marginBottom: 2 }} />
                         <Text style={styles.performanceValue}>
                           {listingPerformance?.inquiryCount ?? 0}
                         </Text>
                         <Text style={styles.performanceLabel}>Inquiries</Text>
                       </View>
                       <View style={styles.performanceChip}>
+                        <Feather name="clock" size={14} color={palette.sageDark} style={{ marginBottom: 2 }} />
                         <Text style={styles.performanceValue}>
                           {listingPerformance?.pendingInquiryCount ?? 0}
                         </Text>
@@ -616,7 +627,10 @@ export default function MyListingsScreen() {
                     </View>
 
                     <View style={styles.activityCard}>
-                      <Text style={styles.activityTitle}>Recent activity</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Feather name="activity" size={14} color={palette.soil} />
+                        <Text style={styles.activityTitle}>Recent activity</Text>
+                      </View>
                       {activityHighlights.map((line) => (
                         <Text key={line} style={styles.activityLine}>
                           • {line}
@@ -627,21 +641,24 @@ export default function MyListingsScreen() {
                     <View style={styles.actions}>
                       <Pressable
                         onPress={() => router.push(`/(farmer)/edit-listing/${item.id}`)}
-                        style={styles.primaryButton}
+                        style={[styles.primaryButton, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
                       >
+                        <Feather name="edit-2" size={14} color={palette.cream} />
                         <Text style={styles.primaryButtonText}>Edit</Text>
                       </Pressable>
                       <Pressable
                         onPress={() => openListingActions(item.id, item.status)}
-                        style={styles.secondaryButton}
+                        style={[styles.secondaryButton, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
                       >
+                        <Feather name="more-horizontal" size={14} color={palette.clay} />
                         <Text style={styles.secondaryButtonText}>More actions</Text>
                       </Pressable>
                     </View>
                     <Pressable
                       onPress={() => confirmDeleteListing(item.id)}
-                      style={styles.deleteButton}
+                      style={[styles.deleteButton, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
                     >
+                      <Feather name="trash-2" size={14} color={palette.error} />
                       <Text style={styles.deleteButtonText}>Delete listing</Text>
                     </Pressable>
                   </View>

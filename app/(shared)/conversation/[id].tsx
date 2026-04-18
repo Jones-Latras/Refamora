@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons'
 import { useHeaderHeight } from '@react-navigation/elements'
 import { useFocusEffect } from '@react-navigation/native'
 import { router, useLocalSearchParams } from 'expo-router'
@@ -305,16 +306,20 @@ export default function ContactConversationScreen() {
             </View>
             <Pressable
               onPress={() => router.push(`/(shared)/listing/${conversation.request.listingId}`)}
-              style={styles.listingLink}
+              style={[styles.listingLink, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
             >
+              <Feather name="external-link" size={12} color={palette.sageDark} />
               <Text style={styles.listingLinkText}>Open listing</Text>
             </Pressable>
           </View>
 
           {conversation.request.counterpartPhone ? (
-            <View style={styles.phoneCard}>
-              <Text style={styles.phoneLabel}>Contact number</Text>
-              <Text style={styles.phoneValue}>{conversation.request.counterpartPhone}</Text>
+            <View style={[styles.phoneCard, { flexDirection: 'row', alignItems: 'center', gap: 10 }]}>
+              <Feather name="phone" size={16} color={palette.sageDark} />
+              <View style={{ gap: 2 }}>
+                <Text style={styles.phoneLabel}>Contact number</Text>
+                <Text style={styles.phoneValue}>{conversation.request.counterpartPhone}</Text>
+              </View>
             </View>
           ) : null}
 
@@ -359,6 +364,7 @@ export default function ContactConversationScreen() {
               })
             ) : (
               <View style={styles.emptyMessagesCard}>
+                <Feather name="message-circle" size={24} color={palette.muted} style={{ marginBottom: 4 }} />
                 <Text style={styles.emptyMessagesTitle}>No messages yet</Text>
                 <Text style={styles.emptyMessagesText}>
                   Start the conversation here. New messages from both buyer and seller will stay

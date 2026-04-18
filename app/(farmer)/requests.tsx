@@ -190,7 +190,16 @@ export default function FarmerRequestsScreen() {
     <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={styles.safeArea}>
       <View style={styles.header}>
         <View style={styles.titleBlock}>
-          <Text style={styles.title}>Messages</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Text style={styles.title}>Messages</Text>
+            {pendingCount > 0 ? (
+              <View style={{ backgroundColor: palette.sage, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+                <Text style={{ color: palette.cream, fontSize: 12, fontWeight: '800' }}>
+                  {pendingCount} new
+                </Text>
+              </View>
+            ) : null}
+          </View>
           <Text style={styles.subtitle}>
             Buyer conversations for your listings. Open a row to reply like a normal chat.
           </Text>
