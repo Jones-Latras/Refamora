@@ -23,6 +23,7 @@ const config: ExpoConfig = {
       backgroundColor: '#f5f1e8',
     },
     edgeToEdgeEnabled: true,
+    softwareKeyboardLayoutMode: 'resize',
     predictiveBackGestureEnabled: false,
   },
   web: {
