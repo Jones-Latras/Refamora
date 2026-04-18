@@ -84,7 +84,8 @@ export default function BuyerLayout() {
       <Tabs.Screen
         name="requests"
         options={{
-          title: 'Requests',
+          title: 'Messages',
+          headerShown: false,
         }}
       />
       <Tabs.Screen

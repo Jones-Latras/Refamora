@@ -97,9 +97,11 @@ export type ContactRequestSummary = {
   id: string
   listingId: string
   listingTitle: string
+  listingImageUrl: string | null
   buyerId: string
   sellerId: string
   counterpartName: string
+  counterpartAvatarUrl: string | null
   counterpartPhone: string | null
   counterpartCity: string | null
   message: string | null

@@ -85,7 +85,7 @@ export default function FarmerLayout() {
       <Tabs.Screen
         name="requests"
         options={{
-          title: 'Requests',
+          title: 'Messages',
           headerShown: false,
         }}
       />

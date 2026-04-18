@@ -1,214 +1,186 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import type { ContactRequestSummary } from '../types/app'
 
-import { formatDate } from '../utils/formatters'
+import { formatRelativeTime } from '../utils/formatters'
 import { palette, radii } from '../utils/theme'
 
 type ContactRequestCardProps = {
   request: ContactRequestSummary
   role: 'buyer' | 'seller'
-  actionLabel?: string
-  onActionPress?: () => void
-  secondaryActionLabel?: string
-  onSecondaryActionPress?: () => void
+  onPress: () => void
 }
 
-function getStatusLabel(
-  status: ContactRequestSummary['status'],
-  role: 'buyer' | 'seller',
-) {
-  if (role === 'buyer') {
-    if (status === 'pending') {
-      return 'sent'
-    }
-
-    return status
-  }
-
-  if (status === 'pending') {
-    return 'new'
-  }
-
-  return status
+function getFallbackLabel(request: ContactRequestSummary) {
+  const source = request.listingTitle.trim() || request.counterpartName.trim()
+  return source.charAt(0).toUpperCase() || 'R'
 }
 
-function getMessagePreview(
+function getPreviewPrefix(request: ContactRequestSummary, role: 'buyer' | 'seller') {
+  const ownSenderId = role === 'buyer' ? request.buyerId : request.sellerId
+
+  if (request.lastMessageSenderId === ownSenderId) {
+    return 'You: '
+  }
+
+  return ''
+}
+
+function getPreviewText(request: ContactRequestSummary, role: 'buyer' | 'seller') {
+  if (!request.message) {
+    return role === 'buyer'
+      ? 'Conversation started. Send a follow-up if you still need this listing.'
+      : 'Buyer inquiry started. Open the chat to reply.'
+  }
+
+  return `${getPreviewPrefix(request, role)}${request.message}`
+}
+
+function getAttentionState(
   request: ContactRequestSummary,
   role: 'buyer' | 'seller',
-) {
-  if (!request.message) {
-    return 'No message yet.'
+): { showDot: boolean; badgeLabel: string | null } {
+  if (role === 'seller') {
+    return {
+      showDot: request.status === 'pending',
+      badgeLabel: request.status === 'pending' ? 'Unread' : null,
+    }
   }
 
-  const isCurrentUserMessage =
-    role === 'buyer'
-      ? request.lastMessageSenderId === request.buyerId
-      : request.lastMessageSenderId === request.sellerId
+  const sellerSentLatest =
+    request.status === 'responded' && request.lastMessageSenderId === request.sellerId
 
-  return isCurrentUserMessage ? `You: ${request.message}` : request.message
+  return {
+    showDot: sellerSentLatest,
+    badgeLabel: sellerSentLatest ? 'Reply' : null,
+  }
 }
 
 export function ContactRequestCard({
   request,
   role,
-  actionLabel,
-  onActionPress,
-  secondaryActionLabel,
-  onSecondaryActionPress,
+  onPress,
 }: ContactRequestCardProps) {
+  const attentionState = getAttentionState(request, role)
+
   return (
-    <View style={styles.card}>
-      <View style={styles.header}>
-        <View style={styles.headerText}>
-          <Text style={styles.title}>{request.listingTitle}</Text>
-          <Text style={styles.meta}>
-            {role === 'buyer' ? 'Seller' : 'Buyer'}: {request.counterpartName}
+    <Pressable onPress={onPress} style={styles.row}>
+      {request.listingImageUrl ? (
+        <Image source={{ uri: request.listingImageUrl }} style={styles.thumbnail} />
+      ) : request.counterpartAvatarUrl ? (
+        <Image source={{ uri: request.counterpartAvatarUrl }} style={styles.thumbnail} />
+      ) : (
+        <View style={styles.fallbackThumb}>
+          <Text style={styles.fallbackThumbText}>{getFallbackLabel(request)}</Text>
+        </View>
+      )}
+
+      <View style={styles.content}>
+        <View style={styles.topLine}>
+          <Text numberOfLines={1} style={styles.title}>
+            {request.listingTitle}
           </Text>
+          <Text style={styles.time}>{formatRelativeTime(request.updatedAt)}</Text>
         </View>
-        <View
-          style={[
-            styles.statusPill,
-            request.status === 'pending'
-              ? styles.pendingPill
-              : request.status === 'responded'
-                ? styles.respondedPill
-                : styles.seenPill,
-          ]}
-        >
-          <Text style={styles.statusText}>{getStatusLabel(request.status, role)}</Text>
-        </View>
+
+        <Text numberOfLines={1} style={styles.subtitle}>
+          {request.counterpartName}
+          {request.counterpartCity ? ` · ${request.counterpartCity}` : ''}
+        </Text>
+
+        <Text numberOfLines={1} style={styles.preview}>
+          {getPreviewText(request, role)}
+        </Text>
       </View>
 
-      <Text style={styles.meta}>
-        {request.counterpartCity ?? 'Location not provided'} |{' '}
-        {formatDate(request.updatedAt)}
-      </Text>
-
-      {request.counterpartPhone ? (
-        <Text style={styles.phone}>Phone: {request.counterpartPhone}</Text>
-      ) : null}
-
-      <Text style={styles.message}>{getMessagePreview(request, role)}</Text>
-      {request.messageCount > 1 ? (
-        <Text style={styles.threadMeta}>
-          {request.messageCount} messages in this conversation
-        </Text>
-      ) : null}
-
-      {actionLabel && onActionPress ? (
-        <View style={styles.actionRow}>
-          <Pressable onPress={onActionPress} style={styles.actionButton}>
-            <Text style={styles.actionButtonText}>{actionLabel}</Text>
-          </Pressable>
-          {secondaryActionLabel && onSecondaryActionPress ? (
-            <Pressable
-              onPress={onSecondaryActionPress}
-              style={styles.secondaryActionButton}
-            >
-              <Text style={styles.secondaryActionButtonText}>
-                {secondaryActionLabel}
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
-      ) : null}
-    </View>
+      <View style={styles.trailing}>
+        {attentionState.badgeLabel ? (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{attentionState.badgeLabel}</Text>
+          </View>
+        ) : null}
+        {attentionState.showDot ? <View style={styles.dot} /> : null}
+      </View>
+    </Pressable>
   )
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: palette.surface,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: palette.border,
-    padding: 16,
-    gap: 8,
-  },
-  header: {
+  row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
     gap: 12,
-    alignItems: 'flex-start',
+    paddingVertical: 10,
   },
-  headerText: {
+  thumbnail: {
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+    backgroundColor: '#d8e1d5',
+  },
+  fallbackThumb: {
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+    backgroundColor: '#e5eee4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fallbackThumbText: {
+    color: palette.sageDark,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  content: {
     flex: 1,
-    gap: 4,
+    gap: 2,
+  },
+  topLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   title: {
+    flex: 1,
     color: palette.soil,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
   },
-  meta: {
+  time: {
     color: palette.muted,
-    lineHeight: 20,
-  },
-  phone: {
-    color: palette.clay,
+    fontSize: 12,
     fontWeight: '700',
   },
-  message: {
-    color: palette.ink,
-    lineHeight: 21,
-  },
-  threadMeta: {
+  subtitle: {
     color: palette.muted,
     fontSize: 12,
+    lineHeight: 17,
+  },
+  preview: {
+    color: palette.ink,
+    fontSize: 13,
     lineHeight: 18,
   },
-  actionButton: {
-    alignSelf: 'flex-start',
-    borderRadius: 999,
-    backgroundColor: '#eef6ed',
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderWidth: 1,
-    borderColor: 'rgba(58, 102, 72, 0.12)',
-  },
-  actionButtonText: {
-    color: palette.sageDark,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  actionRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  trailing: {
+    minWidth: 48,
+    alignItems: 'flex-end',
     gap: 8,
   },
-  secondaryActionButton: {
-    alignSelf: 'flex-start',
+  badge: {
     borderRadius: 999,
-    backgroundColor: palette.surface,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderWidth: 1,
-    borderColor: palette.border,
-  },
-  secondaryActionButtonText: {
-    color: palette.clay,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  statusPill: {
-    borderRadius: 999,
+    backgroundColor: '#eef6ed',
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  pendingPill: {
-    backgroundColor: '#efe1c3',
+  badgeText: {
+    color: palette.sageDark,
+    fontSize: 11,
+    fontWeight: '800',
   },
-  seenPill: {
-    backgroundColor: '#dbe7de',
-  },
-  respondedPill: {
-    backgroundColor: '#d8ecf4',
-  },
-  statusText: {
-    color: palette.soil,
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'capitalize',
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: radii.sm,
+    backgroundColor: palette.sage,
   },
 })

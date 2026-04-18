@@ -354,7 +354,7 @@ export default function FarmerDashboardScreen() {
         description: `${pendingInquiryCount} buyer inquiry${
           pendingInquiryCount === 1 ? '' : 'ies'
         } still need attention in your inbox.`,
-        actionLabel: 'Open requests',
+        actionLabel: 'Open messages',
         onPress: () => router.push('/(farmer)/requests'),
       })
     }
@@ -574,7 +574,7 @@ export default function FarmerDashboardScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View>
-              <Text style={styles.sectionTitle}>Recent inquiries</Text>
+              <Text style={styles.sectionTitle}>Recent messages</Text>
             </View>
             <View style={styles.sectionActions}>
               <Pressable onPress={() => router.push('/(farmer)/requests')}>
@@ -595,18 +595,17 @@ export default function FarmerDashboardScreen() {
                   key={inquiry.id}
                   request={inquiry}
                   role="seller"
-                  actionLabel="Open conversation"
-                  onActionPress={() => router.push(`/(shared)/conversation/${inquiry.id}`)}
+                  onPress={() => router.push(`/(shared)/conversation/${inquiry.id}`)}
                 />
               ))}
             </View>
           ) : (
             <EmptyState
-              title="No inquiries yet"
+              title="No messages yet"
               description={
                 listings.length === 0
-                  ? 'You do not have a live listing yet. Publish one first so buyers can start sending questions and requests.'
-                  : 'Your listings are live, but no buyer has reached out yet. New questions will appear here as soon as someone contacts you.'
+                  ? 'You do not have a live listing yet. Publish one first so buyers can start messaging you.'
+                  : 'Your listings are live, but no buyer has reached out yet. New conversations will appear here as soon as someone contacts you.'
               }
               actionLabel={listings.length === 0 ? 'Create first listing' : undefined}
               onAction={

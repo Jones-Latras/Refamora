@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -28,6 +29,14 @@ import {
 import type { ContactConversation } from '../../../types/app'
 import { formatDateTime } from '../../../utils/formatters'
 import { palette, radii, shadow } from '../../../utils/theme'
+
+function getHeaderFallbackLabel(conversation: ContactConversation) {
+  const source =
+    conversation.request.listingTitle.trim() ||
+    conversation.request.counterpartName.trim()
+
+  return source.charAt(0).toUpperCase() || 'R'
+}
 
 export default function ContactConversationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -264,14 +273,34 @@ export default function ContactConversationScreen() {
       >
         <View style={styles.screen}>
           <View style={styles.headerCard}>
-            <View style={styles.headerText}>
-              <Text style={styles.headerTitle}>{conversation.request.listingTitle}</Text>
-              <Text style={styles.headerSubtitle}>
-                {counterpartLabel}: {conversation.request.counterpartName}
-              </Text>
-              <Text style={styles.headerMeta}>
-                Last activity {formatDateTime(conversation.request.updatedAt)}
-              </Text>
+            <View style={styles.headerMain}>
+              {conversation.request.listingImageUrl ? (
+                <Image
+                  source={{ uri: conversation.request.listingImageUrl }}
+                  style={styles.headerThumb}
+                />
+              ) : conversation.request.counterpartAvatarUrl ? (
+                <Image
+                  source={{ uri: conversation.request.counterpartAvatarUrl }}
+                  style={styles.headerThumb}
+                />
+              ) : (
+                <View style={styles.headerFallbackThumb}>
+                  <Text style={styles.headerFallbackText}>
+                    {getHeaderFallbackLabel(conversation)}
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.headerText}>
+                <Text style={styles.headerTitle}>{conversation.request.listingTitle}</Text>
+                <Text style={styles.headerSubtitle}>
+                  {counterpartLabel}: {conversation.request.counterpartName}
+                </Text>
+                <Text style={styles.headerMeta}>
+                  Last activity {formatDateTime(conversation.request.updatedAt)}
+                </Text>
+              </View>
             </View>
             <Pressable
               onPress={() => router.push(`/(shared)/listing/${conversation.request.listingId}`)}
@@ -422,7 +451,32 @@ const styles = StyleSheet.create({
     gap: 12,
     ...shadow,
   },
+  headerMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerThumb: {
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+    backgroundColor: '#d8e1d5',
+  },
+  headerFallbackThumb: {
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+    backgroundColor: '#e5eee4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerFallbackText: {
+    color: palette.sageDark,
+    fontSize: 18,
+    fontWeight: '900',
+  },
   headerText: {
+    flex: 1,
     gap: 4,
   },
   headerTitle: {

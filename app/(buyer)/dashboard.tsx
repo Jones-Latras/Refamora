@@ -240,9 +240,9 @@ export default function BuyerDashboardScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View>
-              <Text style={styles.sectionTitle}>Sent contact requests</Text>
+              <Text style={styles.sectionTitle}>Recent messages</Text>
               <Text style={styles.sectionSubtitle}>
-                {requests.length} request{requests.length === 1 ? '' : 's'} sent
+                {requests.length} conversation{requests.length === 1 ? '' : 's'} started
               </Text>
             </View>
             <Pressable onPress={() => router.push('/(buyer)/requests')}>
@@ -257,15 +257,14 @@ export default function BuyerDashboardScreen() {
                   key={request.id}
                   request={request}
                   role="buyer"
-                  actionLabel="Open conversation"
-                  onActionPress={() => router.push(`/(shared)/conversation/${request.id}`)}
+                  onPress={() => router.push(`/(shared)/conversation/${request.id}`)}
                 />
               ))}
             </View>
           ) : (
             <EmptyState
-              title="No contact requests sent"
-              description="You have not contacted any sellers yet. Open a listing and use Contact Seller when you want to ask about availability, pickup, or price."
+              title="No messages yet"
+              description="You have not started any seller conversations yet. Open a listing and contact the seller when you want to ask about availability, pickup, or price."
               actionLabel="Browse the feed"
               onAction={() => router.push('/(buyer)/feed')}
             />

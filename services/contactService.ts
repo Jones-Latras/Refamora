@@ -46,11 +46,11 @@ async function enrichRequests(
   const [listingsResult, usersResult, messagesResult] = await Promise.all([
     getSupabaseClient()
       .from('listings')
-      .select('id, title')
+      .select('id, title, image_url')
       .in('id', listingIds),
     getSupabaseClient()
       .from('users')
-      .select('id, full_name, phone, city')
+      .select('id, full_name, phone, city, avatar_url')
       .in('id', counterpartIds),
     getSupabaseClient()
       .from('contact_request_messages')
@@ -59,12 +59,15 @@ async function enrichRequests(
       .order('created_at', { ascending: false }),
   ])
 
-  const listingsById = new Map<string, Pick<ListingRow, 'id' | 'title'>>(
+  const listingsById = new Map<
+    string,
+    Pick<ListingRow, 'id' | 'title' | 'image_url'>
+  >(
     (listingsResult.data ?? []).map((listing) => [listing.id, listing]),
   )
   const usersById = new Map<
     string,
-    Pick<UserRow, 'id' | 'full_name' | 'phone' | 'city'>
+    Pick<UserRow, 'id' | 'full_name' | 'phone' | 'city' | 'avatar_url'>
   >((usersResult.data ?? []).map((user) => [user.id, user]))
   const latestMessageByRequestId = new Map<string, ContactRequestMessageRow>()
   const messageCountByRequestId = new Map<string, number>()
@@ -92,9 +95,11 @@ async function enrichRequests(
       id: request.id,
       listingId: request.listing_id,
       listingTitle: listing?.title ?? 'Untitled listing',
+      listingImageUrl: listing?.image_url ?? null,
       buyerId: request.buyer_id,
       sellerId: request.seller_id,
       counterpartName: counterpart?.full_name ?? 'Unknown user',
+      counterpartAvatarUrl: counterpart?.avatar_url ?? null,
       counterpartPhone: counterpart?.phone ?? null,
       counterpartCity: counterpart?.city ?? null,
       message: latestMessage?.message ?? fallbackMessage,
