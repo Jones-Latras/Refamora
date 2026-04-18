@@ -375,32 +375,33 @@ export default function ContactConversationScreen() {
           </ScrollView>
 
           <View style={[styles.composerCard, { paddingBottom: composerPaddingBottom }]}>
-            {canUseAiDraft ? (
-              <Pressable
-                disabled={isDraftLoading}
-                onPress={() => void handleGenerateDraft()}
-                style={[styles.draftButton, isDraftLoading ? styles.disabledButton : null]}
-              >
-                <Text style={styles.draftButtonText}>
-                  {isDraftLoading ? 'Drafting...' : 'AI draft'}
-                </Text>
-              </Pressable>
-            ) : null}
-
+            <View style={styles.composerSeparator} />
             <View style={styles.composerRow}>
               <View style={styles.composerInputShell}>
+                {canUseAiDraft ? (
+                  <Pressable
+                    disabled={isDraftLoading}
+                    onPress={() => void handleGenerateDraft()}
+                    style={[styles.draftButton, isDraftLoading ? styles.disabledButton : null]}
+                  >
+                    <Feather name="zap" size={12} color={palette.sageDark} />
+                    <Text style={styles.draftButtonText}>
+                      {isDraftLoading ? 'Drafting...' : 'AI draft'}
+                    </Text>
+                  </Pressable>
+                ) : null}
                 <TextInput
                   multiline
                   numberOfLines={3}
                   editable={!isSending}
                   placeholder={
                     role === 'farmer'
-                      ? 'Write your reply to the buyer.'
-                      : 'Write a follow-up message to the seller.'
+                      ? 'Write your reply to the buyer...'
+                      : 'Write a follow-up message...'
                   }
                   placeholderTextColor="#9c8c79"
                   style={styles.composerInput}
-                  textAlignVertical="center"
+                  textAlignVertical="top"
                   value={composerValue}
                   onChangeText={setComposerValue}
                 />
@@ -411,9 +412,11 @@ export default function ContactConversationScreen() {
                 onPress={() => void handleSend()}
                 style={[styles.sendButton, isSending ? styles.disabledButton : null]}
               >
-                <Text style={styles.sendButtonText}>
-                  {isSending ? '...' : '>'}
-                </Text>
+                {isSending ? (
+                  <ActivityIndicator size="small" color={palette.cream} />
+                ) : (
+                  <Feather name="send" size={20} color={palette.cream} />
+                )}
               </Pressable>
             </View>
           </View>
@@ -545,7 +548,7 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
   },
   messageRow: {
-    gap: 6,
+    gap: 4,
   },
   ownMessageRow: {
     alignItems: 'flex-end',
@@ -554,14 +557,19 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   messageBubble: {
-    maxWidth: '86%',
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    maxWidth: '82%',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   ownMessageBubble: {
     backgroundColor: palette.sage,
     borderBottomRightRadius: 6,
+    shadowColor: '#1c100a',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   otherMessageBubble: {
     backgroundColor: palette.surface,
@@ -571,7 +579,8 @@ const styles = StyleSheet.create({
   },
   messageText: {
     color: palette.ink,
-    lineHeight: 21,
+    fontSize: 15,
+    lineHeight: 22,
   },
   ownMessageText: {
     color: palette.cream,
@@ -586,34 +595,44 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: palette.border,
-    padding: 16,
+    padding: 24,
     gap: 6,
+    alignItems: 'center',
   },
   emptyMessagesTitle: {
     color: palette.soil,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
+    textAlign: 'center',
   },
   emptyMessagesText: {
     color: palette.muted,
     lineHeight: 20,
+    textAlign: 'center',
   },
   composerCard: {
     gap: 10,
-    paddingTop: 6,
+    paddingTop: 0,
+  },
+  composerSeparator: {
+    height: 1,
+    backgroundColor: palette.border,
+    marginBottom: 4,
   },
   draftButton: {
     alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     borderRadius: 999,
-    backgroundColor: '#eef6ed',
-    borderWidth: 1,
-    borderColor: 'rgba(58, 102, 72, 0.12)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    backgroundColor: '#e6f0e8',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginTop: 8,
   },
   draftButtonText: {
     color: palette.sageDark,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
   },
   composerRow: {
@@ -624,38 +643,36 @@ const styles = StyleSheet.create({
   composerInputShell: {
     flex: 1,
     minHeight: 54,
-    maxHeight: 116,
-    borderRadius: 28,
+    maxHeight: 140,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: palette.border,
     backgroundColor: '#fffdf9',
     paddingHorizontal: 16,
-    paddingVertical: 2,
+    paddingBottom: 4,
     ...shadow,
   },
   composerInput: {
-    minHeight: 50,
-    maxHeight: 108,
-    paddingVertical: 12,
+    minHeight: 42,
+    maxHeight: 90,
+    paddingVertical: 10,
     color: palette.ink,
     fontSize: 14,
     lineHeight: 20,
   },
   sendButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: palette.sage,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'flex-end',
-    ...shadow,
-  },
-  sendButtonText: {
-    color: palette.cream,
-    fontWeight: '900',
-    fontSize: 20,
-    lineHeight: 20,
+    shadowColor: palette.sage,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
   disabledButton: {
     opacity: 0.72,
