@@ -1,3 +1,4 @@
+import { useHeaderHeight } from '@react-navigation/elements'
 import { useFocusEffect } from '@react-navigation/native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -12,7 +13,7 @@ import {
   TextInput,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { EmptyState } from '../../../components/EmptyState'
 import { ErrorState } from '../../../components/ErrorState'
@@ -31,6 +32,8 @@ import { palette, radii, shadow } from '../../../utils/theme'
 export default function ContactConversationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const scrollViewRef = useRef<ScrollView>(null)
+  const headerHeight = useHeaderHeight()
+  const insets = useSafeAreaInsets()
   const { user, role } = useAuth()
   const { showToast } = useToast()
   const [conversation, setConversation] = useState<ContactConversation | null>(null)
@@ -107,6 +110,8 @@ export default function ContactConversationScreen() {
     return role === 'farmer' ? 'Buyer' : 'Seller'
   }, [conversation, role])
   const canUseAiDraft = role === 'farmer'
+  const keyboardVerticalOffset = Platform.OS === 'ios' ? headerHeight : 0
+  const composerPaddingBottom = Math.max(insets.bottom, 14)
 
   const handleSend = async () => {
     if (!user || !conversation || isSending) {
@@ -253,7 +258,8 @@ export default function ContactConversationScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={styles.safeArea}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={keyboardVerticalOffset}
         style={styles.flex}
       >
         <View style={styles.screen}>
@@ -284,8 +290,11 @@ export default function ContactConversationScreen() {
 
           <ScrollView
             ref={scrollViewRef}
+            automaticallyAdjustKeyboardInsets
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
             contentContainerStyle={styles.messageList}
             keyboardShouldPersistTaps="handled"
+            style={styles.messageScroll}
           >
             {conversation.messages.length > 0 ? (
               conversation.messages.map((message) => {
@@ -329,7 +338,7 @@ export default function ContactConversationScreen() {
             )}
           </ScrollView>
 
-          <View style={styles.composerCard}>
+          <View style={[styles.composerCard, { paddingBottom: composerPaddingBottom }]}>
             {canUseAiDraft ? (
               <Pressable
                 disabled={isDraftLoading}
@@ -386,6 +395,9 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     gap: 12,
+  },
+  messageScroll: {
+    flex: 1,
   },
   centerState: {
     flex: 1,
@@ -460,6 +472,8 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   messageList: {
+    flexGrow: 1,
+    justifyContent: 'flex-end',
     gap: 12,
     paddingBottom: 6,
   },
