@@ -103,8 +103,24 @@ export type ContactRequestSummary = {
   counterpartPhone: string | null
   counterpartCity: string | null
   message: string | null
+  messageCount: number
+  lastMessageSenderId: string | null
   status: 'pending' | 'seen' | 'responded'
   createdAt: string
+  updatedAt: string
+}
+
+export type ContactRequestMessage = {
+  id: string
+  requestId: string
+  senderId: string
+  message: string
+  createdAt: string
+}
+
+export type ContactConversation = {
+  request: ContactRequestSummary
+  messages: ContactRequestMessage[]
 }
 
 export type InquiryAssistItem = {

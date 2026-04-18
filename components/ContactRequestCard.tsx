@@ -33,6 +33,22 @@ function getStatusLabel(
   return status
 }
 
+function getMessagePreview(
+  request: ContactRequestSummary,
+  role: 'buyer' | 'seller',
+) {
+  if (!request.message) {
+    return 'No message yet.'
+  }
+
+  const isCurrentUserMessage =
+    role === 'buyer'
+      ? request.lastMessageSenderId === request.buyerId
+      : request.lastMessageSenderId === request.sellerId
+
+  return isCurrentUserMessage ? `You: ${request.message}` : request.message
+}
+
 export function ContactRequestCard({
   request,
   role,
@@ -66,14 +82,19 @@ export function ContactRequestCard({
 
       <Text style={styles.meta}>
         {request.counterpartCity ?? 'Location not provided'} |{' '}
-        {formatDate(request.createdAt)}
+        {formatDate(request.updatedAt)}
       </Text>
 
       {request.counterpartPhone ? (
         <Text style={styles.phone}>Phone: {request.counterpartPhone}</Text>
       ) : null}
 
-      {request.message ? <Text style={styles.message}>{request.message}</Text> : null}
+      <Text style={styles.message}>{getMessagePreview(request, role)}</Text>
+      {request.messageCount > 1 ? (
+        <Text style={styles.threadMeta}>
+          {request.messageCount} messages in this conversation
+        </Text>
+      ) : null}
 
       {actionLabel && onActionPress ? (
         <View style={styles.actionRow}>
@@ -131,6 +152,11 @@ const styles = StyleSheet.create({
   message: {
     color: palette.ink,
     lineHeight: 21,
+  },
+  threadMeta: {
+    color: palette.muted,
+    fontSize: 12,
+    lineHeight: 18,
   },
   actionButton: {
     alignSelf: 'flex-start',

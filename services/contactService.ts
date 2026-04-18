@@ -1,14 +1,30 @@
-import type { ContactRequestSummary, ServiceResult } from '../types/app'
+import type {
+  ContactConversation,
+  ContactRequestMessage,
+  ContactRequestSummary,
+  ServiceResult,
+} from '../types/app'
 import type { Tables, TablesInsert } from '../types/database'
 
 import { getSupabaseClient, hasSupabaseEnv } from './supabase'
 
 type ContactRequest = Tables<'contact_requests'>
+type ContactRequestMessageRow = Tables<'contact_request_messages'>
 type ListingRow = Tables<'listings'>
 type UserRow = Tables<'users'>
 
 function dedupe(values: string[]) {
   return [...new Set(values.filter(Boolean))]
+}
+
+function mapMessageRow(row: ContactRequestMessageRow): ContactRequestMessage {
+  return {
+    id: row.id,
+    requestId: row.request_id,
+    senderId: row.sender_id,
+    message: row.message,
+    createdAt: row.created_at,
+  }
 }
 
 async function enrichRequests(
@@ -19,6 +35,7 @@ async function enrichRequests(
     return []
   }
 
+  const requestIds = dedupe(requests.map((request) => request.id))
   const listingIds = dedupe(requests.map((request) => request.listing_id))
   const counterpartIds = dedupe(
     requests.map((request) =>
@@ -26,7 +43,7 @@ async function enrichRequests(
     ),
   )
 
-  const [listingsResult, usersResult] = await Promise.all([
+  const [listingsResult, usersResult, messagesResult] = await Promise.all([
     getSupabaseClient()
       .from('listings')
       .select('id, title')
@@ -35,6 +52,11 @@ async function enrichRequests(
       .from('users')
       .select('id, full_name, phone, city')
       .in('id', counterpartIds),
+    getSupabaseClient()
+      .from('contact_request_messages')
+      .select('id, request_id, sender_id, message, created_at')
+      .in('request_id', requestIds)
+      .order('created_at', { ascending: false }),
   ])
 
   const listingsById = new Map<string, Pick<ListingRow, 'id' | 'title'>>(
@@ -44,12 +66,27 @@ async function enrichRequests(
     string,
     Pick<UserRow, 'id' | 'full_name' | 'phone' | 'city'>
   >((usersResult.data ?? []).map((user) => [user.id, user]))
+  const latestMessageByRequestId = new Map<string, ContactRequestMessageRow>()
+  const messageCountByRequestId = new Map<string, number>()
+
+  for (const message of messagesResult.data ?? []) {
+    messageCountByRequestId.set(
+      message.request_id,
+      (messageCountByRequestId.get(message.request_id) ?? 0) + 1,
+    )
+
+    if (!latestMessageByRequestId.has(message.request_id)) {
+      latestMessageByRequestId.set(message.request_id, message)
+    }
+  }
 
   return requests.map((request) => {
     const counterpartId =
       counterpartBy === 'seller' ? request.seller_id : request.buyer_id
     const counterpart = usersById.get(counterpartId)
     const listing = listingsById.get(request.listing_id)
+    const latestMessage = latestMessageByRequestId.get(request.id)
+    const fallbackMessage = request.message?.trim() || null
 
     return {
       id: request.id,
@@ -60,9 +97,15 @@ async function enrichRequests(
       counterpartName: counterpart?.full_name ?? 'Unknown user',
       counterpartPhone: counterpart?.phone ?? null,
       counterpartCity: counterpart?.city ?? null,
-      message: request.message,
+      message: latestMessage?.message ?? fallbackMessage,
+      messageCount:
+        messageCountByRequestId.get(request.id) ??
+        (fallbackMessage ? 1 : 0),
+      lastMessageSenderId:
+        latestMessage?.sender_id ?? (fallbackMessage ? request.buyer_id : null),
       status: request.status,
       createdAt: request.created_at,
+      updatedAt: latestMessage?.created_at ?? request.updated_at ?? request.created_at,
     }
   })
 }
@@ -74,9 +117,39 @@ export async function sendContactRequest(
     return { data: null, error: new Error('Supabase is not configured yet.') }
   }
 
+  const normalizedPayload = {
+    ...payload,
+    message: payload.message?.trim() || null,
+  }
+
   const { data, error } = await getSupabaseClient()
     .from('contact_requests')
-    .insert(payload)
+    .insert(normalizedPayload)
+    .select()
+    .single()
+
+  return { data, error }
+}
+
+export async function sendContactRequestMessage(
+  payload: TablesInsert<'contact_request_messages'>,
+): Promise<ServiceResult<ContactRequestMessageRow>> {
+  if (!hasSupabaseEnv) {
+    return { data: null, error: new Error('Supabase is not configured yet.') }
+  }
+
+  const normalizedMessage = payload.message.trim()
+
+  if (!normalizedMessage) {
+    return { data: null, error: new Error('Write a message before sending it.') }
+  }
+
+  const { data, error } = await getSupabaseClient()
+    .from('contact_request_messages')
+    .insert({
+      ...payload,
+      message: normalizedMessage,
+    })
     .select()
     .single()
 
@@ -100,7 +173,7 @@ export async function getBuyerContactRequests(
     .from('contact_requests')
     .select('*')
     .eq('buyer_id', buyerId)
-    .order('created_at', { ascending: false })
+    .order('updated_at', { ascending: false })
 
   if (error) {
     return { data: [], error }
@@ -126,13 +199,66 @@ export async function getSellerInquiries(
     .from('contact_requests')
     .select('*')
     .eq('seller_id', sellerId)
-    .order('created_at', { ascending: false })
+    .order('updated_at', { ascending: false })
 
   if (error) {
     return { data: [], error }
   }
 
   return { data: await enrichRequests(data ?? [], 'buyer'), error: null }
+}
+
+export async function getContactConversation(
+  requestId: string,
+  actorId: string,
+): Promise<ServiceResult<ContactConversation>> {
+  if (!hasSupabaseEnv) {
+    return { data: null, error: new Error('Supabase is not configured yet.') }
+  }
+
+  const requestResult = await getSupabaseClient()
+    .from('contact_requests')
+    .select('*')
+    .eq('id', requestId)
+    .maybeSingle()
+
+  if (requestResult.error) {
+    return { data: null, error: requestResult.error }
+  }
+
+  const request = requestResult.data
+
+  if (!request) {
+    return { data: null, error: new Error('This conversation could not be found.') }
+  }
+
+  const counterpartBy = actorId === request.buyer_id ? 'seller' : 'buyer'
+  const [summaryList, messagesResult] = await Promise.all([
+    enrichRequests([request], counterpartBy),
+    getSupabaseClient()
+      .from('contact_request_messages')
+      .select('id, request_id, sender_id, message, created_at')
+      .eq('request_id', requestId)
+      .order('created_at', { ascending: true }),
+  ])
+
+  if (messagesResult.error) {
+    return { data: null, error: messagesResult.error }
+  }
+
+  const summary = summaryList[0]
+
+  if (!summary) {
+    return { data: null, error: new Error('This conversation could not be loaded.') }
+  }
+
+  return {
+    data: {
+      request: summary,
+      messages: (messagesResult.data ?? []).map(mapMessageRow),
+    },
+    error: null,
+  }
 }
 
 export async function markSellerInquiriesSeen(
@@ -152,7 +278,7 @@ export async function markSellerInquiriesSeen(
   return { data: data ?? [], error }
 }
 
-export async function markInquiryResponded(
+export async function markInquirySeen(
   requestId: string,
   sellerId: string,
 ): Promise<ServiceResult<ContactRequest>> {
@@ -162,11 +288,12 @@ export async function markInquiryResponded(
 
   const { data, error } = await getSupabaseClient()
     .from('contact_requests')
-    .update({ status: 'responded' })
+    .update({ status: 'seen' })
     .eq('id', requestId)
     .eq('seller_id', sellerId)
+    .eq('status', 'pending')
     .select()
-    .single()
+    .maybeSingle()
 
   return { data, error }
 }

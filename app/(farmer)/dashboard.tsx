@@ -595,6 +595,8 @@ export default function FarmerDashboardScreen() {
                   key={inquiry.id}
                   request={inquiry}
                   role="seller"
+                  actionLabel="Open conversation"
+                  onActionPress={() => router.push(`/(shared)/conversation/${inquiry.id}`)}
                 />
               ))}
             </View>

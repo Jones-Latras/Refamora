@@ -94,7 +94,7 @@ export default function ListingDetailScreen() {
   const [isContactModalVisible, setIsContactModalVisible] = useState(false)
   const [contactMessage, setContactMessage] = useState('')
   const [isSubmittingContact, setIsSubmittingContact] = useState(false)
-  const [hasRequestedContact, setHasRequestedContact] = useState(false)
+  const [contactRequestId, setContactRequestId] = useState<string | null>(null)
   const [relatedListings, setRelatedListings] = useState<ListingPreview[]>([])
   const [isReportModalVisible, setIsReportModalVisible] = useState(false)
   const [reportReason, setReportReason] = useState<
@@ -174,7 +174,7 @@ export default function ListingDetailScreen() {
     const loadContactState = async () => {
       if (!user || role !== 'buyer' || !listing) {
         if (isMounted) {
-          setHasRequestedContact(false)
+          setContactRequestId(null)
         }
         return
       }
@@ -185,9 +185,10 @@ export default function ListingDetailScreen() {
         return
       }
 
-      setHasRequestedContact(
-        (result.data ?? []).some((request) => request.listingId === listing.id),
-      )
+      const matchingRequest =
+        (result.data ?? []).find((request) => request.listingId === listing.id) ?? null
+
+      setContactRequestId(matchingRequest?.id ?? null)
     }
 
     void loadContactState()
@@ -280,6 +281,7 @@ export default function ListingDetailScreen() {
 
   const canContactSeller =
     role === 'buyer' && !!user && !!listing && user.id !== listing.sellerId
+  const hasRequestedContact = !!contactRequestId
   const canSaveListing = role !== 'farmer'
   const isSaved = listing ? savedListingIds.includes(listing.id) : false
   const postedLabel = listing ? formatRelativePostedDate(listing.createdAt) : ''
@@ -386,14 +388,15 @@ export default function ListingDetailScreen() {
       return
     }
 
-    setHasRequestedContact(true)
+    setContactRequestId(result.data.id)
     setContactMessage('')
     setIsContactModalVisible(false)
 
     if (listing.seller?.phone) {
       showToast({
         title: 'Inquiry sent',
-        message: 'Your request reached the seller. Their phone number is now visible below.',
+        message:
+          'Your request reached the seller. You can now open the conversation thread and their phone number is visible below.',
         variant: 'success',
       })
       return
@@ -401,25 +404,22 @@ export default function ListingDetailScreen() {
 
     showToast({
       title: 'Inquiry sent',
-      message: 'Your request reached the seller. They have not added a phone number yet.',
+      message:
+        'Your request reached the seller. You can now continue in the conversation thread.',
       variant: 'info',
     })
   }
 
   const handleContactPress = async () => {
+    if (contactRequestId) {
+      router.push(`/(shared)/conversation/${contactRequestId}`)
+      return
+    }
+
     if (!listing?.seller?.phone || !hasRequestedContact) {
       setIsContactModalVisible(true)
       return
     }
-
-    const supported = await Linking.canOpenURL(`tel:${listing.seller.phone}`)
-
-    if (!supported) {
-      showToast('Calling is not available on this device.', 'error')
-      return
-    }
-
-    await Linking.openURL(`tel:${listing.seller.phone}`)
   }
 
   const handleOpenReport = () => {
@@ -847,11 +847,7 @@ export default function ListingDetailScreen() {
         <View style={styles.footer}>
           <Pressable onPress={handleContactPress} style={styles.footerButton}>
             <Text style={styles.footerButtonText}>
-              {hasRequestedContact && listing.seller?.phone
-                ? `Call ${listing.seller.phone}`
-                : hasRequestedContact
-                  ? 'Request sent'
-                  : 'Contact Seller'}
+              {hasRequestedContact ? 'Open conversation' : 'Contact Seller'}
             </Text>
           </Pressable>
         </View>

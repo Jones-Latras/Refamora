@@ -16,6 +16,7 @@ export default function SharedLayout() {
     >
       <Stack.Screen name="profile" options={{ title: 'Profile' }} />
       <Stack.Screen name="listing/[id]" options={{ title: 'Listing Details' }} />
+      <Stack.Screen name="conversation/[id]" options={{ title: 'Conversation' }} />
     </Stack>
   )
 }

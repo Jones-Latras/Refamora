@@ -257,6 +257,8 @@ export default function BuyerDashboardScreen() {
                   key={request.id}
                   request={request}
                   role="buyer"
+                  actionLabel="Open conversation"
+                  onActionPress={() => router.push(`/(shared)/conversation/${request.id}`)}
                 />
               ))}
             </View>

@@ -13,18 +13,15 @@ import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
 import {
   getSellerInquiries,
-  markInquiryResponded,
   markSellerInquiriesSeen,
 } from '../../services/contactService'
 import {
   getInquirySummary,
-  getReplyDraft,
 } from '../../services/aiService'
 import type {
   ContactRequestSummary,
   InquiryAssistItem,
   InquirySummaryResult,
-  ReplyDraftResult,
 } from '../../types/app'
 import { palette, radii } from '../../utils/theme'
 
@@ -54,12 +51,8 @@ export default function FarmerRequestsScreen() {
   const [requests, setRequests] = useState<ContactRequestSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSummaryLoading, setIsSummaryLoading] = useState(false)
-  const [isReplyLoading, setIsReplyLoading] = useState(false)
   const [summaryResult, setSummaryResult] = useState<InquirySummaryResult | null>(null)
-  const [replyResult, setReplyResult] = useState<ReplyDraftResult | null>(null)
-  const [editableReply, setEditableReply] = useState('')
   const [isSummaryModalVisible, setIsSummaryModalVisible] = useState(false)
-  const [isReplyModalVisible, setIsReplyModalVisible] = useState(false)
   const [summaryTitle, setSummaryTitle] = useState('AI inquiry summary')
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -123,8 +116,8 @@ export default function FarmerRequestsScreen() {
     }
 
     return [...groups.values()].sort((left, right) => {
-      const leftNewest = left.requests[0]?.createdAt ?? ''
-      const rightNewest = right.requests[0]?.createdAt ?? ''
+      const leftNewest = left.requests[0]?.updatedAt ?? left.requests[0]?.createdAt ?? ''
+      const rightNewest = right.requests[0]?.updatedAt ?? right.requests[0]?.createdAt ?? ''
       return new Date(rightNewest).getTime() - new Date(leftNewest).getTime()
     })
   }, [requests])
@@ -183,60 +176,14 @@ export default function FarmerRequestsScreen() {
     }
   }
 
-  const handleDraftReply = async (request: ContactRequestSummary) => {
-    setIsReplyLoading(true)
-
-    try {
-      const result = await getReplyDraft({
-        inquiry: toInquiryAssistItem(request),
-      })
-
-      if (result.error || !result.data) {
-        showToast(result.error?.message ?? 'Reply draft is unavailable right now.', 'error')
-        return
-      }
-
-      setReplyResult(result.data)
-      setEditableReply(result.data.result.draftReply)
-      setIsReplyModalVisible(true)
-    } finally {
-      setIsReplyLoading(false)
-    }
-  }
-
-  const handleMarkResponded = async (request: ContactRequestSummary) => {
-    if (!user) {
-      return
-    }
-
-    const result = await markInquiryResponded(request.id, user.id)
-
-    if (result.error) {
-      showToast(result.error.message, 'error')
-      return
-    }
-
-    setRequests((current) =>
-      current.map((item) =>
-        item.id === request.id
-          ? {
-              ...item,
-              status: 'responded',
-            }
-          : item,
-      ),
-    )
-    showToast('Inquiry marked as responded.', 'success')
-  }
-
   return (
     <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={styles.safeArea}>
       <View style={styles.headerCard}>
         <View style={styles.headerTextBlock}>
           <Text style={styles.title}>Buyer inquiries</Text>
           <Text style={styles.subtitle}>
-            Review buyer questions, see what still needs attention, and use AI to
-            draft replies.
+            Review buyer questions, open the conversation thread, and use AI to
+            help draft replies before sending them.
           </Text>
         </View>
         <View style={styles.headerActions}>
@@ -307,15 +254,9 @@ export default function FarmerRequestsScreen() {
                     key={item.id}
                     request={item}
                     role="seller"
-                    actionLabel={isReplyLoading ? 'Generating reply...' : 'Draft reply'}
-                    onActionPress={() => void handleDraftReply(item)}
-                    secondaryActionLabel={
-                      item.status === 'responded' ? undefined : 'Mark responded'
-                    }
-                    onSecondaryActionPress={
-                      item.status === 'responded'
-                        ? undefined
-                        : () => void handleMarkResponded(item)
+                    actionLabel="Open conversation"
+                    onActionPress={() =>
+                      router.push(`/(shared)/conversation/${item.id}`)
                     }
                   />
                 ))}
@@ -327,7 +268,7 @@ export default function FarmerRequestsScreen() {
         <View style={styles.list}>
           <EmptyState
             title="No buyer inquiries yet"
-            description="When buyers ask about your active listings, their questions will appear here with AI summary and reply tools ready to help."
+            description="When buyers ask about your active listings, their messages will appear here and open into a full conversation thread."
             actionLabel="Manage listings"
             onAction={() => router.push('/(farmer)/my-listings')}
           />
@@ -344,20 +285,6 @@ export default function FarmerRequestsScreen() {
           ...(summaryResult?.result.followUpTips ?? []),
         ]}
         onClose={() => setIsSummaryModalVisible(false)}
-      />
-
-      <InquiryAiModal
-        isVisible={isReplyModalVisible}
-        title="AI reply draft"
-        subtitle="Edit this before sending it through your preferred channel."
-        body={editableReply}
-        editable
-        onChangeBody={setEditableReply}
-        bullets={[
-          ...(replyResult?.result.unansweredQuestions ?? []),
-          ...(replyResult?.result.keyPoints ?? []),
-        ]}
-        onClose={() => setIsReplyModalVisible(false)}
       />
     </SafeAreaView>
   )

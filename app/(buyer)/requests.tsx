@@ -60,7 +60,14 @@ export default function BuyerRequestsScreen() {
           data={requests}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => <ContactRequestCard request={item} role="buyer" />}
+          renderItem={({ item }) => (
+            <ContactRequestCard
+              request={item}
+              role="buyer"
+              actionLabel="Open conversation"
+              onActionPress={() => router.push(`/(shared)/conversation/${item.id}`)}
+            />
+          )}
         />
       ) : loadError ? (
         <View style={styles.list}>
@@ -76,7 +83,7 @@ export default function BuyerRequestsScreen() {
         <View style={styles.list}>
           <EmptyState
             title="No contact requests yet"
-            description="Once you contact a seller, this screen will track the request status and show any phone number unlocked after the inquiry."
+            description="Once you contact a seller, this screen will track the request status and open each conversation thread."
             actionLabel="Browse listings"
             onAction={() => router.push('/(buyer)/feed')}
           />
