@@ -87,7 +87,7 @@ type PublishQualityItem = {
   status: PublishQualityStatus
 }
 
-type ListingSectionKey = 'basics' | 'pricing' | 'map' | 'photos' | 'checks' | 'ai'
+type ListingSectionKey = 'basics' | 'pricing' | 'map' | 'checks' | 'ai'
 
 type CollapsibleSectionProps = {
   title: string
@@ -96,6 +96,7 @@ type CollapsibleSectionProps = {
   isOpen: boolean
   onToggle: () => void
   children: ReactNode
+  onLayout?: (event: { nativeEvent: { layout: { y: number } } }) => void
 }
 
 function hasText(value?: string | null) {
@@ -109,9 +110,10 @@ function CollapsibleSection({
   isOpen,
   onToggle,
   children,
+  onLayout,
 }: CollapsibleSectionProps) {
   return (
-    <View style={styles.sectionCard}>
+    <View onLayout={onLayout} style={styles.sectionCard}>
       <Pressable onPress={onToggle} style={styles.sectionToggle}>
         <View style={styles.sectionToggleText}>
           <Text style={styles.sectionTitle}>{title}</Text>
@@ -142,7 +144,10 @@ export function ListingEditor({
 }: ListingEditorProps) {
   const scrollViewRef = useRef<ScrollView>(null)
   const fieldPositions = useRef<Partial<Record<keyof ListingFormValues, number>>>({})
+  const productPhotoPosition = useRef(0)
   const qualityPanelPosition = useRef(0)
+  const pricingSectionPosition = useRef(0)
+  const mapSectionPosition = useRef(0)
   const titleRef = useRef<TextInput>(null)
   const descriptionRef = useRef<TextInput>(null)
   const priceRef = useRef<TextInput>(null)
@@ -177,7 +182,6 @@ export function ListingEditor({
     basics: true,
     pricing: true,
     map: false,
-    photos: false,
     checks: false,
     ai: false,
   })
@@ -343,6 +347,13 @@ export function ListingEditor({
     })
   }
 
+  const scrollToPosition = (y: number) => {
+    scrollViewRef.current?.scrollTo({
+      y: Math.max(y - 24, 0),
+      animated: true,
+    })
+  }
+
   const focusBlockingQualityItem = (itemId: string) => {
     const itemFieldMap: Partial<Record<string, keyof ListingFormValues>> = {
       title: 'title',
@@ -351,10 +362,65 @@ export function ListingEditor({
       location: 'city',
     }
 
+    const itemSectionMap: Partial<Record<string, ListingSectionKey>> = {
+      title: 'basics',
+      description: 'basics',
+      price: 'pricing',
+      location: 'pricing',
+    }
+
     const targetField = itemFieldMap[itemId]
 
     if (targetField) {
-      scrollToField(targetField)
+      const targetSection = itemSectionMap[itemId]
+
+      if (targetSection) {
+        openSection(targetSection)
+      }
+
+      if (targetSection === 'pricing') {
+        setTimeout(() => {
+          scrollToPosition(pricingSectionPosition.current)
+          setTimeout(() => {
+            scrollToField(targetField)
+          }, 120)
+        }, 80)
+        return
+      }
+
+      setTimeout(() => {
+        scrollToField(targetField)
+      }, 80)
+      return
+    }
+
+    if (itemId === 'map-pin') {
+      openSection('map')
+      setTimeout(() => {
+        scrollToPosition(mapSectionPosition.current)
+      }, 80)
+      return
+    }
+
+    if (itemId === 'photo') {
+      setTimeout(() => {
+        scrollToPosition(productPhotoPosition.current)
+      }, 80)
+      return
+    }
+
+    if (itemId === 'safety') {
+      if (moderationResult?.result.imageWarnings.length) {
+        setTimeout(() => {
+          scrollToPosition(productPhotoPosition.current)
+        }, 80)
+        return
+      }
+
+      openSection('basics')
+      setTimeout(() => {
+        scrollToField('description')
+      }, 80)
       return
     }
 
@@ -519,11 +585,6 @@ export function ListingEditor({
     coordinates.latitude != null && coordinates.longitude != null
       ? 'Map pin set'
       : 'Optional but recommended for nearby buyers'
-  const photoSummary = selectedImage
-    ? photoCheckResult
-      ? `Image ready | ${photoCheckResult.result.readiness === 'good' ? 'checked' : photoCheckResult.result.readiness}`
-      : 'Image attached'
-    : 'No image yet'
   const checksSummary = `${passedQualityItems.length} passed | ${warningQualityItems.length} review | ${blockingQualityItems.length} fix`
   const aiSummary = aiAssistResult
     ? `Draft improved with ${aiAssistResult.provider === 'local_gemma' ? 'Local Gemma' : 'Gemini'}`
@@ -538,6 +599,12 @@ export function ListingEditor({
       ...current,
       [section]: !current[section],
     }))
+  }
+
+  const openSection = (section: ListingSectionKey) => {
+    setOpenSections((current) =>
+      current[section] ? current : { ...current, [section]: true },
+    )
   }
 
   useEffect(() => {
@@ -918,12 +985,13 @@ export function ListingEditor({
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
         style={styles.keyboardShell}
       >
         <ScrollView
           ref={scrollViewRef}
+          style={styles.scrollView}
           contentContainerStyle={styles.content}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
@@ -937,7 +1005,13 @@ export function ListingEditor({
             </View>
           ) : null}
 
-          <Pressable onPress={handlePickImage} style={styles.productPhotoCard}>
+          <Pressable
+            onLayout={(event) => {
+              productPhotoPosition.current = event.nativeEvent.layout.y
+            }}
+            onPress={handlePickImage}
+            style={styles.productPhotoCard}
+          >
             {selectedImage ? (
               <>
                 <Image source={{ uri: selectedImage }} style={styles.productPhotoImage} />
@@ -1059,6 +1133,9 @@ export function ListingEditor({
             summary={pricingSummary}
             isOpen={openSections.pricing}
             onToggle={() => toggleSection('pricing')}
+            onLayout={(event) => {
+              pricingSectionPosition.current = event.nativeEvent.layout.y
+            }}
           >
 
             <View
@@ -1276,97 +1353,8 @@ export function ListingEditor({
                 </Text>
               </View>
             </Pressable>
-          </CollapsibleSection>
 
-          {aiListingAssistEnabled ? (
-            <CollapsibleSection
-              title="AI tools"
-              hint="Use AI only after you have a rough draft or selected waste type."
-              summary={aiSummary}
-              isOpen={openSections.ai}
-              onToggle={() => toggleSection('ai')}
-            >
-              {selectedWasteTypeLabel ? (
-                <View style={styles.valueAdvisorCard}>
-                  <View style={styles.valueAdvisorHeader}>
-                    <View style={styles.valueAdvisorTextBlock}>
-                      <Text style={styles.valueAdvisorTitle}>
-                        Waste-to-value advisor
-                      </Text>
-                    </View>
-                    <Pressable
-                      disabled={isWasteAdviceLoading || isCheckingAIHealth}
-                      onPress={handleWasteValueAdvice}
-                      style={[
-                        styles.valueAdvisorButton,
-                        isWasteAdviceLoading || isCheckingAIHealth
-                          ? styles.aiButtonDisabled
-                          : null,
-                      ]}
-                    >
-                      <Text style={styles.valueAdvisorButtonText}>
-                        {isCheckingAIHealth
-                          ? 'Checking...'
-                          : isWasteAdviceLoading
-                            ? 'Loading...'
-                            : 'See ideas'}
-                      </Text>
-                    </Pressable>
-                  </View>
-
-                  {wasteAdviceResult ? (
-                    <View style={styles.valueAdvisorContent}>
-                      <Text style={styles.valueAdvisorMeta}>
-                        Provider:{' '}
-                        {wasteAdviceResult.provider === 'local_gemma'
-                          ? 'Local Gemma'
-                          : 'Gemini'}
-                        {wasteAdviceResult.fallbackUsed ? ' | fallback used' : ''}
-                      </Text>
-                      {wasteAdviceResult.result.marketTip ? (
-                        <Text style={styles.valueAdvisorTip}>
-                          {wasteAdviceResult.result.marketTip}
-                        </Text>
-                      ) : null}
-                      {wasteAdviceResult.result.uses.length > 0 ? (
-                        <View style={styles.valueAdvisorListBlock}>
-                          <Text style={styles.valueAdvisorListLabel}>
-                            Possible uses
-                          </Text>
-                          {wasteAdviceResult.result.uses.map((item) => (
-                            <Text key={item} style={styles.valueAdvisorListItem}>
-                              - {item}
-                            </Text>
-                          ))}
-                        </View>
-                      ) : null}
-                      {wasteAdviceResult.result.cautions.length > 0 ? (
-                        <View style={styles.valueAdvisorListBlock}>
-                          <Text style={styles.valueAdvisorListLabel}>Cautions</Text>
-                          {wasteAdviceResult.result.cautions.map((item) => (
-                            <Text key={item} style={styles.valueAdvisorListItem}>
-                              - {item}
-                            </Text>
-                          ))}
-                        </View>
-                      ) : null}
-                      {wasteAdviceResult.result.sourceBasis.length > 0 ? (
-                        <View style={styles.valueAdvisorListBlock}>
-                          <Text style={styles.valueAdvisorListLabel}>
-                            Grounded in
-                          </Text>
-                          {wasteAdviceResult.result.sourceBasis.map((item) => (
-                            <Text key={item} style={styles.valueAdvisorSourceItem}>
-                              - {item}
-                            </Text>
-                          ))}
-                        </View>
-                      ) : null}
-                    </View>
-                  ) : null}
-                </View>
-              ) : null}
-
+            {aiListingAssistEnabled ? (
               <View style={styles.aiSection}>
                 <Pressable
                   disabled={isAiApplying || isCheckingAIHealth}
@@ -1493,6 +1481,98 @@ export function ListingEditor({
                   </View>
                 ) : null}
               </View>
+            ) : null}
+          </CollapsibleSection>
+
+          {aiListingAssistEnabled ? (
+            <CollapsibleSection
+              title="AI tools"
+              hint="Use AI only after you have a rough draft or selected waste type."
+              summary={aiSummary}
+              isOpen={openSections.ai}
+              onToggle={() => toggleSection('ai')}
+            >
+              {selectedWasteTypeLabel ? (
+                <View style={styles.valueAdvisorCard}>
+                  <View style={styles.valueAdvisorHeader}>
+                    <View style={styles.valueAdvisorTextBlock}>
+                      <Text style={styles.valueAdvisorTitle}>
+                        Waste-to-value advisor
+                      </Text>
+                    </View>
+                    <Pressable
+                      disabled={isWasteAdviceLoading || isCheckingAIHealth}
+                      onPress={handleWasteValueAdvice}
+                      style={[
+                        styles.valueAdvisorButton,
+                        isWasteAdviceLoading || isCheckingAIHealth
+                          ? styles.aiButtonDisabled
+                          : null,
+                      ]}
+                    >
+                      <Text style={styles.valueAdvisorButtonText}>
+                        {isCheckingAIHealth
+                          ? 'Checking...'
+                          : isWasteAdviceLoading
+                            ? 'Loading...'
+                            : 'See ideas'}
+                      </Text>
+                    </Pressable>
+                  </View>
+
+                  {wasteAdviceResult ? (
+                    <View style={styles.valueAdvisorContent}>
+                      <Text style={styles.valueAdvisorMeta}>
+                        Provider:{' '}
+                        {wasteAdviceResult.provider === 'local_gemma'
+                          ? 'Local Gemma'
+                          : 'Gemini'}
+                        {wasteAdviceResult.fallbackUsed ? ' | fallback used' : ''}
+                      </Text>
+                      {wasteAdviceResult.result.marketTip ? (
+                        <Text style={styles.valueAdvisorTip}>
+                          {wasteAdviceResult.result.marketTip}
+                        </Text>
+                      ) : null}
+                      {wasteAdviceResult.result.uses.length > 0 ? (
+                        <View style={styles.valueAdvisorListBlock}>
+                          <Text style={styles.valueAdvisorListLabel}>
+                            Possible uses
+                          </Text>
+                          {wasteAdviceResult.result.uses.map((item) => (
+                            <Text key={item} style={styles.valueAdvisorListItem}>
+                              - {item}
+                            </Text>
+                          ))}
+                        </View>
+                      ) : null}
+                      {wasteAdviceResult.result.cautions.length > 0 ? (
+                        <View style={styles.valueAdvisorListBlock}>
+                          <Text style={styles.valueAdvisorListLabel}>Cautions</Text>
+                          {wasteAdviceResult.result.cautions.map((item) => (
+                            <Text key={item} style={styles.valueAdvisorListItem}>
+                              - {item}
+                            </Text>
+                          ))}
+                        </View>
+                      ) : null}
+                      {wasteAdviceResult.result.sourceBasis.length > 0 ? (
+                        <View style={styles.valueAdvisorListBlock}>
+                          <Text style={styles.valueAdvisorListLabel}>
+                            Grounded in
+                          </Text>
+                          {wasteAdviceResult.result.sourceBasis.map((item) => (
+                            <Text key={item} style={styles.valueAdvisorSourceItem}>
+                              - {item}
+                            </Text>
+                          ))}
+                        </View>
+                      ) : null}
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
+
             </CollapsibleSection>
           ) : null}
 
@@ -1502,6 +1582,9 @@ export function ListingEditor({
             summary={mapSummary}
             isOpen={openSections.map}
             onToggle={() => toggleSection('map')}
+            onLayout={(event) => {
+              mapSectionPosition.current = event.nativeEvent.layout.y
+            }}
           >
 
             <LocationPicker
@@ -1520,135 +1603,6 @@ export function ListingEditor({
                 }
               }}
             />
-          </CollapsibleSection>
-
-          <CollapsibleSection
-            title="Photos"
-            hint="Add one clear image and optionally run the AI check before publishing."
-            summary={photoSummary}
-            isOpen={openSections.photos}
-            onToggle={() => toggleSection('photos')}
-          >
-
-            {selectedImage ? (
-              <>
-                {aiListingAssistEnabled ? (
-                  <View style={styles.photoCheckCard}>
-                    <View style={styles.photoCheckHeader}>
-                      <View style={styles.photoCheckTextBlock}>
-                        <Text style={styles.photoCheckTitle}>Photo check</Text>
-                      </View>
-                      <Pressable
-                        disabled={isPhotoCheckLoading || isCheckingAIHealth}
-                        onPress={handlePhotoCheck}
-                        style={[
-                          styles.photoCheckButton,
-                          isPhotoCheckLoading || isCheckingAIHealth
-                            ? styles.aiButtonDisabled
-                            : null,
-                        ]}
-                      >
-                        <Text style={styles.photoCheckButtonText}>
-                          {isCheckingAIHealth
-                            ? 'Checking...'
-                            : isPhotoCheckLoading
-                              ? 'Reviewing...'
-                              : canRunPhotoCheck
-                                ? 'Check photo'
-                                : 'Replace to check'}
-                        </Text>
-                      </Pressable>
-                    </View>
-
-                    {!canRunPhotoCheck ? (
-                      <Text style={styles.photoCheckHint}>
-                        Replace the current uploaded image if you want AI to review it again.
-                      </Text>
-                    ) : null}
-
-                    {photoCheckResult ? (
-                      <View style={styles.photoCheckResultCard}>
-                        <View style={styles.photoCheckResultHeader}>
-                          <View style={styles.photoCheckScoreBlock}>
-                            <Text style={styles.photoCheckScoreValue}>
-                              {photoCheckResult.result.qualityScore}
-                            </Text>
-                            <Text style={styles.photoCheckScoreLabel}>
-                              quality score
-                            </Text>
-                          </View>
-                          <View
-                            style={[
-                              styles.photoCheckBadge,
-                              photoCheckResult.result.readiness === 'good'
-                                ? styles.photoCheckBadgeGood
-                                : photoCheckResult.result.readiness === 'retake'
-                                  ? styles.photoCheckBadgeRetake
-                                  : styles.photoCheckBadgeReview,
-                            ]}
-                          >
-                            <Text style={styles.photoCheckBadgeText}>
-                              {photoCheckResult.result.readiness === 'good'
-                                ? 'Looks good'
-                                : photoCheckResult.result.readiness === 'retake'
-                                  ? 'Retake suggested'
-                                  : 'Needs review'}
-                            </Text>
-                          </View>
-                        </View>
-
-                        <Text style={styles.photoCheckMeta}>
-                          Provider:{' '}
-                          {photoCheckResult.provider === 'local_gemma'
-                            ? 'Local Gemma'
-                            : 'Gemini'}
-                          {photoCheckResult.fallbackUsed ? ' | fallback used' : ''}
-                        </Text>
-
-                        {photoCheckResult.result.retakeSuggestions.length > 0 ? (
-                          <View style={styles.photoCheckListBlock}>
-                            <Text style={styles.photoCheckListLabel}>
-                              Retake suggestions
-                            </Text>
-                            {photoCheckResult.result.retakeSuggestions.map((item) => (
-                              <Text key={item} style={styles.photoCheckListItem}>
-                                - {item}
-                              </Text>
-                            ))}
-                          </View>
-                        ) : null}
-
-                        {photoCheckResult.result.likelyWasteType &&
-                        photoCheckResult.result.likelyWasteTypeConfidence === 'high' ? (
-                          <Text style={styles.photoCheckLikelyType}>
-                            Likely waste type: {photoCheckResult.result.likelyWasteType}
-                          </Text>
-                        ) : null}
-
-                        {photoCheckResult.result.notes.length > 0 ? (
-                          <View style={styles.photoCheckListBlock}>
-                            <Text style={styles.photoCheckListLabel}>Notes</Text>
-                            {photoCheckResult.result.notes.map((item) => (
-                              <Text key={item} style={styles.photoCheckListItem}>
-                                - {item}
-                              </Text>
-                            ))}
-                          </View>
-                        ) : null}
-
-                        {photoCheckResult.result.moderationStatus === 'review' ? (
-                          <Text style={styles.photoCheckModeration}>
-                            This image may need a manual review before it is safe to
-                            trust as a marketplace photo.
-                          </Text>
-                        ) : null}
-                      </View>
-                    ) : null}
-                  </View>
-                ) : null}
-              </>
-            ) : null}
-
           </CollapsibleSection>
 
           <CollapsibleSection
@@ -1698,24 +1652,31 @@ export function ListingEditor({
               <View style={styles.qualityList}>
                 {publishQualityItems.map((item) => (
                   <View key={item.id} style={styles.qualityItem}>
-                    <View
-                      style={[
-                        styles.qualityItemBadge,
-                        item.status === 'pass'
-                          ? styles.qualityItemBadgePass
-                          : item.status === 'warn'
+                    {item.status === 'pass' ? (
+                      <View
+                        style={[
+                          styles.qualityItemBadge,
+                          styles.qualityItemBadgePass,
+                        ]}
+                      >
+                        <Text style={styles.qualityItemBadgeText}>Pass</Text>
+                      </View>
+                    ) : (
+                      <Pressable
+                        onPress={() => focusBlockingQualityItem(item.id)}
+                        style={[
+                          styles.qualityItemBadge,
+                          styles.qualityItemBadgeAction,
+                          item.status === 'warn'
                             ? styles.qualityItemBadgeWarn
                             : styles.qualityItemBadgeFail,
-                      ]}
-                    >
-                      <Text style={styles.qualityItemBadgeText}>
-                        {item.status === 'pass'
-                          ? 'Pass'
-                          : item.status === 'warn'
-                            ? 'Review'
-                            : 'Fix'}
-                      </Text>
-                    </View>
+                        ]}
+                      >
+                        <Text style={styles.qualityItemBadgeText}>
+                          {item.status === 'warn' ? 'Review' : 'Fix'}
+                        </Text>
+                      </Pressable>
+                    )}
                     <View style={styles.qualityItemText}>
                       <Text style={styles.qualityItemTitle}>{item.label}</Text>
                       <Text style={styles.qualityItemDescription}>{item.description}</Text>
@@ -1724,6 +1685,121 @@ export function ListingEditor({
                 ))}
               </View>
             </View>
+
+            {selectedImage && aiListingAssistEnabled ? (
+              <View style={styles.photoCheckCard}>
+                <View style={styles.photoCheckHeader}>
+                  <View style={styles.photoCheckTextBlock}>
+                    <Text style={styles.photoCheckTitle}>Photo check</Text>
+                  </View>
+                  <Pressable
+                    disabled={isPhotoCheckLoading || isCheckingAIHealth}
+                    onPress={handlePhotoCheck}
+                    style={[
+                      styles.photoCheckButton,
+                      isPhotoCheckLoading || isCheckingAIHealth
+                        ? styles.aiButtonDisabled
+                        : null,
+                    ]}
+                  >
+                    <Text style={styles.photoCheckButtonText}>
+                      {isCheckingAIHealth
+                        ? 'Checking...'
+                        : isPhotoCheckLoading
+                          ? 'Reviewing...'
+                          : canRunPhotoCheck
+                            ? 'Check photo'
+                            : 'Replace to check'}
+                    </Text>
+                  </Pressable>
+                </View>
+
+                {!canRunPhotoCheck ? (
+                  <Text style={styles.photoCheckHint}>
+                    Replace the current uploaded image if you want AI to review it again.
+                  </Text>
+                ) : null}
+
+                {photoCheckResult ? (
+                  <View style={styles.photoCheckResultCard}>
+                    <View style={styles.photoCheckResultHeader}>
+                      <View style={styles.photoCheckScoreBlock}>
+                        <Text style={styles.photoCheckScoreValue}>
+                          {photoCheckResult.result.qualityScore}
+                        </Text>
+                        <Text style={styles.photoCheckScoreLabel}>
+                          quality score
+                        </Text>
+                      </View>
+                      <View
+                        style={[
+                          styles.photoCheckBadge,
+                          photoCheckResult.result.readiness === 'good'
+                            ? styles.photoCheckBadgeGood
+                            : photoCheckResult.result.readiness === 'retake'
+                              ? styles.photoCheckBadgeRetake
+                              : styles.photoCheckBadgeReview,
+                        ]}
+                      >
+                        <Text style={styles.photoCheckBadgeText}>
+                          {photoCheckResult.result.readiness === 'good'
+                            ? 'Looks good'
+                            : photoCheckResult.result.readiness === 'retake'
+                              ? 'Retake suggested'
+                              : 'Needs review'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <Text style={styles.photoCheckMeta}>
+                      Provider:{' '}
+                      {photoCheckResult.provider === 'local_gemma'
+                        ? 'Local Gemma'
+                        : 'Gemini'}
+                      {photoCheckResult.fallbackUsed ? ' | fallback used' : ''}
+                    </Text>
+
+                    {photoCheckResult.result.retakeSuggestions.length > 0 ? (
+                      <View style={styles.photoCheckListBlock}>
+                        <Text style={styles.photoCheckListLabel}>
+                          Retake suggestions
+                        </Text>
+                        {photoCheckResult.result.retakeSuggestions.map((item) => (
+                          <Text key={item} style={styles.photoCheckListItem}>
+                            - {item}
+                          </Text>
+                        ))}
+                      </View>
+                    ) : null}
+
+                    {photoCheckResult.result.likelyWasteType &&
+                    photoCheckResult.result.likelyWasteTypeConfidence === 'high' ? (
+                      <Text style={styles.photoCheckLikelyType}>
+                        Likely waste type: {photoCheckResult.result.likelyWasteType}
+                      </Text>
+                    ) : null}
+
+                    {photoCheckResult.result.notes.length > 0 ? (
+                      <View style={styles.photoCheckListBlock}>
+                        <Text style={styles.photoCheckListLabel}>Notes</Text>
+                        {photoCheckResult.result.notes.map((item) => (
+                          <Text key={item} style={styles.photoCheckListItem}>
+                            - {item}
+                          </Text>
+                        ))}
+                      </View>
+                    ) : null}
+
+                    {photoCheckResult.result.moderationStatus === 'review' ? (
+                      <Text style={styles.photoCheckModeration}>
+                        This image may need a manual review before it is safe to
+                        trust as a marketplace photo.
+                      </Text>
+                    ) : null}
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
 
             {aiListingAssistEnabled ? (
               <View style={styles.moderationCard}>
@@ -1864,10 +1940,14 @@ const styles = StyleSheet.create({
   keyboardShell: {
     flex: 1,
   },
+  scrollView: {
+    flex: 1,
+  },
   content: {
+    flexGrow: 1,
     paddingHorizontal: 16,
     paddingTop: 14,
-    paddingBottom: 24,
+    paddingBottom: 32,
     gap: 12,
   },
   hero: {
@@ -2306,6 +2386,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     alignItems: 'center',
+  },
+  qualityItemBadgeAction: {
+    justifyContent: 'center',
   },
   qualityItemBadgePass: {
     backgroundColor: 'rgba(58, 102, 72, 0.14)',
