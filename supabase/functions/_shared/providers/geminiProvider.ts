@@ -109,17 +109,46 @@ function buildBuyerSearchPrompt(input: BuyerSearchAssistInput) {
 }
 
 function buildPhotoCheckPrompt(input: PhotoCheckInput) {
+  const wasteVisualGuide = [
+    '',
+    'VISUAL IDENTIFICATION GUIDE FOR PHILIPPINE AGRICULTURAL WASTE:',
+    '',
+    'coconut_husk: Brown, fibrous outer shell of coconut. Rough hairy texture with thick fibers (coir). Often seen in piles, sometimes partially green if fresh. Oval/round shape. Very common in the Philippines.',
+    'rice_straw: Dry, golden-yellow to pale beige hollow stems and leaves left after rice harvest. Often bundled in sheaves or scattered across harvested paddies. Thin, straw-like stalks.',
+    'corn_stalks: Tall, thick, woody stalks with visible nodes/joints. Light green when fresh, drying to pale tan/brown. May still have dried leaves attached. Thicker than rice straw.',
+    'banana_trunk: Large, layered, fibrous pseudo-stem. Light green to yellowish fleshy layers that peel apart. Often cut in sections showing concentric ring layers. Wet and fleshy when fresh.',
+    'sugarcane_bagasse: Dry, fibrous, pulpy residue after juice extraction. Pale white to light tan color. Shredded, fibrous, fluffy texture. Often compressed or in loose piles.',
+    'pineapple_leaves: Long, narrow, spiky green leaves with serrated edges. Tough and fibrous. Dark green color, sometimes with reddish-brown tips. Rosette arrangement.',
+    'cassava_peel: Thin brown outer skin peeled from white/cream cassava root. Curled brownish peels, often muddy. Small pieces showing white flesh underneath the brown skin.',
+    'other: Any agricultural waste not matching the above. Could include vegetable trimmings, fruit peels, wood chips, sawdust, animal manure, or mixed farm waste.',
+    '',
+    'IDENTIFICATION TIPS:',
+    '- Look at color, texture, fiber structure, and shape to match the waste type.',
+    '- Consider the setting: farm fields, drying areas, processing facilities, storage piles.',
+    '- If the material is clearly agricultural waste but you cannot confidently match it to a specific type above, use "other".',
+    '- If the photo shows a farm product (like fresh coconuts, bananas, corn, rice grain) rather than the waste/byproduct, still try to identify the waste type from the crop shown.',
+  ].join('\n')
+
   return [
-    'You are Refamora photo quality checker.',
-    'Review the uploaded listing image for clarity, framing, lighting, and whether the agricultural waste is recognizable.',
-    'Return a qualityScore from 0 to 100.',
-    'Use readiness=retake when the image is too blurry, dark, far away, cropped poorly, or otherwise weak for a listing.',
-    'If you set likelyWasteType, return only one of these exact values: coconut_husk, rice_straw, corn_stalks, banana_trunk, sugarcane_bagasse, pineapple_leaves, cassava_peel, other.',
-    'Only suggest likelyWasteType if the material is visually recognizable.',
-    'Use moderationStatus=review only if the image appears unrelated, unsafe, or suspicious for a marketplace listing.',
+    'You are Refamora photo quality checker for a Philippine agricultural waste marketplace.',
+    'Your job is to: (1) assess photo quality for a marketplace listing, and (2) identify the type of agricultural waste shown in the image.',
+    '',
+    'QUALITY ASSESSMENT:',
+    'Return a qualityScore from 0 to 100 based on clarity, lighting, framing, and how easy it is to see the waste material.',
+    'Use readiness=good when the photo is clear enough to use as a marketplace listing image.',
+    'Use readiness=retake when the image is too blurry, too dark, too distant, poorly cropped, or the waste material is not visible enough.',
+    '',
+    'WASTE TYPE IDENTIFICATION:',
+    'Carefully examine the image and try to identify the agricultural waste type using the visual guide below.',
+    'Set likelyWasteType to the best match from: coconut_husk, rice_straw, corn_stalks, banana_trunk, sugarcane_bagasse, pineapple_leaves, cassava_peel, other.',
+    'Set likelyWasteTypeConfidence to: high (you are very confident), medium (reasonable guess), or low (weak match).',
+    'IMPORTANT: Always attempt identification. Even if quality is low, provide your best guess with an appropriate confidence level.',
+    wasteVisualGuide,
+    'MODERATION:',
+    'Use moderationStatus=review only if the image appears unrelated to agriculture, unsafe, or suspicious for a marketplace listing.',
     'Return only JSON that matches the schema.',
     '',
-    `Expected waste type: ${input.wasteType ?? 'unknown'}`,
+    `Expected waste type from seller: ${input.wasteType ?? 'unknown (identify from image)'}`,
   ].join('\n')
 }
 
