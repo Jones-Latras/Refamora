@@ -15,6 +15,7 @@ import {
   TextInput,
   View,
 } from 'react-native'
+import { Feather } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 
@@ -540,7 +541,7 @@ export default function ProfileScreen() {
                   </View>
                 )}
                 <View style={styles.avatarBadge}>
-                  <Text style={styles.avatarBadgeText}>+</Text>
+                  <Feather name="camera" size={14} color={palette.cream} />
                 </View>
               </Pressable>
               <Text style={styles.avatarHintText}>
@@ -630,7 +631,10 @@ export default function ProfileScreen() {
           ) : null}
 
           <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Personal information</Text>
+            <View style={styles.sectionHeaderLine}>
+              <Feather name="user" size={18} color={palette.soil} style={styles.sectionIcon} />
+              <Text style={styles.sectionTitle}>Personal information</Text>
+            </View>
           <View>
             <Controller
               control={control}
@@ -719,7 +723,10 @@ export default function ProfileScreen() {
 
           {normalizedRole === 'farmer' ? (
             <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Seller verification</Text>
+              <View style={styles.sectionHeaderLine}>
+                <Feather name="shield" size={18} color={palette.soil} style={styles.sectionIcon} />
+                <Text style={styles.sectionTitle}>Seller verification</Text>
+              </View>
             <View style={styles.verificationHeader}>
               <View
                 style={[
@@ -761,7 +768,10 @@ export default function ProfileScreen() {
           ) : null}
 
           <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Change password</Text>
+            <View style={styles.sectionHeaderLine}>
+              <Feather name="lock" size={18} color={palette.soil} style={styles.sectionIcon} />
+              <Text style={styles.sectionTitle}>Change password</Text>
+            </View>
           <View>
             <Controller
               control={passwordControl}
@@ -842,6 +852,7 @@ export default function ProfileScreen() {
 
           <View style={styles.card}>
             <Pressable onPress={handleLogout} style={styles.logoutButton}>
+              <Feather name="log-out" size={18} color={palette.error} style={{ marginRight: 6 }} />
               <Text style={styles.logoutText}>Log out</Text>
             </Pressable>
           </View>
@@ -1125,6 +1136,14 @@ const styles = StyleSheet.create({
     gap: 12,
     ...shadow,
   },
+  sectionHeaderLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  sectionIcon: {
+    marginRight: 8,
+  },
   sectionTitle: {
     color: palette.soil,
     fontSize: 17,
@@ -1181,6 +1200,8 @@ const styles = StyleSheet.create({
   logoutButton: {
     backgroundColor: '#f9e4df',
     borderRadius: 999,
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 14,
   },
