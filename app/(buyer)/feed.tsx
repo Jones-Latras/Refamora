@@ -132,6 +132,7 @@ export default function FeedScreen() {
   const [isRecentExpanded, setIsRecentExpanded] = useState(false)
   const [aiSearchResult, setAiSearchResult] =
     useState<BuyerSearchAssistResult | null>(null)
+  const [aiSearchSourceQuery, setAiSearchSourceQuery] = useState<string | null>(null)
   const [recentListings, setRecentListings] = useState<
     {
       id: string
@@ -196,6 +197,15 @@ export default function FeedScreen() {
       listingsWithDistance.filter((item) => item.distanceKm != null).length,
     [listingsWithDistance],
   )
+
+  const handleQueryChange = (value: string) => {
+    setQuery(value)
+
+    if (aiSearchSourceQuery && value.trim() !== aiSearchSourceQuery.trim()) {
+      setAiSearchResult(null)
+      setAiSearchSourceQuery(null)
+    }
+  }
 
   const loadRecentListings = useCallback(async () => {
     if (recentlyViewedIds.length === 0) {
@@ -266,6 +276,7 @@ export default function FeedScreen() {
       }
 
       setAiSearchResult(result.data)
+      setAiSearchSourceQuery(trimmedQuery)
       showToast('AI filters are ready to review.', 'success')
     } finally {
       setIsAiSearchLoading(false)
@@ -285,6 +296,7 @@ export default function FeedScreen() {
     })
     setQuery(aiSearchResult.result.search ?? '')
     setAiSearchResult(null)
+    setAiSearchSourceQuery(null)
     showToast('AI filters applied. You can still adjust them manually.', 'success')
   }
 
@@ -342,8 +354,8 @@ export default function FeedScreen() {
           <View style={styles.searchShell}>
             <TextInput
               value={query}
-              onChangeText={setQuery}
-              placeholder="Search listings, waste type, or city"
+              onChangeText={handleQueryChange}
+              placeholder="Try: cassava peel near Surigao under PHP 500"
               placeholderTextColor="#9e9183"
               style={styles.search}
             />
@@ -365,6 +377,7 @@ export default function FeedScreen() {
                   setQuery('')
                   setFilters({})
                   setAiSearchResult(null)
+                  setAiSearchSourceQuery(null)
                   clearBuyerCoordinates()
                 }}
                 style={styles.searchClearButton}
@@ -422,6 +435,10 @@ export default function FeedScreen() {
             </Pressable>
           </ScrollView>
 
+          <Text style={styles.searchHint}>
+            Ask AI with a full request like rice straw for delivery in Surigao under PHP 500.
+          </Text>
+
           <Text style={styles.locationHint}>
             {buyerCoordinates
               ? `Nearest listings are shown first for ${mappedDistanceCount} mapped result${
@@ -433,6 +450,9 @@ export default function FeedScreen() {
           {aiSearchResult ? (
             <View style={styles.aiReviewCard}>
               <Text style={styles.aiReviewTitle}>AI interpreted your search</Text>
+              {aiSearchSourceQuery ? (
+                <Text style={styles.aiReviewSource}>For: {aiSearchSourceQuery}</Text>
+              ) : null}
               <Text style={styles.aiReviewMeta}>
                 Provider:{' '}
                 {aiSearchResult.provider === 'local_gemma'
@@ -463,7 +483,10 @@ export default function FeedScreen() {
                   <Text style={styles.aiApplyButtonText}>Apply AI filters</Text>
                 </Pressable>
                 <Pressable
-                  onPress={() => setAiSearchResult(null)}
+                  onPress={() => {
+                    setAiSearchResult(null)
+                    setAiSearchSourceQuery(null)
+                  }}
                   style={styles.aiDismissButton}
                 >
                   <Text style={styles.aiDismissButtonText}>Dismiss</Text>
@@ -568,6 +591,7 @@ export default function FeedScreen() {
               setFilters({})
               setQuery('')
               setAiSearchResult(null)
+              setAiSearchSourceQuery(null)
             }}
           />
         )}
@@ -697,6 +721,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
   },
+  searchHint: {
+    color: palette.muted,
+    fontSize: 12,
+    lineHeight: 16,
+  },
   aiSearchButton: {
     backgroundColor: '#e4efe6',
     borderRadius: 999,
@@ -760,6 +789,11 @@ const styles = StyleSheet.create({
   aiReviewMeta: {
     color: palette.muted,
     fontSize: 12,
+  },
+  aiReviewSource: {
+    color: palette.clay,
+    fontSize: 12,
+    lineHeight: 17,
   },
   aiReviewChipWrap: {
     flexDirection: 'row',

@@ -10,14 +10,50 @@ import type {
   ServiceResult,
 } from '../types/app'
 import type { Tables, TablesInsert, TablesUpdate } from '../types/database'
+import { WASTE_TYPES } from '../utils/wasteTypes'
 
 import { getSupabaseClient, hasSupabaseEnv } from './supabase'
 
 type ListingRow = Tables<'listings'>
 type SellerRow = Tables<'users'>
 const PAGE_SIZE = 12
+const SEARCH_PAGE_MULTIPLIER = 4
+const SEARCH_RESULT_LIMIT_CAP = 96
 const DUPLICATE_LISTING_ERROR_MESSAGE =
   'You already have an active listing with the same details. Edit the existing listing instead of publishing it again.'
+const SEARCH_STOP_WORDS = new Set([
+  'a',
+  'an',
+  'and',
+  'around',
+  'for',
+  'from',
+  'in',
+  'is',
+  'looking',
+  'me',
+  'my',
+  'near',
+  'of',
+  'on',
+  'or',
+  'please',
+  'show',
+  'the',
+  'to',
+  'want',
+  'with',
+])
+const WASTE_TYPE_SEARCH_ALIASES: Record<string, string[]> = {
+  coconut_husk: ['coconut husk', 'coco husk', 'coir', 'coco coir', 'bunot'],
+  rice_straw: ['rice straw', 'straw', 'dayami', 'palay straw'],
+  corn_stalks: ['corn stalks', 'corn stalk', 'maize stalk', 'corn stover'],
+  banana_trunk: ['banana trunk', 'banana stem', 'banana pseudostem', 'pseudostem'],
+  sugarcane_bagasse: ['sugarcane bagasse', 'bagasse', 'tubo'],
+  pineapple_leaves: ['pineapple leaves', 'pineapple leaf', 'pina leaves', 'pina fiber'],
+  cassava_peel: ['cassava peel', 'cassava peels', 'tapioca peel', 'kamoteng kahoy peel'],
+  other: ['other'],
+}
 
 function hasText(value?: string | null) {
   return Boolean(value?.trim())
@@ -25,6 +61,175 @@ function hasText(value?: string | null) {
 
 function normalizeListingText(value?: string | null) {
   return value?.trim().replace(/\s+/g, ' ').toLowerCase() ?? ''
+}
+
+function normalizeSearchTerm(value?: string | null) {
+  return normalizeListingText(value).replace(/[^\p{L}\p{N}\s-]+/gu, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function getSearchTokens(value?: string | null) {
+  return Array.from(
+    new Set(
+      normalizeSearchTerm(value)
+        .split(/[\s-]+/)
+        .map((token) => token.trim())
+        .filter((token) => token.length >= 2 && !SEARCH_STOP_WORDS.has(token)),
+    ),
+  )
+}
+
+function getWasteTypeAliases(wasteType?: string | null) {
+  if (!wasteType) {
+    return []
+  }
+
+  return WASTE_TYPE_SEARCH_ALIASES[wasteType] ?? []
+}
+
+function detectWasteTypeFromSearch(search?: string | null) {
+  const normalizedSearch = normalizeSearchTerm(search)
+
+  if (!normalizedSearch) {
+    return null
+  }
+
+  return (
+    Object.entries(WASTE_TYPE_SEARCH_ALIASES).find(([, aliases]) =>
+      aliases.some((alias) => normalizedSearch.includes(alias)),
+    )?.[0] ??
+    WASTE_TYPES.find((item) =>
+      normalizedSearch.includes(item.label.toLowerCase()),
+    )?.value ??
+    null
+  )
+}
+
+function buildSearchTerms(search?: string | null, wasteType?: string | null) {
+  const normalizedSearch = normalizeSearchTerm(search)
+  const detectedWasteType = wasteType ?? detectWasteTypeFromSearch(normalizedSearch)
+  const labelAlias = detectedWasteType
+    ? WASTE_TYPES.find((item) => item.value === detectedWasteType)?.label.toLowerCase() ?? null
+    : null
+
+  return Array.from(
+    new Set(
+      [
+        normalizedSearch,
+        ...getSearchTokens(normalizedSearch),
+        ...getWasteTypeAliases(detectedWasteType),
+        labelAlias,
+      ].filter((value): value is string => Boolean(value && value.trim())),
+    ),
+  ).slice(0, 10)
+}
+
+function buildSearchClause(search?: string | null, wasteType?: string | null) {
+  const terms = buildSearchTerms(search, wasteType)
+
+  if (terms.length === 0) {
+    return null
+  }
+
+  return terms
+    .flatMap((term) => [
+      `title.ilike.%${term}%`,
+      `description.ilike.%${term}%`,
+      `city.ilike.%${term}%`,
+      `address.ilike.%${term}%`,
+      `waste_type.ilike.%${term}%`,
+      `fulfillment_type.ilike.%${term}%`,
+      `unit.ilike.%${term}%`,
+    ])
+    .join(',')
+}
+
+function getSearchCandidateLimit(page: number) {
+  return Math.min(
+    Math.max((page + 1) * PAGE_SIZE * SEARCH_PAGE_MULTIPLIER, PAGE_SIZE * SEARCH_PAGE_MULTIPLIER),
+    SEARCH_RESULT_LIMIT_CAP,
+  )
+}
+
+function getListingSearchScore(listing: ListingRow, filters: ListingFilters = {}) {
+  const normalizedSearch = normalizeSearchTerm(filters.search)
+  const searchTokens = getSearchTokens(normalizedSearch)
+  const effectiveWasteType = filters.wasteType ?? detectWasteTypeFromSearch(normalizedSearch)
+  const titleText = normalizeListingText(listing.title)
+  const cityText = normalizeListingText(listing.city)
+  const addressText = normalizeListingText(listing.address)
+  const descriptionText = normalizeListingText(listing.description)
+  const wasteTypeText = normalizeListingText(listing.waste_type)
+  const fulfillmentText = normalizeListingText(listing.fulfillment_type)
+  const combinedText = [
+    titleText,
+    cityText,
+    addressText,
+    descriptionText,
+    wasteTypeText,
+    fulfillmentText,
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  let score = 0
+
+  if (filters.wasteType && listing.waste_type === filters.wasteType) {
+    score += 120
+  } else if (effectiveWasteType && listing.waste_type === effectiveWasteType) {
+    score += 90
+  }
+
+  if (filters.fulfillmentType && listing.fulfillment_type === filters.fulfillmentType) {
+    score += 30
+  }
+
+  if (normalizedSearch) {
+    if (titleText.includes(normalizedSearch)) {
+      score += 75
+    }
+
+    if (cityText.includes(normalizedSearch) || addressText.includes(normalizedSearch)) {
+      score += 55
+    }
+
+    if (descriptionText.includes(normalizedSearch)) {
+      score += 35
+    }
+
+    if (wasteTypeText.includes(normalizedSearch)) {
+      score += 65
+    }
+  }
+
+  for (const token of searchTokens) {
+    if (titleText.includes(token)) {
+      score += 18
+    }
+
+    if (cityText.includes(token) || addressText.includes(token)) {
+      score += 14
+    }
+
+    if (wasteTypeText.includes(token)) {
+      score += 18
+    }
+
+    if (fulfillmentText.includes(token)) {
+      score += 12
+    }
+
+    if (descriptionText.includes(token)) {
+      score += 8
+    }
+  }
+
+  if (!normalizedSearch) {
+    score += 10
+  } else if (combinedText.includes(normalizedSearch)) {
+    score += 12
+  }
+
+  return score
 }
 
 function matchesOptionalText(
@@ -186,8 +391,6 @@ export async function getListings(
     .from('listings')
     .select('*')
     .eq('status', 'active')
-    .order('created_at', { ascending: false })
-    .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
 
   if (filters.wasteType) {
     query = query.eq('waste_type', filters.wasteType)
@@ -206,13 +409,47 @@ export async function getListings(
   }
 
   if (filters.search?.trim()) {
-    const term = filters.search.trim()
-    query = query.or(
-      `title.ilike.%${term}%,city.ilike.%${term}%,waste_type.ilike.%${term}%`,
-    )
+    const searchClause = buildSearchClause(filters.search, filters.wasteType)
+
+    if (searchClause) {
+      query = query.or(searchClause)
+    }
+
+    const { data, error } = await query
+      .order('created_at', { ascending: false })
+      .limit(getSearchCandidateLimit(page))
+
+    if (error) {
+      return { data: null, error }
+    }
+
+    const rankedRows = [...(data ?? [])].sort((left, right) => {
+      const scoreDifference =
+        getListingSearchScore(right, filters) - getListingSearchScore(left, filters)
+
+      if (scoreDifference !== 0) {
+        return scoreDifference
+      }
+
+      return (
+        new Date(right.created_at ?? 0).getTime() - new Date(left.created_at ?? 0).getTime()
+      )
+    })
+    const startIndex = page * PAGE_SIZE
+    const endIndex = startIndex + PAGE_SIZE
+
+    return {
+      data: {
+        items: rankedRows.slice(startIndex, endIndex).map(mapListing),
+        hasMore: rankedRows.length > endIndex,
+      },
+      error: null,
+    }
   }
 
   const { data, error } = await query
+    .order('created_at', { ascending: false })
+    .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
 
   return {
     data: {
