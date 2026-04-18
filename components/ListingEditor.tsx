@@ -87,7 +87,7 @@ type PublishQualityItem = {
   status: PublishQualityStatus
 }
 
-type ListingSectionKey = 'basics' | 'pricing' | 'map' | 'checks' | 'ai'
+type ListingSectionKey = 'basics' | 'pricing' | 'checks' | 'ai'
 
 type CollapsibleSectionProps = {
   title: string
@@ -181,7 +181,6 @@ export function ListingEditor({
   const [openSections, setOpenSections] = useState<Record<ListingSectionKey, boolean>>({
     basics: true,
     pricing: true,
-    map: false,
     checks: false,
     ai: false,
   })
@@ -395,7 +394,7 @@ export function ListingEditor({
     }
 
     if (itemId === 'map-pin') {
-      openSection('map')
+      openSection('pricing')
       setTimeout(() => {
         scrollToPosition(mapSectionPosition.current)
       }, 80)
@@ -581,10 +580,6 @@ export function ListingEditor({
       : 'Quantity missing',
     hasText(cityValue) ? cityValue.trim() : 'City missing',
   ].join(' | ')
-  const mapSummary =
-    coordinates.latitude != null && coordinates.longitude != null
-      ? 'Map pin set'
-      : 'Optional but recommended for nearby buyers'
   const checksSummary = `${passedQualityItems.length} passed | ${warningQualityItems.length} review | ${blockingQualityItems.length} fix`
   const aiSummary = aiAssistResult
     ? `Draft improved with ${aiAssistResult.provider === 'local_gemma' ? 'Local Gemma' : 'Gemini'}`
@@ -1280,6 +1275,30 @@ export function ListingEditor({
               />
             </View>
             <View
+              onLayout={(event) => {
+                mapSectionPosition.current = event.nativeEvent.layout.y
+              }}
+              style={styles.selectorBlock}
+            >
+              <Text style={styles.selectorLabel}>Map pin</Text>
+              <LocationPicker
+                value={coordinates}
+                onChange={(value) => {
+                  setValue('latitude', value.latitude, { shouldValidate: true })
+                  setValue('longitude', value.longitude, { shouldValidate: true })
+                }}
+                onResolvedAddress={(value) => {
+                  if (value.address) {
+                    setValue('address', value.address, { shouldValidate: true })
+                  }
+
+                  if (value.city) {
+                    setValue('city', value.city, { shouldValidate: true })
+                  }
+                }}
+              />
+            </View>
+            <View
               style={styles.selectorBlock}
               onLayout={registerFieldPosition('fulfillment_type')}
             >
@@ -1575,35 +1594,6 @@ export function ListingEditor({
 
             </CollapsibleSection>
           ) : null}
-
-          <CollapsibleSection
-            title="Map pin"
-            hint="Drop a pin so buyers can judge pickup distance quickly."
-            summary={mapSummary}
-            isOpen={openSections.map}
-            onToggle={() => toggleSection('map')}
-            onLayout={(event) => {
-              mapSectionPosition.current = event.nativeEvent.layout.y
-            }}
-          >
-
-            <LocationPicker
-              value={coordinates}
-              onChange={(value) => {
-                setValue('latitude', value.latitude, { shouldValidate: true })
-                setValue('longitude', value.longitude, { shouldValidate: true })
-              }}
-              onResolvedAddress={(value) => {
-                if (value.address) {
-                  setValue('address', value.address, { shouldValidate: true })
-                }
-
-                if (value.city) {
-                  setValue('city', value.city, { shouldValidate: true })
-                }
-              }}
-            />
-          </CollapsibleSection>
 
           <CollapsibleSection
             title="Publish checks"

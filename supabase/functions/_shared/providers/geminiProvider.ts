@@ -46,6 +46,8 @@ function buildListingAssistPrompt(input: ListingAssistInput) {
     'Never invent missing details.',
     'If a detail is missing, leave it missing.',
     'Do not use dollars or USD. Use PHP or peso wording instead.',
+    'If you mention price in the description, include the selling unit such as "PHP 10 per kg".',
+    'Do not mention a bare price without its unit.',
     'Keep output short and marketplace-ready.',
     'The title should usually be 4 to 8 words.',
     'The description should usually be 1 to 3 short sentences.',

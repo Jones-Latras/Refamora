@@ -65,6 +65,38 @@ function hasText(value: string | null | undefined) {
   return typeof value === 'string' && value.trim().length > 0
 }
 
+function normalizeSellingUnit(unit: string | null | undefined) {
+  if (!hasText(unit)) {
+    return null
+  }
+
+  return unit.trim().replace(/^\/+/, '')
+}
+
+function attachUnitToPriceMentions(
+  text: string,
+  unit: string | null | undefined,
+) {
+  const normalizedUnit = normalizeSellingUnit(unit)
+
+  if (!normalizedUnit) {
+    return text
+  }
+
+  return text.replace(
+    /(?:PHP\s*\d[\d,]*(?:\.\d+)?|₱\s*\d[\d,]*(?:\.\d+)?|\d[\d,]*(?:\.\d+)?\s*(?:Philippine pesos?|pesos?))/gi,
+    (match, offset, source) => {
+      const trailingText = source.slice(offset + match.length, offset + match.length + 32)
+
+      if (/^\s*(?:\/|per\b|for\s+\d+(?:\.\d+)?\s+\S+|each\b)/i.test(trailingText)) {
+        return match
+      }
+
+      return `${match} per ${normalizedUnit}`
+    },
+  )
+}
+
 function buildBuyerSearchFallback(
   input: BuyerSearchAssistInput,
 ): BuyerSearchAssistOutput {
@@ -211,9 +243,14 @@ function deriveListingAssistOutput(
   const normalizedMissingFields = Array.from(
     new Set([...missingFields, ...output.missingFields.filter(Boolean)]),
   )
+  const effectiveUnit = input.unit ?? output.suggestedUnit
 
   return {
     ...output,
+    improvedDescription: attachUnitToPriceMentions(
+      output.improvedDescription,
+      effectiveUnit,
+    ),
     missingFields: normalizedMissingFields,
     publishReadiness: normalizedMissingFields.length === 0 ? 'ready' : 'needs_review',
     notes: Array.from(new Set(output.notes.filter(Boolean))).slice(0, 4),
