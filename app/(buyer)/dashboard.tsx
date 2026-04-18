@@ -178,14 +178,14 @@ export default function BuyerDashboardScreen() {
                 {savedListings.length === 1 ? '' : 's'} saved for later
               </Text>
             </View>
-            <Pressable onPress={() => router.push('/(buyer)/feed')}>
-              <Text style={styles.linkText}>Browse feed</Text>
+            <Pressable onPress={() => router.push('/(buyer)/saved-listings')}>
+              <Text style={styles.linkText}>Open saved</Text>
             </Pressable>
           </View>
 
           {savedListings.length > 0 ? (
             <View style={styles.stack}>
-              {savedListings.map((listing) => (
+              {savedListings.slice(0, 3).map((listing) => (
                 <ListingCard
                   key={listing.id}
                   listing={listing}

@@ -151,10 +151,14 @@ export default function FarmerRequestsScreen() {
   }
 
   const handleSummarize = async (
-    scopedRequests: ContactRequestSummary[] = requests,
+    scopedRequests?: ContactRequestSummary[] | null,
     title = 'AI inquiry summary',
   ) => {
-    if (scopedRequests.length === 0) {
+    const normalizedRequests = Array.isArray(scopedRequests)
+      ? scopedRequests
+      : requests
+
+    if (normalizedRequests.length === 0) {
       showToast('No inquiries to summarize yet.', 'info')
       return
     }
@@ -163,7 +167,7 @@ export default function FarmerRequestsScreen() {
 
     try {
       const result = await getInquirySummary({
-        inquiries: scopedRequests.map(toInquiryAssistItem),
+        inquiries: normalizedRequests.map(toInquiryAssistItem),
       })
 
       if (result.error || !result.data) {
@@ -238,7 +242,7 @@ export default function FarmerRequestsScreen() {
         <View style={styles.headerActions}>
           <Pressable
             disabled={isSummaryLoading}
-            onPress={handleSummarize}
+            onPress={() => void handleSummarize()}
             style={[styles.primaryAction, isSummaryLoading ? styles.disabledButton : null]}
           >
             <Text style={styles.primaryActionText}>

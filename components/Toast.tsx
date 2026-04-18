@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { palette, radii, shadow } from '../utils/theme'
 
@@ -33,6 +34,7 @@ type ToastContextValue = {
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null)
+const TAB_BAR_CLEARANCE = 84
 
 const variantStyles: Record<ToastVariant, { backgroundColor: string }> = {
   success: { backgroundColor: palette.sage },
@@ -43,6 +45,7 @@ const variantStyles: Record<ToastVariant, { backgroundColor: string }> = {
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<ToastState | null>(null)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const insets = useSafeAreaInsets()
 
   const value = useMemo(
     () => ({
@@ -89,7 +92,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
       {toast ? (
-        <View pointerEvents="none" style={styles.viewport}>
+        <View
+          pointerEvents="none"
+          style={[
+            styles.viewport,
+            { bottom: Math.max(insets.bottom + TAB_BAR_CLEARANCE, 28) },
+          ]}
+        >
           <View style={[styles.toast, variantStyles[toast.variant]]}>
             {toast.title ? <Text style={styles.toastTitle}>{toast.title}</Text> : null}
             <Text style={styles.toastText}>{toast.message}</Text>
@@ -115,7 +124,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 20,
     right: 20,
-    bottom: 28,
     alignItems: 'center',
   },
   toast: {

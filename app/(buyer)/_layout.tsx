@@ -11,6 +11,7 @@ function getBuyerTabIcon(
 ) {
   const iconByRoute: Record<string, string> = {
     feed: '\u2302',
+    'saved-listings': '\u2605',
     map: '\u2316',
     requests: '\u2709',
     profile: '\u25C9',
@@ -66,6 +67,12 @@ export default function BuyerLayout() {
         options={{
           title: 'Home',
           headerShown: false,
+        }}
+      />
+      <Tabs.Screen
+        name="saved-listings"
+        options={{
+          title: 'Saved',
         }}
       />
       <Tabs.Screen
