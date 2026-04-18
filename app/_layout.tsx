@@ -1,4 +1,5 @@
 import { Stack, usePathname, useRouter, useSegments } from 'expo-router'
+import { Feather } from '@expo/vector-icons'
 import { useEffect } from 'react'
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
@@ -82,9 +83,12 @@ function SplashGate() {
   if (isLoading) {
     return (
       <View style={styles.splash}>
-        <Text style={styles.eyebrow}>Refamora</Text>
-        <Text style={styles.title}>Linking farmers and buyers</Text>
-        <ActivityIndicator color={palette.harvest} size="small" />
+        <View style={styles.logoContainer}>
+          <Feather name="aperture" size={42} color={palette.cream} />
+        </View>
+        <Text style={styles.brandTitle}>Refamora</Text>
+        <Text style={styles.tagline}>Turning Agricultural Waste into Local Wealth.</Text>
+        <ActivityIndicator color={palette.sage} size="small" style={{ marginTop: 24 }} />
       </View>
     )
   }
@@ -131,23 +135,39 @@ const styles = StyleSheet.create({
   },
   splash: {
     flex: 1,
-    backgroundColor: palette.soil,
+    backgroundColor: palette.cream,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-    paddingHorizontal: 24,
+    paddingHorizontal: 32,
   },
-  eyebrow: {
-    color: palette.harvest,
-    fontSize: 12,
-    letterSpacing: 1.8,
-    textTransform: 'uppercase',
-    fontWeight: '700',
+  logoContainer: {
+    width: 88,
+    height: 88,
+    borderRadius: 28,
+    backgroundColor: palette.sage,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    shadowColor: palette.sage,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
+    elevation: 10,
+    transform: [{ rotate: '-8deg' }],
   },
-  title: {
-    color: palette.cream,
-    fontSize: 28,
+  brandTitle: {
+    color: palette.sageDark,
+    fontSize: 40,
+    fontWeight: '900',
+    letterSpacing: -1,
+    marginBottom: 12,
+  },
+  tagline: {
+    color: palette.muted,
+    fontSize: 16,
     textAlign: 'center',
-    fontWeight: '700',
+    fontWeight: '600',
+    lineHeight: 24,
+    paddingHorizontal: 20,
   },
 })
