@@ -1,8 +1,13 @@
+import { useHeaderHeight } from '@react-navigation/elements'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { router } from 'expo-router'
 import { Controller, useForm } from 'react-hook-form'
 import {
+  Dimensions,
   Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -50,6 +55,7 @@ function getInitials(name?: string | null, fallback = 'A') {
 }
 
 export default function ProfileScreen() {
+  const headerHeight = useHeaderHeight()
   const { user, role } = useAuth()
   const { isOffline } = useConnectivity()
   const { showToast } = useToast()
@@ -60,10 +66,13 @@ export default function ProfileScreen() {
   const cityRef = useRef<TextInput>(null)
   const passwordRef = useRef<TextInput>(null)
   const confirmPasswordRef = useRef<TextInput>(null)
-  const fieldPositions = useRef<Record<string, number>>({})
+  const activeFieldRef = useRef<string | null>(null)
+  const keyboardHeightRef = useRef(0)
+  const scrollOffsetRef = useRef(0)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const keyboardVerticalOffset = Platform.OS === 'ios' ? headerHeight : 0
 
   const {
     control,
@@ -93,6 +102,8 @@ export default function ProfileScreen() {
     },
   } = useForm<PasswordChangeFormValues>({
     resolver: zodResolver(passwordChangeSchema),
+    mode: 'onChange',
+    reValidateMode: 'onChange',
     defaultValues: {
       password: '',
       confirmPassword: '',
@@ -136,24 +147,101 @@ export default function ProfileScreen() {
 
   const normalizedRole = role === 'farmer' ? 'farmer' : 'buyer'
   const roleLabel = normalizedRole === 'farmer' ? 'Farmer seller' : 'Buyer account'
-  const locationLabel = profile?.city ? `${roleLabel} from ${profile.city}` : roleLabel
   const profileCompletion = useMemo(
     () => getProfileCompletion(profile, normalizedRole),
     [normalizedRole, profile],
   )
+  const passwordStatus = useMemo(() => {
+    const passwordValue = watchedPassword.password ?? ''
+    const confirmPasswordValue = watchedPassword.confirmPassword ?? ''
 
-  const registerFieldPosition =
-    (fieldName: string) =>
-    (event: { nativeEvent: { layout: { y: number } } }) => {
-      fieldPositions.current[fieldName] = event.nativeEvent.layout.y
+    if (!passwordValue && !confirmPasswordValue) {
+      return {
+        tone: 'neutral' as const,
+        message: 'Use at least 6 characters for your new password.',
+      }
     }
+
+    if (passwordValue.length > 0 && passwordValue.length < 6) {
+      return {
+        tone: 'neutral' as const,
+        message: 'Password must be at least 6 characters.',
+      }
+    }
+
+    if (confirmPasswordValue && passwordValue !== confirmPasswordValue) {
+      return {
+        tone: 'error' as const,
+        message: 'Passwords do not match yet.',
+      }
+    }
+
+    if (passwordValue.length >= 6 && confirmPasswordValue && passwordValue === confirmPasswordValue) {
+      return {
+        tone: 'success' as const,
+        message: 'Passwords match and are ready to update.',
+      }
+    }
+
+    return {
+      tone: 'neutral' as const,
+      message: 'Repeat the new password to confirm the change.',
+    }
+  }, [watchedPassword.confirmPassword, watchedPassword.password])
+
+  const focusCompletionItem = (key: 'full_name' | 'avatar_url' | 'phone' | 'city') => {
+    if (key === 'avatar_url') {
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true })
+      void handlePickAvatar()
+      return
+    }
+
+    focusField(key)
+  }
+
+  const scrollInputIntoView = (
+    inputRef: RefObject<TextInput | null>,
+    animated = true,
+  ) => {
+    if (!inputRef.current || !scrollViewRef.current) {
+      return
+    }
+
+    const keyboardHeight = keyboardHeightRef.current
+    const screenHeight = Dimensions.get('window').height
+    const visibleBottom =
+      screenHeight - keyboardHeight - (Platform.OS === 'ios' ? 28 : 18)
+
+    inputRef.current.measureInWindow((_x, y, _width, height) => {
+      const inputTop = y
+      const inputBottom = y + height
+      const currentOffset = scrollOffsetRef.current
+
+      if (inputBottom > visibleBottom) {
+        const delta = inputBottom - visibleBottom
+
+        scrollViewRef.current?.scrollTo({
+          y: Math.max(currentOffset + delta, 0),
+          animated,
+        })
+        return
+      }
+
+      const desiredTop = Platform.OS === 'ios' ? 128 : 108
+
+      if (inputTop < desiredTop) {
+        const delta = desiredTop - inputTop
+
+        scrollViewRef.current?.scrollTo({
+          y: Math.max(currentOffset - delta, 0),
+          animated,
+        })
+      }
+    })
+  }
 
   const focusField = (fieldName: string) => {
-    const y = fieldPositions.current[fieldName]
-
-    if (typeof y === 'number') {
-      scrollViewRef.current?.scrollTo({ y: Math.max(y - 24, 0), animated: true })
-    }
+    activeFieldRef.current = fieldName
 
     const refs: Record<string, RefObject<TextInput | null>> = {
       full_name: fullNameRef,
@@ -164,7 +252,47 @@ export default function ProfileScreen() {
     }
 
     refs[fieldName]?.current?.focus()
+    setTimeout(() => {
+      scrollInputIntoView(refs[fieldName])
+    }, 180)
   }
+
+  useEffect(() => {
+    const handleKeyboardVisible = (event: {
+      endCoordinates?: { height?: number }
+    }) => {
+      keyboardHeightRef.current = event.endCoordinates?.height ?? 0
+      const activeField = activeFieldRef.current
+
+      if (activeField) {
+        const refs: Record<string, RefObject<TextInput | null>> = {
+          full_name: fullNameRef,
+          phone: phoneRef,
+          city: cityRef,
+          password: passwordRef,
+          confirmPassword: confirmPasswordRef,
+        }
+
+        setTimeout(() => {
+          scrollInputIntoView(refs[activeField], false)
+        }, 60)
+      }
+    }
+
+    const handleKeyboardHidden = () => {
+      keyboardHeightRef.current = 0
+    }
+
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+    const showSubscription = Keyboard.addListener(showEvent, handleKeyboardVisible)
+    const hideSubscription = Keyboard.addListener(hideEvent, handleKeyboardHidden)
+
+    return () => {
+      showSubscription.remove()
+      hideSubscription.remove()
+    }
+  }, [])
 
   const handlePickAvatar = async () => {
     if (isOffline) {
@@ -375,107 +503,135 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
-      <ScrollView
-        ref={scrollViewRef}
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={keyboardVerticalOffset}
+        style={styles.flex}
       >
-        <View style={styles.cover}>
-          <View style={styles.coverGlow} />
-        </View>
-
-        <View style={styles.profileHeader}>
-          <View style={styles.avatarWrapper}>
-            <Pressable
-              disabled={isOffline || isUploadingAvatar}
-              onPress={() => void handlePickAvatar()}
-              style={styles.avatarPressable}
-            >
-              {profile.avatar_url ? (
-                <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
-              ) : (
-                <View style={styles.avatarFallback}>
-                  <Text style={styles.avatarText}>
-                    {getInitials(profile.full_name, user?.email ?? 'A')}
-                  </Text>
-                </View>
-              )}
-              <View style={styles.avatarBadge}>
-                <Text style={styles.avatarBadgeText}>+</Text>
-              </View>
-            </Pressable>
-            <Pressable
-              disabled={isOffline || isUploadingAvatar}
-              onPress={() => void handlePickAvatar()}
-            >
-              <Text style={styles.avatarButtonText}>
-                {isOffline
-                  ? 'Reconnect to change photo'
-                  : isUploadingAvatar
-                    ? 'Uploading photo...'
-                    : 'Change photo'}
-              </Text>
-            </Pressable>
+        <ScrollView
+          ref={scrollViewRef}
+          automaticallyAdjustKeyboardInsets
+          contentContainerStyle={styles.content}
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          keyboardShouldPersistTaps="handled"
+          onScroll={(event) => {
+            scrollOffsetRef.current = event.nativeEvent.contentOffset.y
+          }}
+          scrollEventThrottle={16}
+        >
+          <View style={styles.cover}>
+            <View style={styles.coverGlow} />
           </View>
 
-          <View style={styles.identity}>
-            <Text style={styles.name}>{profile.full_name ?? 'Refamora user'}</Text>
-            <Text style={styles.roleLine}>{locationLabel}</Text>
-            <Text style={styles.meta}>{profile.email ?? user?.email ?? 'No email'}</Text>
-            <View style={styles.verifiedBadge}>
-              <Text style={styles.verifiedBadgeText}>Verified account</Text>
+          <View style={styles.profileHeader}>
+            <View style={styles.avatarWrapper}>
+              <Pressable
+                disabled={isOffline || isUploadingAvatar}
+                onPress={() => void handlePickAvatar()}
+                style={styles.avatarPressable}
+              >
+                {profile.avatar_url ? (
+                  <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
+                ) : (
+                  <View style={styles.avatarFallback}>
+                    <Text style={styles.avatarText}>
+                      {getInitials(profile.full_name, user?.email ?? 'A')}
+                    </Text>
+                  </View>
+                )}
+                <View style={styles.avatarBadge}>
+                  <Text style={styles.avatarBadgeText}>+</Text>
+                </View>
+              </Pressable>
+              <Text style={styles.avatarHintText}>
+                {isOffline
+                  ? 'Reconnect to update photo'
+                  : isUploadingAvatar
+                    ? 'Uploading photo...'
+                    : 'Tap photo to edit'}
+              </Text>
             </View>
-            {profileCompletion.isComplete ? (
-              <Text style={styles.readyText}>{profileCompletion.completeLabel}</Text>
+
+            <View style={styles.identity}>
+              <Text style={styles.name}>{profile.full_name ?? 'Refamora user'}</Text>
+              <Text style={styles.meta}>{profile.email ?? user?.email ?? 'No email'}</Text>
+              <View style={styles.identityChipRow}>
+                <View style={styles.identityChip}>
+                  <Text style={styles.identityChipText}>{roleLabel}</Text>
+                </View>
+                {profile?.city ? (
+                  <View style={styles.identityChip}>
+                    <Text style={styles.identityChipText}>{profile.city}</Text>
+                  </View>
+                ) : null}
+                <View
+                  style={[
+                    styles.identityChip,
+                    profileCompletion.isComplete
+                      ? styles.identityChipPositive
+                      : styles.identityChipMuted,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.identityChipText,
+                      profileCompletion.isComplete ? styles.identityChipTextPositive : null,
+                    ]}
+                  >
+                    {profileCompletion.isComplete
+                      ? 'Profile ready'
+                      : `${profileCompletion.remainingCount} left`}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {!profileCompletion.isComplete ? (
+              <View style={styles.completionCard}>
+                <View style={styles.completionHeader}>
+                  <Text style={styles.completionTitle}>{profileCompletion.title}</Text>
+                  <Text style={styles.completionPercent}>{profileCompletion.percent}%</Text>
+                </View>
+                <View style={styles.progressTrack}>
+                  <View
+                    style={[styles.progressFill, { width: `${profileCompletion.percent}%` }]}
+                  />
+                </View>
+                <Text style={styles.completionCount}>
+                  {profileCompletion.completedCount} of {profileCompletion.items.length} details
+                  complete
+                </Text>
+                <Text style={styles.completionSummary}>Tap an item to update it faster.</Text>
+                <View style={styles.completionList}>
+                  {profileCompletion.items.filter((item) => !item.done).map((item) => (
+                    <View key={item.key} style={styles.completionItemRow}>
+                      <Text style={styles.completionItemLabel}>{item.label}</Text>
+                      <Pressable
+                        onPress={() => focusCompletionItem(item.key)}
+                        style={styles.completionItemActionButton}
+                      >
+                        <Text style={styles.completionItemAction}>Add</Text>
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              </View>
             ) : null}
           </View>
 
-          {!profileCompletion.isComplete ? (
-            <View style={styles.completionCard}>
-              <View style={styles.completionHeader}>
-                <Text style={styles.completionTitle}>{profileCompletion.title}</Text>
-                <Text style={styles.completionPercent}>{profileCompletion.percent}%</Text>
-              </View>
-              <Text style={styles.completionSummary}>{profileCompletion.summary}</Text>
-              <View style={styles.progressTrack}>
-                <View
-                  style={[styles.progressFill, { width: `${profileCompletion.percent}%` }]}
-                />
-              </View>
-              <Text style={styles.completionCount}>
-                {profileCompletion.completedCount} of {profileCompletion.items.length} details
-                complete
+          {isOffline ? (
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>Offline mode</Text>
+              <Text style={styles.offlineText}>
+                You can still review your saved profile details, but photo uploads,
+                profile updates, and password changes need a connection.
               </Text>
-              <View style={styles.completionList}>
-                {profileCompletion.items.map((item) => (
-                  <View key={item.key} style={styles.completionItemRow}>
-                    <Text style={styles.completionItemStatus}>
-                      {item.done ? 'Done' : 'Add'}
-                    </Text>
-                    <View style={styles.completionItemText}>
-                      <Text style={styles.completionItemLabel}>{item.label}</Text>
-                      <Text style={styles.completionItemDescription}>{item.description}</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
             </View>
           ) : null}
-        </View>
 
-        {isOffline ? (
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Offline mode</Text>
-            <Text style={styles.offlineText}>
-              You can still review your saved profile details, but photo uploads,
-              profile updates, and password changes need a connection.
-            </Text>
-          </View>
-        ) : null}
-
-        <View style={styles.card}>
           <Text style={styles.sectionTitle}>Personal information</Text>
-          <View onLayout={registerFieldPosition('full_name')}>
+          <View>
             <Controller
               control={control}
               name="full_name"
@@ -485,6 +641,10 @@ export default function ProfileScreen() {
                   label="Full name"
                   value={value}
                   onChangeText={onChange}
+                  onFocus={() => {
+                    activeFieldRef.current = 'full_name'
+                    scrollInputIntoView(fullNameRef)
+                  }}
                   placeholder="Your full name"
                   returnKeyType="next"
                   onSubmitEditing={() => phoneRef.current?.focus()}
@@ -493,7 +653,7 @@ export default function ProfileScreen() {
               )}
             />
           </View>
-          <View onLayout={registerFieldPosition('phone')}>
+          <View>
             <Controller
               control={control}
               name="phone"
@@ -503,17 +663,21 @@ export default function ProfileScreen() {
                   label="Phone"
                   value={value}
                   onChangeText={onChange}
+                  onFocus={() => {
+                    activeFieldRef.current = 'phone'
+                    scrollInputIntoView(phoneRef)
+                  }}
                   placeholder="0917 123 4567"
                   keyboardType="phone-pad"
                   returnKeyType="next"
                   onSubmitEditing={() => cityRef.current?.focus()}
-                  helperText="Use the number buyers or sellers can actually reach."
+                  helperText="Use a reachable number."
                   error={errors.phone?.message}
                 />
               )}
             />
           </View>
-          <View onLayout={registerFieldPosition('city')}>
+          <View>
             <Controller
               control={control}
               name="city"
@@ -523,10 +687,13 @@ export default function ProfileScreen() {
                   label="City"
                   value={value}
                   onChangeText={onChange}
+                  onFocus={() => {
+                    activeFieldRef.current = 'city'
+                    scrollInputIntoView(cityRef)
+                  }}
                   placeholder="Cagayan de Oro"
                   returnKeyType="done"
                   onSubmitEditing={() => void handleSaveProfile()}
-                  helperText="Use the city people will recognize when finding you."
                   error={errors.city?.message}
                 />
               )}
@@ -542,13 +709,16 @@ export default function ProfileScreen() {
             ]}
           >
             <Text style={styles.primaryButtonText}>
-              {isSubmitting ? 'Saving...' : hasProfileChanges ? 'Save changes' : 'Up to date'}
+              {isSubmitting ? 'Saving...' : 'Save changes'}
             </Text>
           </Pressable>
-        </View>
+          {!hasProfileChanges && !isSubmitting ? (
+            <Text style={styles.statusText}>Profile is up to date.</Text>
+          ) : null}
+          </View>
 
-        {normalizedRole === 'farmer' ? (
-          <View style={styles.card}>
+          {normalizedRole === 'farmer' ? (
+            <View style={styles.card}>
             <Text style={styles.sectionTitle}>Seller verification</Text>
             <View style={styles.verificationHeader}>
               <View
@@ -587,12 +757,12 @@ export default function ProfileScreen() {
                 {profileCompletion.isComplete ? 'Ready for future review' : 'See requirements'}
               </Text>
             </Pressable>
-          </View>
-        ) : null}
+            </View>
+          ) : null}
 
-        <View style={styles.card}>
+          <View style={styles.card}>
           <Text style={styles.sectionTitle}>Change password</Text>
-          <View onLayout={registerFieldPosition('password')}>
+          <View>
             <Controller
               control={passwordControl}
               name="password"
@@ -602,19 +772,23 @@ export default function ProfileScreen() {
                   label="New password"
                   value={value}
                   onChangeText={onChange}
+                  onFocus={() => {
+                    activeFieldRef.current = 'password'
+                    scrollInputIntoView(passwordRef)
+                  }}
                   placeholder="Create a new password"
                   secureTextEntry={!showPassword}
                   returnKeyType="next"
                   onSubmitEditing={() => confirmPasswordRef.current?.focus()}
                   error={passwordErrors.password?.message}
-                  helperText="At least 6 characters."
+                  helperText="Minimum 6 characters."
                   actionLabel={showPassword ? 'Hide' : 'Show'}
                   onActionPress={() => setShowPassword((current) => !current)}
                 />
               )}
             />
           </View>
-          <View onLayout={registerFieldPosition('confirmPassword')}>
+          <View>
             <Controller
               control={passwordControl}
               name="confirmPassword"
@@ -624,6 +798,10 @@ export default function ProfileScreen() {
                   label="Confirm new password"
                   value={value}
                   onChangeText={onChange}
+                  onFocus={() => {
+                    activeFieldRef.current = 'confirmPassword'
+                    scrollInputIntoView(confirmPasswordRef)
+                  }}
                   placeholder="Repeat the new password"
                   secureTextEntry={!showConfirmPassword}
                   returnKeyType="done"
@@ -635,6 +813,18 @@ export default function ProfileScreen() {
               )}
             />
           </View>
+          <Text
+            style={[
+              styles.passwordStatusText,
+              passwordStatus.tone === 'success'
+                ? styles.passwordStatusSuccess
+                : passwordStatus.tone === 'error'
+                  ? styles.passwordStatusError
+                  : null,
+            ]}
+          >
+            {passwordStatus.message}
+          </Text>
 
           <Pressable
             disabled={isOffline || isUpdatingPassword || !canSubmitPassword}
@@ -645,17 +835,18 @@ export default function ProfileScreen() {
             ]}
           >
             <Text style={styles.secondaryButtonText}>
-              {isUpdatingPassword ? 'Updating...' : 'Change password'}
+              {isUpdatingPassword ? 'Updating...' : 'Update password'}
             </Text>
           </Pressable>
-        </View>
+          </View>
 
-        <View style={styles.card}>
-          <Pressable onPress={handleLogout} style={styles.logoutButton}>
-            <Text style={styles.logoutText}>Log out</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
+          <View style={styles.card}>
+            <Pressable onPress={handleLogout} style={styles.logoutButton}>
+              <Text style={styles.logoutText}>Log out</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   )
 }
@@ -665,6 +856,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: palette.cream,
   },
+  flex: {
+    flex: 1,
+  },
   content: {
     paddingBottom: 32,
   },
@@ -673,45 +867,45 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   cover: {
-    height: 118,
+    height: 84,
     backgroundColor: '#dcece0',
     overflow: 'hidden',
   },
   coverGlow: {
     position: 'absolute',
-    right: -16,
-    top: -34,
-    width: 132,
-    height: 132,
-    borderRadius: 66,
+    right: -12,
+    top: -26,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
     backgroundColor: 'rgba(193, 219, 200, 0.65)',
   },
   profileHeader: {
-    marginTop: -44,
-    paddingHorizontal: 24,
-    gap: 12,
+    marginTop: -34,
+    paddingHorizontal: 20,
+    gap: 10,
     alignItems: 'center',
   },
   avatarWrapper: {
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   avatarPressable: {
     position: 'relative',
   },
   avatarImage: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    borderWidth: 4,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 3,
     borderColor: palette.cream,
     backgroundColor: '#e8ebe8',
   },
   avatarFallback: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    borderWidth: 4,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 3,
     borderColor: palette.cream,
     backgroundColor: palette.sage,
     alignItems: 'center',
@@ -719,16 +913,16 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     color: palette.cream,
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
   },
   avatarBadge: {
     position: 'absolute',
-    right: 2,
-    bottom: 4,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    right: 1,
+    bottom: 2,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: palette.soil,
     borderWidth: 2,
     borderColor: palette.cream,
@@ -740,48 +934,54 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
   },
-  avatarButtonText: {
+  avatarHintText: {
     color: palette.sageDark,
     fontWeight: '700',
-    fontSize: 12,
+    fontSize: 11,
   },
   identity: {
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
   },
   name: {
     color: palette.soil,
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
-  },
-  roleLine: {
-    color: palette.soil,
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
   },
   meta: {
     color: palette.muted,
-    fontSize: 13,
+    fontSize: 12,
     textAlign: 'center',
   },
-  verifiedBadge: {
-    marginTop: 4,
-    backgroundColor: '#eef5ef',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  verifiedBadgeText: {
-    color: palette.sageDark,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  readyText: {
+  identityChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
     marginTop: 2,
-    color: palette.sageDark,
-    fontSize: 12,
+  },
+  identityChip: {
+    backgroundColor: '#f4f7f3',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  identityChipMuted: {
+    backgroundColor: '#f5f3ee',
+  },
+  identityChipPositive: {
+    backgroundColor: '#eef5ef',
+    borderColor: 'rgba(58, 102, 72, 0.12)',
+  },
+  identityChipText: {
+    color: palette.clay,
+    fontSize: 11,
     fontWeight: '700',
+  },
+  identityChipTextPositive: {
+    color: palette.sageDark,
   },
   completionCard: {
     width: '100%',
@@ -789,8 +989,8 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: palette.border,
-    padding: 16,
-    gap: 10,
+    padding: 14,
+    gap: 8,
   },
   completionHeader: {
     flexDirection: 'row',
@@ -809,12 +1009,12 @@ const styles = StyleSheet.create({
   },
   completionSummary: {
     color: palette.muted,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 17,
   },
   progressTrack: {
     width: '100%',
-    height: 8,
+    height: 7,
     borderRadius: 999,
     backgroundColor: '#e6ece5',
     overflow: 'hidden',
@@ -825,7 +1025,7 @@ const styles = StyleSheet.create({
     backgroundColor: palette.sage,
   },
   completionList: {
-    gap: 10,
+    gap: 8,
   },
   completionCount: {
     color: palette.sageDark,
@@ -834,29 +1034,32 @@ const styles = StyleSheet.create({
   },
   completionItemRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-  completionItemStatus: {
-    width: 38,
-    color: palette.sageDark,
-    fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  completionItemText: {
-    flex: 1,
-    gap: 2,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    borderRadius: radii.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    backgroundColor: palette.surface,
+    borderWidth: 1,
+    borderColor: palette.border,
   },
   completionItemLabel: {
+    flex: 1,
     color: palette.soil,
     fontSize: 13,
     fontWeight: '700',
   },
-  completionItemDescription: {
-    color: palette.muted,
+  completionItemActionButton: {
+    borderRadius: 999,
+    backgroundColor: '#eef6ed',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  completionItemAction: {
+    color: palette.sageDark,
     fontSize: 12,
-    lineHeight: 17,
+    fontWeight: '800',
   },
   verificationHeader: {
     flexDirection: 'row',
@@ -912,38 +1115,43 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   card: {
-    marginTop: 16,
-    marginHorizontal: 24,
+    marginTop: 14,
+    marginHorizontal: 20,
     backgroundColor: palette.surface,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: palette.border,
-    padding: 18,
-    gap: 14,
+    padding: 16,
+    gap: 12,
     ...shadow,
   },
   sectionTitle: {
     color: palette.soil,
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
   },
   primaryButton: {
-    marginTop: 4,
+    marginTop: 2,
     backgroundColor: palette.sage,
     borderRadius: 999,
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 13,
   },
   primaryButtonText: {
     color: palette.cream,
     fontWeight: '800',
   },
+  statusText: {
+    color: palette.muted,
+    fontSize: 12,
+    lineHeight: 17,
+  },
   secondaryButton: {
-    marginTop: 4,
+    marginTop: 2,
     backgroundColor: palette.parchment,
     borderRadius: 999,
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 13,
   },
   secondaryButtonText: {
     color: palette.clay,
@@ -956,6 +1164,19 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontSize: 13,
     lineHeight: 20,
+  },
+  passwordStatusText: {
+    color: palette.muted,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  passwordStatusSuccess: {
+    color: palette.sageDark,
+    fontWeight: '700',
+  },
+  passwordStatusError: {
+    color: palette.error,
+    fontWeight: '700',
   },
   logoutButton: {
     backgroundColor: '#f9e4df',

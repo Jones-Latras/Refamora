@@ -14,6 +14,7 @@ type FormFieldProps = {
   label: string
   value: string
   onChangeText: (value: string) => void
+  onFocus?: () => void
   placeholder?: string
   secureTextEntry?: boolean
   multiline?: boolean
@@ -31,6 +32,7 @@ export const FormField = forwardRef<TextInput, FormFieldProps>(function FormFiel
   label,
   value,
   onChangeText,
+  onFocus,
   placeholder,
   secureTextEntry,
   multiline,
@@ -62,6 +64,7 @@ export const FormField = forwardRef<TextInput, FormFieldProps>(function FormFiel
         secureTextEntry={secureTextEntry}
         multiline={multiline}
         keyboardType={keyboardType}
+        onFocus={onFocus}
         returnKeyType={returnKeyType}
         onSubmitEditing={onSubmitEditing}
         blurOnSubmit={blurOnSubmit}
