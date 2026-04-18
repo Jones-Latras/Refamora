@@ -12,9 +12,60 @@ type ContactRequest = Tables<'contact_requests'>
 type ContactRequestMessageRow = Tables<'contact_request_messages'>
 type ListingRow = Tables<'listings'>
 type UserRow = Tables<'users'>
+type CounterpartKind = 'buyer' | 'seller'
+
+const GENERIC_PROFILE_NAMES = new Set([
+  'buyer',
+  'seller',
+  'user',
+  'new user',
+  'unknown user',
+])
 
 function dedupe(values: string[]) {
   return [...new Set(values.filter(Boolean))]
+}
+
+function toDisplayNameFromEmail(email: string | null | undefined) {
+  const localPart = email?.split('@')[0]?.trim() ?? ''
+
+  if (!localPart) {
+    return null
+  }
+
+  const normalized = localPart
+    .replace(/[._-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (!normalized) {
+    return null
+  }
+
+  return normalized
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+function getCounterpartDisplayName(
+  counterpart: Pick<UserRow, 'full_name' | 'email'> | undefined,
+  counterpartKind: CounterpartKind,
+) {
+  const fullName = counterpart?.full_name?.trim() ?? ''
+
+  if (fullName && !GENERIC_PROFILE_NAMES.has(fullName.toLowerCase())) {
+    return fullName
+  }
+
+  const emailBasedName = toDisplayNameFromEmail(counterpart?.email)
+
+  if (emailBasedName && !GENERIC_PROFILE_NAMES.has(emailBasedName.toLowerCase())) {
+    return emailBasedName
+  }
+
+  return counterpartKind === 'seller' ? 'Seller profile' : 'Buyer profile'
 }
 
 function mapMessageRow(row: ContactRequestMessageRow): ContactRequestMessage {
@@ -29,7 +80,7 @@ function mapMessageRow(row: ContactRequestMessageRow): ContactRequestMessage {
 
 async function enrichRequests(
   requests: ContactRequest[],
-  counterpartBy: 'buyer' | 'seller',
+  counterpartBy: CounterpartKind,
 ): Promise<ContactRequestSummary[]> {
   if (requests.length === 0) {
     return []
@@ -50,7 +101,7 @@ async function enrichRequests(
       .in('id', listingIds),
     getSupabaseClient()
       .from('users')
-      .select('id, full_name, phone, city, avatar_url')
+      .select('id, full_name, email, phone, city, avatar_url')
       .in('id', counterpartIds),
     getSupabaseClient()
       .from('contact_request_messages')
@@ -67,7 +118,7 @@ async function enrichRequests(
   )
   const usersById = new Map<
     string,
-    Pick<UserRow, 'id' | 'full_name' | 'phone' | 'city' | 'avatar_url'>
+    Pick<UserRow, 'id' | 'full_name' | 'email' | 'phone' | 'city' | 'avatar_url'>
   >((usersResult.data ?? []).map((user) => [user.id, user]))
   const latestMessageByRequestId = new Map<string, ContactRequestMessageRow>()
   const messageCountByRequestId = new Map<string, number>()
@@ -98,7 +149,7 @@ async function enrichRequests(
       listingImageUrl: listing?.image_url ?? null,
       buyerId: request.buyer_id,
       sellerId: request.seller_id,
-      counterpartName: counterpart?.full_name ?? 'Unknown user',
+      counterpartName: getCounterpartDisplayName(counterpart, counterpartBy),
       counterpartAvatarUrl: counterpart?.avatar_url ?? null,
       counterpartPhone: counterpart?.phone ?? null,
       counterpartCity: counterpart?.city ?? null,

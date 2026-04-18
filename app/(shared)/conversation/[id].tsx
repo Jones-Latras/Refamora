@@ -111,13 +111,10 @@ export default function ContactConversationScreen() {
     return () => clearTimeout(timeoutId)
   }, [conversation, messageCount])
 
-  const counterpartLabel = useMemo(() => {
-    if (!conversation) {
-      return ''
-    }
-
-    return role === 'farmer' ? 'Buyer' : 'Seller'
-  }, [conversation, role])
+  const counterpartRoleLabel = useMemo(
+    () => (role === 'farmer' ? 'Buyer' : 'Seller'),
+    [role],
+  )
   const canUseAiDraft = role === 'farmer'
   const keyboardVerticalOffset = Platform.OS === 'ios' ? headerHeight : 0
   const composerPaddingBottom = Math.max(insets.bottom, 14)
@@ -295,10 +292,14 @@ export default function ContactConversationScreen() {
               <View style={styles.headerText}>
                 <Text style={styles.headerTitle}>{conversation.request.listingTitle}</Text>
                 <Text style={styles.headerSubtitle}>
-                  {counterpartLabel}: {conversation.request.counterpartName}
+                  {conversation.request.counterpartName}
                 </Text>
                 <Text style={styles.headerMeta}>
-                  Last activity {formatDateTime(conversation.request.updatedAt)}
+                  {counterpartRoleLabel}
+                  {conversation.request.counterpartCity
+                    ? ` | ${conversation.request.counterpartCity}`
+                    : ''}
+                  {` | Last activity ${formatDateTime(conversation.request.updatedAt)}`}
                 </Text>
               </View>
             </View>
@@ -422,8 +423,10 @@ const styles = StyleSheet.create({
   },
   screen: {
     flex: 1,
-    padding: 20,
-    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
+    gap: 10,
   },
   messageScroll: {
     flex: 1,
@@ -447,8 +450,8 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: palette.border,
-    padding: 16,
-    gap: 12,
+    padding: 12,
+    gap: 8,
     ...shadow,
   },
   headerMain: {
@@ -477,22 +480,22 @@ const styles = StyleSheet.create({
   },
   headerText: {
     flex: 1,
-    gap: 4,
+    gap: 2,
   },
   headerTitle: {
     color: palette.soil,
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
   },
   headerSubtitle: {
     color: palette.clay,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
   headerMeta: {
     color: palette.muted,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 11,
+    lineHeight: 16,
   },
   listingLink: {
     alignSelf: 'flex-start',

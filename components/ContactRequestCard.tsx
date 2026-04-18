@@ -85,7 +85,7 @@ export function ContactRequestCard({
 
         <Text numberOfLines={1} style={styles.subtitle}>
           {request.counterpartName}
-          {request.counterpartCity ? ` · ${request.counterpartCity}` : ''}
+          {request.counterpartCity ? ` | ${request.counterpartCity}` : ''}
         </Text>
 
         <Text numberOfLines={1} style={styles.preview}>
