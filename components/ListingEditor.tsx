@@ -1,6 +1,14 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import Constants from 'expo-constants'
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -69,8 +77,44 @@ type PublishQualityItem = {
   status: PublishQualityStatus
 }
 
+type ListingSectionKey = 'basics' | 'pricing' | 'map' | 'photos' | 'checks' | 'ai'
+
+type CollapsibleSectionProps = {
+  title: string
+  hint: string
+  summary?: string | null
+  isOpen: boolean
+  onToggle: () => void
+  children: ReactNode
+}
+
 function hasText(value?: string | null) {
   return Boolean(value?.trim())
+}
+
+function CollapsibleSection({
+  title,
+  hint,
+  summary,
+  isOpen,
+  onToggle,
+  children,
+}: CollapsibleSectionProps) {
+  return (
+    <View style={styles.sectionCard}>
+      <Pressable onPress={onToggle} style={styles.sectionToggle}>
+        <View style={styles.sectionToggleText}>
+          <Text style={styles.sectionTitle}>{title}</Text>
+          <Text style={styles.sectionHint}>{isOpen ? hint : summary ?? hint}</Text>
+        </View>
+        <View style={styles.sectionToggleBadge}>
+          <Text style={styles.sectionToggleBadgeText}>{isOpen ? 'Hide' : 'Show'}</Text>
+        </View>
+      </Pressable>
+
+      {isOpen ? children : null}
+    </View>
+  )
 }
 
 export function ListingEditor({
@@ -119,6 +163,14 @@ export function ListingEditor({
   const [aiFeedbackStatus, setAiFeedbackStatus] = useState<
     'accepted' | 'rejected' | null
   >(null)
+  const [openSections, setOpenSections] = useState<Record<ListingSectionKey, boolean>>({
+    basics: true,
+    pricing: true,
+    map: false,
+    photos: false,
+    checks: false,
+    ai: false,
+  })
   const {
     control,
     handleSubmit,
@@ -199,6 +251,7 @@ export function ListingEditor({
   const cityValue = watch('city')
   const addressValue = watch('address')
   const priceValue = watch('price')
+  const quantityValue = watch('quantity')
   const primaryAiProviderLabel =
     aiHealth?.primaryProvider === 'local_gemma'
       ? 'Local Gemma'
@@ -440,6 +493,72 @@ export function ListingEditor({
   const blockingQualityItems = publishQualityItems.filter((item) => item.status === 'fail')
   const warningQualityItems = publishQualityItems.filter((item) => item.status === 'warn')
   const passedQualityItems = publishQualityItems.filter((item) => item.status === 'pass')
+  const readinessLabel =
+    blockingQualityItems.length > 0
+      ? `${blockingQualityItems.length} to fix`
+      : warningQualityItems.length > 0
+        ? `${warningQualityItems.length} to review`
+        : 'Ready'
+  const basicsSummary = selectedWasteTypeLabel
+    ? `${selectedWasteTypeLabel} selected${hasText(titleValue) ? ' | title added' : ''}`
+    : 'Choose a waste type and add a clear draft'
+  const pricingSummary = [
+    Number.isFinite(Number(priceValue)) && Number(priceValue) > 0
+      ? `PHP ${Number(priceValue)}`
+      : 'Price missing',
+    Number.isFinite(Number(quantityValue)) && Number(quantityValue) > 0
+      ? `${Number(quantityValue)} ${selectedUnit || 'units'}`
+      : 'Quantity missing',
+    hasText(cityValue) ? cityValue.trim() : 'City missing',
+  ].join(' | ')
+  const mapSummary =
+    coordinates.latitude != null && coordinates.longitude != null
+      ? 'Map pin set'
+      : 'Optional but recommended for nearby buyers'
+  const photoSummary = selectedImage
+    ? photoCheckResult
+      ? `Image ready | ${photoCheckResult.result.readiness === 'good' ? 'checked' : photoCheckResult.result.readiness}`
+      : 'Image attached'
+    : 'No image yet'
+  const checksSummary = `${passedQualityItems.length} passed | ${warningQualityItems.length} review | ${blockingQualityItems.length} fix`
+  const aiSummary = aiAssistResult
+    ? `Draft improved with ${aiAssistResult.provider === 'local_gemma' ? 'Local Gemma' : 'Gemini'}`
+    : wasteAdviceResult
+      ? 'Value advice ready'
+      : aiHealth?.available
+        ? `Available via ${primaryAiProviderLabel ?? 'AI'}`
+        : aiHealthError ?? 'Unavailable right now'
+
+  const toggleSection = (section: ListingSectionKey) => {
+    setOpenSections((current) => ({
+      ...current,
+      [section]: !current[section],
+    }))
+  }
+
+  useEffect(() => {
+    if (selectedImage) {
+      setOpenSections((current) =>
+        current.photos ? current : { ...current, photos: true },
+      )
+    }
+  }, [selectedImage])
+
+  useEffect(() => {
+    if (blockingQualityItems.length > 0 || moderationResult || photoCheckResult) {
+      setOpenSections((current) =>
+        current.checks ? current : { ...current, checks: true },
+      )
+    }
+  }, [blockingQualityItems.length, moderationResult, photoCheckResult])
+
+  useEffect(() => {
+    if (aiAssistResult || wasteAdviceResult || aiHealthError) {
+      setOpenSections((current) =>
+        current.ai ? current : { ...current, ai: true },
+      )
+    }
+  }, [aiAssistResult, wasteAdviceResult, aiHealthError])
 
   const onSubmit = handleSubmit(
     async (values) => {
@@ -804,12 +923,48 @@ export function ListingEditor({
           </View>
         ) : null}
 
-        <View style={styles.form}>
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Basics</Text>
-              <Text style={styles.sectionHint}>Choose the waste type, then draft the listing.</Text>
+        <View style={styles.overviewCard}>
+          <View style={styles.overviewHeader}>
+            <View style={styles.overviewTextBlock}>
+              <Text style={styles.overviewTitle}>Create listing</Text>
             </View>
+            <View
+              style={[
+                styles.qualityBadge,
+                blockingQualityItems.length > 0
+                  ? styles.qualityBadgeFail
+                  : warningQualityItems.length > 0
+                    ? styles.qualityBadgeWarn
+                    : styles.qualityBadgePass,
+              ]}
+            >
+              <Text style={styles.qualityBadgeText}>{readinessLabel}</Text>
+            </View>
+          </View>
+          <View style={styles.overviewStats}>
+            <View style={styles.overviewStat}>
+              <Text style={styles.overviewStatValue}>{passedQualityItems.length}</Text>
+              <Text style={styles.overviewStatLabel}>Passed</Text>
+            </View>
+            <View style={styles.overviewStat}>
+              <Text style={styles.overviewStatValue}>{warningQualityItems.length}</Text>
+              <Text style={styles.overviewStatLabel}>Review</Text>
+            </View>
+            <View style={styles.overviewStat}>
+              <Text style={styles.overviewStatValue}>{blockingQualityItems.length}</Text>
+              <Text style={styles.overviewStatLabel}>Fix now</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.form}>
+          <CollapsibleSection
+            title="Basics"
+            hint="Choose the waste type, then draft the listing."
+            summary={basicsSummary}
+            isOpen={openSections.basics}
+            onToggle={() => toggleSection('basics')}
+          >
 
             <View style={styles.selectorBlock}>
               <View onLayout={registerFieldPosition('waste_type')}>
@@ -856,90 +1011,6 @@ export function ListingEditor({
               />
             ) : null}
 
-            {aiListingAssistEnabled && selectedWasteTypeLabel ? (
-              <View style={styles.valueAdvisorCard}>
-                <View style={styles.valueAdvisorHeader}>
-                  <View style={styles.valueAdvisorTextBlock}>
-                    <Text style={styles.valueAdvisorTitle}>
-                      Waste-to-value advisor
-                    </Text>
-                    <Text style={styles.valueAdvisorSubtitle}>
-                      Quick ideas for making {selectedWasteTypeLabel.toLowerCase()} more valuable.
-                    </Text>
-                  </View>
-                  <Pressable
-                    disabled={isWasteAdviceLoading || isCheckingAIHealth}
-                    onPress={handleWasteValueAdvice}
-                    style={[
-                      styles.valueAdvisorButton,
-                      isWasteAdviceLoading || isCheckingAIHealth
-                        ? styles.aiButtonDisabled
-                        : null,
-                    ]}
-                  >
-                    <Text style={styles.valueAdvisorButtonText}>
-                      {isCheckingAIHealth
-                        ? 'Checking...'
-                        : isWasteAdviceLoading
-                          ? 'Loading...'
-                          : 'See ideas'}
-                    </Text>
-                  </Pressable>
-                </View>
-
-                {wasteAdviceResult ? (
-                  <View style={styles.valueAdvisorContent}>
-                    <Text style={styles.valueAdvisorMeta}>
-                      Provider:{' '}
-                      {wasteAdviceResult.provider === 'local_gemma'
-                        ? 'Local Gemma'
-                        : 'Gemini'}
-                      {wasteAdviceResult.fallbackUsed ? ' | fallback used' : ''}
-                    </Text>
-                    {wasteAdviceResult.result.marketTip ? (
-                      <Text style={styles.valueAdvisorTip}>
-                        {wasteAdviceResult.result.marketTip}
-                      </Text>
-                    ) : null}
-                    {wasteAdviceResult.result.uses.length > 0 ? (
-                      <View style={styles.valueAdvisorListBlock}>
-                        <Text style={styles.valueAdvisorListLabel}>
-                          Possible uses
-                        </Text>
-                        {wasteAdviceResult.result.uses.map((item) => (
-                          <Text key={item} style={styles.valueAdvisorListItem}>
-                            - {item}
-                          </Text>
-                        ))}
-                      </View>
-                    ) : null}
-                    {wasteAdviceResult.result.cautions.length > 0 ? (
-                      <View style={styles.valueAdvisorListBlock}>
-                        <Text style={styles.valueAdvisorListLabel}>Cautions</Text>
-                        {wasteAdviceResult.result.cautions.map((item) => (
-                          <Text key={item} style={styles.valueAdvisorListItem}>
-                            - {item}
-                          </Text>
-                        ))}
-                      </View>
-                    ) : null}
-                    {wasteAdviceResult.result.sourceBasis.length > 0 ? (
-                      <View style={styles.valueAdvisorListBlock}>
-                        <Text style={styles.valueAdvisorListLabel}>
-                          Grounded in
-                        </Text>
-                        {wasteAdviceResult.result.sourceBasis.map((item) => (
-                          <Text key={item} style={styles.valueAdvisorSourceItem}>
-                            - {item}
-                          </Text>
-                        ))}
-                      </View>
-                    ) : null}
-                  </View>
-                ) : null}
-              </View>
-            ) : null}
-
             <View onLayout={registerFieldPosition('title')}>
               <Controller
                 control={control}
@@ -979,141 +1050,15 @@ export function ListingEditor({
               />
             </View>
 
-            {aiListingAssistEnabled ? (
-              <View style={styles.aiSection}>
-                <Pressable
-                  disabled={isAiApplying || isCheckingAIHealth}
-                  onPress={aiHealth?.available ? handleAiAssist : checkAiHealth}
-                  style={[
-                    styles.aiButton,
-                    isAiApplying || isCheckingAIHealth
-                      ? styles.aiButtonDisabled
-                      : null,
-                  ]}
-                >
-                  <Text style={styles.aiButtonText}>
-                    {isCheckingAIHealth
-                      ? 'Checking AI...'
-                      : isAiApplying
-                        ? 'Improving with AI...'
-                        : aiHealth?.available
-                          ? 'Improve title and description'
-                          : 'Retry AI check'}
-                  </Text>
-                </Pressable>
-                {aiHealth?.available ? (
-                  <Text style={styles.aiMeta}>
-                    Refines your draft with {primaryAiProviderLabel ?? 'AI'}
-                    {hasGeminiFallback ? ' and Gemini fallback if needed.' : '.'}
-                  </Text>
-                ) : (
-                  <View style={styles.aiUnavailableCard}>
-                    <Text style={styles.aiUnavailableTitle}>
-                      AI is not ready right now
-                    </Text>
-                    <Text style={styles.aiUnavailableText}>
-                      {aiHealthError ??
-                        'We could not reach the configured providers. You can keep writing manually and retry later.'}
-                    </Text>
-                  </View>
-                )}
-                {aiAssistResult ? (
-                  <View style={styles.aiResultCard}>
-                    <View style={styles.aiResultHeader}>
-                      <Text style={styles.aiResultTitle}>AI suggestions ready</Text>
-                      <View
-                        style={[
-                          styles.aiReadinessBadge,
-                          aiAssistResult.result.publishReadiness === 'ready'
-                            ? styles.aiReadinessBadgeReady
-                            : styles.aiReadinessBadgeReview,
-                        ]}
-                      >
-                        <Text style={styles.aiReadinessText}>
-                          {aiAssistResult.result.publishReadiness === 'ready'
-                            ? 'Ready'
-                            : 'Review'}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text style={styles.aiProviderMeta}>
-                      Provider:{' '}
-                      {aiAssistResult.provider === 'local_gemma'
-                        ? 'Local Gemma'
-                        : 'Gemini'}
-                      {aiAssistResult.fallbackUsed ? ' | fallback used' : ''}
-                    </Text>
-                    {aiAssistResult.result.notes.length > 0 ? (
-                      <View style={styles.aiListBlock}>
-                        <Text style={styles.aiListLabel}>Notes</Text>
-                        {aiAssistResult.result.notes.map((note) => (
-                          <Text key={note} style={styles.aiListItem}>
-                            - {note}
-                          </Text>
-                        ))}
-                      </View>
-                    ) : null}
-                    {aiAssistResult.result.missingFields.length > 0 ? (
-                      <View style={styles.aiListBlock}>
-                        <Text style={styles.aiListLabel}>Still review</Text>
-                        {aiAssistResult.result.missingFields.map((item) => (
-                          <Text key={item} style={styles.aiListItem}>
-                            - {item}
-                          </Text>
-                        ))}
-                      </View>
-                    ) : null}
-                    {aiFeedbackStatus ? (
-                      <Text style={styles.aiFeedbackNote}>
-                        {aiFeedbackStatus === 'accepted'
-                          ? 'Suggestion kept. You can continue editing before you publish.'
-                          : 'Previous draft restored. You can keep editing or run AI again.'}
-                      </Text>
-                    ) : (
-                      <View style={styles.aiFeedbackActions}>
-                        <Pressable
-                          disabled={isSubmittingAiFeedback}
-                          onPress={handleAcceptAiSuggestion}
-                          style={[
-                            styles.aiFeedbackPrimaryButton,
-                            isSubmittingAiFeedback
-                              ? styles.aiFeedbackButtonDisabled
-                              : null,
-                          ]}
-                        >
-                          <Text style={styles.aiFeedbackPrimaryText}>
-                            {isSubmittingAiFeedback
-                              ? 'Saving...'
-                              : 'Use suggestion'}
-                          </Text>
-                        </Pressable>
-                        <Pressable
-                          disabled={isSubmittingAiFeedback}
-                          onPress={handleRejectAiSuggestion}
-                          style={[
-                            styles.aiFeedbackSecondaryButton,
-                            isSubmittingAiFeedback
-                              ? styles.aiFeedbackButtonDisabled
-                              : null,
-                          ]}
-                        >
-                          <Text style={styles.aiFeedbackSecondaryText}>
-                            Not helpful
-                          </Text>
-                        </Pressable>
-                      </View>
-                    )}
-                  </View>
-                ) : null}
-              </View>
-            ) : null}
-          </View>
+          </CollapsibleSection>
 
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Pricing and pickup</Text>
-              <Text style={styles.sectionHint}>Set the amount, unit, and where buyers can get it.</Text>
-            </View>
+          <CollapsibleSection
+            title="Pricing and pickup"
+            hint="Set the amount, unit, and where buyers can get it."
+            summary={pricingSummary}
+            isOpen={openSections.pricing}
+            onToggle={() => toggleSection('pricing')}
+          >
 
             <View
               style={styles.row}
@@ -1330,13 +1275,233 @@ export function ListingEditor({
                 </Text>
               </View>
             </Pressable>
-          </View>
+          </CollapsibleSection>
 
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Map pin</Text>
-              <Text style={styles.sectionHint}>Drop a pin so buyers can judge pickup distance quickly.</Text>
-            </View>
+          {aiListingAssistEnabled ? (
+            <CollapsibleSection
+              title="AI tools"
+              hint="Use AI only after you have a rough draft or selected waste type."
+              summary={aiSummary}
+              isOpen={openSections.ai}
+              onToggle={() => toggleSection('ai')}
+            >
+              {selectedWasteTypeLabel ? (
+                <View style={styles.valueAdvisorCard}>
+                  <View style={styles.valueAdvisorHeader}>
+                    <View style={styles.valueAdvisorTextBlock}>
+                      <Text style={styles.valueAdvisorTitle}>
+                        Waste-to-value advisor
+                      </Text>
+                    </View>
+                    <Pressable
+                      disabled={isWasteAdviceLoading || isCheckingAIHealth}
+                      onPress={handleWasteValueAdvice}
+                      style={[
+                        styles.valueAdvisorButton,
+                        isWasteAdviceLoading || isCheckingAIHealth
+                          ? styles.aiButtonDisabled
+                          : null,
+                      ]}
+                    >
+                      <Text style={styles.valueAdvisorButtonText}>
+                        {isCheckingAIHealth
+                          ? 'Checking...'
+                          : isWasteAdviceLoading
+                            ? 'Loading...'
+                            : 'See ideas'}
+                      </Text>
+                    </Pressable>
+                  </View>
+
+                  {wasteAdviceResult ? (
+                    <View style={styles.valueAdvisorContent}>
+                      <Text style={styles.valueAdvisorMeta}>
+                        Provider:{' '}
+                        {wasteAdviceResult.provider === 'local_gemma'
+                          ? 'Local Gemma'
+                          : 'Gemini'}
+                        {wasteAdviceResult.fallbackUsed ? ' | fallback used' : ''}
+                      </Text>
+                      {wasteAdviceResult.result.marketTip ? (
+                        <Text style={styles.valueAdvisorTip}>
+                          {wasteAdviceResult.result.marketTip}
+                        </Text>
+                      ) : null}
+                      {wasteAdviceResult.result.uses.length > 0 ? (
+                        <View style={styles.valueAdvisorListBlock}>
+                          <Text style={styles.valueAdvisorListLabel}>
+                            Possible uses
+                          </Text>
+                          {wasteAdviceResult.result.uses.map((item) => (
+                            <Text key={item} style={styles.valueAdvisorListItem}>
+                              - {item}
+                            </Text>
+                          ))}
+                        </View>
+                      ) : null}
+                      {wasteAdviceResult.result.cautions.length > 0 ? (
+                        <View style={styles.valueAdvisorListBlock}>
+                          <Text style={styles.valueAdvisorListLabel}>Cautions</Text>
+                          {wasteAdviceResult.result.cautions.map((item) => (
+                            <Text key={item} style={styles.valueAdvisorListItem}>
+                              - {item}
+                            </Text>
+                          ))}
+                        </View>
+                      ) : null}
+                      {wasteAdviceResult.result.sourceBasis.length > 0 ? (
+                        <View style={styles.valueAdvisorListBlock}>
+                          <Text style={styles.valueAdvisorListLabel}>
+                            Grounded in
+                          </Text>
+                          {wasteAdviceResult.result.sourceBasis.map((item) => (
+                            <Text key={item} style={styles.valueAdvisorSourceItem}>
+                              - {item}
+                            </Text>
+                          ))}
+                        </View>
+                      ) : null}
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
+
+              <View style={styles.aiSection}>
+                <Pressable
+                  disabled={isAiApplying || isCheckingAIHealth}
+                  onPress={aiHealth?.available ? handleAiAssist : checkAiHealth}
+                  style={[
+                    styles.aiButton,
+                    isAiApplying || isCheckingAIHealth
+                      ? styles.aiButtonDisabled
+                      : null,
+                  ]}
+                >
+                  <Text style={styles.aiButtonText}>
+                    {isCheckingAIHealth
+                      ? 'Checking AI...'
+                      : isAiApplying
+                        ? 'Improving with AI...'
+                        : aiHealth?.available
+                          ? 'Improve title and description'
+                          : 'Retry AI check'}
+                  </Text>
+                </Pressable>
+                {aiHealth?.available ? (
+                  <Text style={styles.aiMeta}>
+                    Refines your draft with {primaryAiProviderLabel ?? 'AI'}
+                    {hasGeminiFallback ? ' and Gemini fallback if needed.' : '.'}
+                  </Text>
+                ) : (
+                  <View style={styles.aiUnavailableCard}>
+                    <Text style={styles.aiUnavailableTitle}>
+                      AI is not ready right now
+                    </Text>
+                    <Text style={styles.aiUnavailableText}>
+                      {aiHealthError ??
+                        'We could not reach the configured providers. You can keep writing manually and retry later.'}
+                    </Text>
+                  </View>
+                )}
+                {aiAssistResult ? (
+                  <View style={styles.aiResultCard}>
+                    <View style={styles.aiResultHeader}>
+                      <Text style={styles.aiResultTitle}>AI suggestions ready</Text>
+                      <View
+                        style={[
+                          styles.aiReadinessBadge,
+                          aiAssistResult.result.publishReadiness === 'ready'
+                            ? styles.aiReadinessBadgeReady
+                            : styles.aiReadinessBadgeReview,
+                        ]}
+                      >
+                        <Text style={styles.aiReadinessText}>
+                          {aiAssistResult.result.publishReadiness === 'ready'
+                            ? 'Ready'
+                            : 'Review'}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.aiProviderMeta}>
+                      Provider:{' '}
+                      {aiAssistResult.provider === 'local_gemma'
+                        ? 'Local Gemma'
+                        : 'Gemini'}
+                      {aiAssistResult.fallbackUsed ? ' | fallback used' : ''}
+                    </Text>
+                    {aiAssistResult.result.notes.length > 0 ? (
+                      <View style={styles.aiListBlock}>
+                        <Text style={styles.aiListLabel}>Notes</Text>
+                        {aiAssistResult.result.notes.map((note) => (
+                          <Text key={note} style={styles.aiListItem}>
+                            - {note}
+                          </Text>
+                        ))}
+                      </View>
+                    ) : null}
+                    {aiAssistResult.result.missingFields.length > 0 ? (
+                      <View style={styles.aiListBlock}>
+                        <Text style={styles.aiListLabel}>Still review</Text>
+                        {aiAssistResult.result.missingFields.map((item) => (
+                          <Text key={item} style={styles.aiListItem}>
+                            - {item}
+                          </Text>
+                        ))}
+                      </View>
+                    ) : null}
+                    {aiFeedbackStatus ? (
+                      <Text style={styles.aiFeedbackNote}>
+                        {aiFeedbackStatus === 'accepted'
+                          ? 'Suggestion kept. You can continue editing before you publish.'
+                          : 'Previous draft restored. You can keep editing or run AI again.'}
+                      </Text>
+                    ) : (
+                      <View style={styles.aiFeedbackActions}>
+                        <Pressable
+                          disabled={isSubmittingAiFeedback}
+                          onPress={handleAcceptAiSuggestion}
+                          style={[
+                            styles.aiFeedbackPrimaryButton,
+                            isSubmittingAiFeedback
+                              ? styles.aiFeedbackButtonDisabled
+                              : null,
+                          ]}
+                        >
+                          <Text style={styles.aiFeedbackPrimaryText}>
+                            {isSubmittingAiFeedback
+                              ? 'Saving...'
+                              : 'Use suggestion'}
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          disabled={isSubmittingAiFeedback}
+                          onPress={handleRejectAiSuggestion}
+                          style={[
+                            styles.aiFeedbackSecondaryButton,
+                            isSubmittingAiFeedback
+                              ? styles.aiFeedbackButtonDisabled
+                              : null,
+                          ]}
+                        >
+                          <Text style={styles.aiFeedbackSecondaryText}>
+                            Not helpful
+                          </Text>
+                        </Pressable>
+                      </View>
+                    )}
+                  </View>
+                ) : null}
+              </View>
+            </CollapsibleSection>
+          ) : null}
+
+          <CollapsibleSection
+            title="Map pin"
+            hint="Drop a pin so buyers can judge pickup distance quickly."
+            summary={mapSummary}
+            isOpen={openSections.map}
+            onToggle={() => toggleSection('map')}
+          >
 
             <LocationPicker
               value={coordinates}
@@ -1354,13 +1519,15 @@ export function ListingEditor({
                 }
               }}
             />
-          </View>
+          </CollapsibleSection>
 
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Photos</Text>
-              <Text style={styles.sectionHint}>Add one clear image and optionally run the AI check before publishing.</Text>
-            </View>
+          <CollapsibleSection
+            title="Photos"
+            hint="Add one clear image and optionally run the AI check before publishing."
+            summary={photoSummary}
+            isOpen={openSections.photos}
+            onToggle={() => toggleSection('photos')}
+          >
 
             {selectedImage ? (
               <>
@@ -1378,9 +1545,6 @@ export function ListingEditor({
                     <View style={styles.photoCheckHeader}>
                       <View style={styles.photoCheckTextBlock}>
                         <Text style={styles.photoCheckTitle}>Photo check</Text>
-                        <Text style={styles.photoCheckSubtitle}>
-                          Review clarity, framing, and waste visibility.
-                        </Text>
                       </View>
                       <Pressable
                         disabled={isPhotoCheckLoading || isCheckingAIHealth}
@@ -1498,13 +1662,15 @@ export function ListingEditor({
                 {selectedImage ? 'Replace image' : 'Add image'}
               </Text>
             </Pressable>
-          </View>
+          </CollapsibleSection>
 
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Publish checks</Text>
-              <Text style={styles.sectionHint}>Fix blockers here before the listing goes live.</Text>
-            </View>
+          <CollapsibleSection
+            title="Publish checks"
+            hint="Fix blockers here before the listing goes live."
+            summary={checksSummary}
+            isOpen={openSections.checks}
+            onToggle={() => toggleSection('checks')}
+          >
 
             <View
               onLayout={(event) => {
@@ -1515,9 +1681,6 @@ export function ListingEditor({
               <View style={styles.qualityHeader}>
                 <View style={styles.qualityTextBlock}>
                   <Text style={styles.qualityTitle}>Publish readiness</Text>
-                  <Text style={styles.qualitySubtitle}>
-                    Refamora checks the essentials before your listing goes live.
-                  </Text>
                 </View>
                 <View
                   style={[
@@ -1580,9 +1743,6 @@ export function ListingEditor({
                 <View style={styles.moderationHeader}>
                   <View style={styles.moderationTextBlock}>
                     <Text style={styles.moderationTitle}>Listing safety check</Text>
-                    <Text style={styles.moderationSubtitle}>
-                      Refamora reviews your listing text and image before publish.
-                    </Text>
                   </View>
                   {isModerationLoading ? (
                     <View style={styles.moderationBadgePending}>
@@ -1672,7 +1832,7 @@ export function ListingEditor({
                 )}
               </View>
             ) : null}
-          </View>
+          </CollapsibleSection>
 
           <View style={styles.submitRow}>
             {onSaveDraftValues ? (
@@ -1714,47 +1874,122 @@ const styles = StyleSheet.create({
     backgroundColor: palette.cream,
   },
   content: {
-    paddingHorizontal: 18,
-    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingTop: 14,
     paddingBottom: 24,
-    gap: 14,
+    gap: 12,
   },
   hero: {
-    gap: 4,
+    gap: 2,
   },
   title: {
     color: palette.soil,
-    fontSize: 27,
+    fontSize: 24,
     fontWeight: '800',
   },
   subtitle: {
     color: palette.muted,
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  overviewCard: {
+    gap: 12,
+    backgroundColor: '#f4f7f1',
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(58, 102, 72, 0.12)',
+    padding: 14,
+  },
+  overviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  overviewTextBlock: {
+    flex: 1,
+    gap: 4,
+  },
+  overviewTitle: {
+    color: palette.soil,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  overviewSubtitle: {
+    color: palette.muted,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  overviewStats: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  overviewStat: {
+    flex: 1,
+    backgroundColor: palette.surface,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(58, 102, 72, 0.08)',
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  overviewStatValue: {
+    color: palette.soil,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  overviewStatLabel: {
+    color: palette.muted,
+    fontSize: 11,
+    textTransform: 'uppercase',
   },
   form: {
-    gap: 12,
+    gap: 10,
   },
   sectionCard: {
-    gap: 12,
+    gap: 10,
     backgroundColor: palette.surface,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: palette.border,
-    padding: 14,
+    padding: 12,
+  },
+  sectionToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  sectionToggleText: {
+    flex: 1,
+    gap: 2,
+  },
+  sectionToggleBadge: {
+    borderRadius: 999,
+    backgroundColor: palette.parchment,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  sectionToggleBadgeText: {
+    color: palette.clay,
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
   sectionHeader: {
     gap: 3,
   },
   sectionTitle: {
     color: palette.soil,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
   },
   sectionHint: {
     color: palette.muted,
     fontSize: 12,
-    lineHeight: 17,
+    lineHeight: 16,
   },
   aiSection: {
     gap: 8,
@@ -1763,7 +1998,7 @@ const styles = StyleSheet.create({
     backgroundColor: palette.sageDark,
     borderRadius: radii.md,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 11,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2004,18 +2239,18 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
   },
   flex: {
     flex: 1,
   },
   qualityCard: {
-    gap: 10,
+    gap: 8,
     backgroundColor: '#f4f7f1',
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: 'rgba(58, 102, 72, 0.12)',
-    padding: 12,
+    padding: 10,
   },
   qualityHeader: {
     flexDirection: 'row',
@@ -2062,17 +2297,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   qualityList: {
-    gap: 8,
+    gap: 6,
   },
   qualityItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
+    gap: 8,
     backgroundColor: palette.surface,
     borderRadius: radii.sm,
     borderWidth: 1,
     borderColor: 'rgba(58, 102, 72, 0.08)',
-    padding: 10,
+    padding: 8,
   },
   qualityItemBadge: {
     minWidth: 54,
@@ -2113,6 +2348,7 @@ const styles = StyleSheet.create({
   submitRow: {
     flexDirection: 'row',
     gap: 8,
+    marginTop: 2,
   },
   draftButton: {
     flex: 1,
@@ -2143,7 +2379,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     borderColor: palette.border,
-    paddingVertical: 12,
+    paddingVertical: 11,
     alignItems: 'center',
   },
   secondaryButtonText: {

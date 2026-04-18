@@ -17,13 +17,11 @@ import {
   getSellerInquiries,
   markSellerInquiriesSeen,
 } from '../../services/contactService'
-import { getListingCopilotAnalytics } from '../../services/aiService'
 import {
   getFarmerListings,
   getSellerListingPerformance,
 } from '../../services/listingService'
 import type {
-  AIAnalyticsSummary,
   ContactRequestSummary,
   ListingPerformanceSummary,
   ListingPreview,
@@ -59,18 +57,6 @@ function getInitials(name?: string | null, fallback = 'R') {
     .slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase())
     .join('')
-}
-
-function formatLatency(value: number | null) {
-  if (value == null) {
-    return '--'
-  }
-
-  if (value < 1000) {
-    return `${value} ms`
-  }
-
-  return `${(value / 1000).toFixed(1)} s`
 }
 
 function getListingAgeInDays(createdAt: string) {
@@ -191,7 +177,6 @@ export default function FarmerDashboardScreen() {
   )
   const [listings, setListings] = useState<ListingPreview[]>([])
   const [inquiries, setInquiries] = useState<ContactRequestSummary[]>([])
-  const [aiAnalytics, setAiAnalytics] = useState<AIAnalyticsSummary | null>(null)
   const [listingPerformance, setListingPerformance] = useState<
     ListingPerformanceSummary[]
   >([])
@@ -202,7 +187,6 @@ export default function FarmerDashboardScreen() {
     if (!user) {
       setListings([])
       setInquiries([])
-      setAiAnalytics(null)
       setListingPerformance([])
       setIsLoading(false)
       return
@@ -210,13 +194,12 @@ export default function FarmerDashboardScreen() {
 
     setIsLoading(true)
     setLoadError(null)
-    const [listingsResult, inquiriesResult, analyticsResult, performanceResult] =
+    const [listingsResult, inquiriesResult, performanceResult] =
       await Promise.all([
-      getFarmerListings(user.id),
-      getSellerInquiries(user.id),
-      getListingCopilotAnalytics(user.id),
-      getSellerListingPerformance(user.id),
-    ])
+        getFarmerListings(user.id),
+        getSellerInquiries(user.id),
+        getSellerListingPerformance(user.id),
+      ])
 
     if (listingsResult.error) {
       showToast(listingsResult.error.message, 'error')
@@ -226,10 +209,6 @@ export default function FarmerDashboardScreen() {
       showToast(inquiriesResult.error.message, 'error')
     }
 
-    if (analyticsResult.error) {
-      showToast(analyticsResult.error.message, 'error')
-    }
-
     if (performanceResult.error) {
       showToast(performanceResult.error.message, 'error')
     }
@@ -237,7 +216,6 @@ export default function FarmerDashboardScreen() {
     if (
       listingsResult.error &&
       inquiriesResult.error &&
-      analyticsResult.error &&
       performanceResult.error
     ) {
       setLoadError('Seller dashboard could not be loaded right now.')
@@ -245,7 +223,6 @@ export default function FarmerDashboardScreen() {
 
     setListings(listingsResult.data ?? [])
     setInquiries(inquiriesResult.data ?? [])
-    setAiAnalytics(analyticsResult.data)
     setListingPerformance(performanceResult.data ?? [])
     setIsLoading(false)
   }, [showToast, user])
@@ -423,7 +400,6 @@ export default function FarmerDashboardScreen() {
     (isLoading &&
       listings.length === 0 &&
       inquiries.length === 0 &&
-      aiAnalytics == null &&
       listingPerformance.length === 0)
 
   if (shouldShowSkeleton) {
@@ -438,7 +414,6 @@ export default function FarmerDashboardScreen() {
     loadError &&
     listings.length === 0 &&
     inquiries.length === 0 &&
-    aiAnalytics == null &&
     listingPerformance.length === 0
   ) {
     return (
@@ -485,9 +460,6 @@ export default function FarmerDashboardScreen() {
               <Text style={styles.greeting}>
                 {getGreeting(profile?.full_name ?? user?.email)}
               </Text>
-              <Text style={styles.headerSubtext}>
-                Manage your listings and buyer inquiries.
-              </Text>
               <Text style={styles.headerMeta}>
                 {profile?.email ?? user?.email ?? 'No email'} | Verified seller
               </Text>
@@ -528,9 +500,6 @@ export default function FarmerDashboardScreen() {
           <View style={styles.reminderCard}>
             <View style={styles.reminderHeader}>
               <Text style={styles.reminderTitle}>Needs your attention</Text>
-              <Text style={styles.reminderSubtitle}>
-                Quick actions to keep your seller profile and listings moving.
-              </Text>
             </View>
 
             <View style={styles.reminderStack}>
@@ -555,9 +524,6 @@ export default function FarmerDashboardScreen() {
           <View style={styles.performanceHeader}>
             <View>
               <Text style={styles.performanceTitle}>Listing performance</Text>
-              <Text style={styles.performanceSubtitle}>
-                Views and inquiries across your marketplace listings
-              </Text>
             </View>
             <Pressable onPress={() => router.push('/(farmer)/my-listings')}>
               <Text style={styles.linkText}>Open listings</Text>
@@ -590,67 +556,6 @@ export default function FarmerDashboardScreen() {
           )}
         </View>
 
-        <View style={styles.aiCard}>
-          <View style={styles.aiCardHeader}>
-            <View>
-              <Text style={styles.aiCardTitle}>Listing copilot activity</Text>
-              <Text style={styles.aiCardSubtitle}>
-                Last {aiAnalytics?.periodDays ?? 7} days of AI assist attempts
-              </Text>
-            </View>
-            <View style={styles.aiCardBadge}>
-              <Text style={styles.aiCardBadgeText}>AI</Text>
-            </View>
-          </View>
-
-          {aiAnalytics && aiAnalytics.totalRequests > 0 ? (
-            <>
-              <View style={styles.aiStatGrid}>
-                <View style={styles.aiStatCell}>
-                  <Text style={styles.aiStatValue}>
-                    {aiAnalytics.totalRequests}
-                  </Text>
-                  <Text style={styles.aiStatLabel}>AI runs</Text>
-                </View>
-                <View style={styles.aiStatCell}>
-                  <Text style={styles.aiStatValue}>
-                    {formatLatency(aiAnalytics.averageLatencyMs)}
-                  </Text>
-                  <Text style={styles.aiStatLabel}>Avg response</Text>
-                </View>
-                <View style={styles.aiStatCell}>
-                  <Text style={styles.aiStatValue}>
-                    {aiAnalytics.helpfulRate == null
-                      ? '--'
-                      : `${aiAnalytics.helpfulRate}%`}
-                  </Text>
-                  <Text style={styles.aiStatLabel}>Helpful rate</Text>
-                </View>
-                <View style={styles.aiStatCell}>
-                  <Text style={styles.aiStatValue}>
-                    {aiAnalytics.failedRequests}
-                  </Text>
-                  <Text style={styles.aiStatLabel}>Failed</Text>
-                </View>
-              </View>
-
-              <Text style={styles.aiCardMeta}>
-                Counts include successful and failed taps on Improve with AI.
-                {'\n'}Local Gemma {aiAnalytics.localGemmaRequests} | Gemini{' '}
-                {aiAnalytics.geminiRequests} | Feedback {aiAnalytics.feedbackCount}
-              </Text>
-            </>
-          ) : (
-            <View style={styles.aiEmptyCard}>
-              <Text style={styles.aiEmptyTitle}>No AI activity yet</Text>
-              <Text style={styles.aiEmptyText}>
-                Use Improve with AI while creating a listing to start tracking
-                AI assist usage, speed, and helpfulness.
-              </Text>
-            </View>
-          )}
-        </View>
-
         <View style={styles.primaryActions}>
           <Pressable
             onPress={() => router.push('/(farmer)/create-listing')}
@@ -670,11 +575,6 @@ export default function FarmerDashboardScreen() {
           <View style={styles.sectionHeader}>
             <View>
               <Text style={styles.sectionTitle}>Recent inquiries</Text>
-              <Text style={styles.sectionSubtitle}>
-                {pendingInquiryCount} pending request
-                {pendingInquiryCount === 1 ? '' : 's'}
-                {'\n'}Open the Requests tab for AI summaries and draft replies.
-              </Text>
             </View>
             <View style={styles.sectionActions}>
               <Pressable onPress={() => router.push('/(farmer)/requests')}>
@@ -720,9 +620,6 @@ export default function FarmerDashboardScreen() {
           <View style={styles.sectionHeader}>
             <View>
               <Text style={styles.sectionTitle}>Your listings</Text>
-              <Text style={styles.sectionSubtitle}>
-                {activeCount} active | {soldCount} sold
-              </Text>
             </View>
             <Pressable onPress={() => router.push('/(farmer)/my-listings')}>
               <Text style={styles.linkText}>View all</Text>
@@ -843,10 +740,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '800',
   },
-  headerSubtext: {
-    color: palette.muted,
-    lineHeight: 20,
-  },
   headerMeta: {
     color: '#6e7c72',
     fontSize: 12,
@@ -946,11 +839,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '800',
   },
-  reminderSubtitle: {
-    color: palette.muted,
-    fontSize: 13,
-    lineHeight: 19,
-  },
   reminderStack: {
     gap: 10,
   },
@@ -1009,12 +897,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '800',
   },
-  performanceSubtitle: {
-    color: palette.muted,
-    marginTop: 2,
-    fontSize: 12,
-    lineHeight: 18,
-  },
   performanceStatRow: {
     flexDirection: 'row',
     gap: 10,
@@ -1066,89 +948,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
   },
-  aiCard: {
-    backgroundColor: '#eef6ed',
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: 'rgba(58, 102, 72, 0.12)',
-    padding: 16,
-    gap: 14,
-  },
-  aiCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  aiCardTitle: {
-    color: palette.sageDark,
-    fontSize: 17,
-    fontWeight: '800',
-  },
-  aiCardSubtitle: {
-    color: '#5f7166',
-    marginTop: 2,
-    fontSize: 12,
-  },
-  aiCardBadge: {
-    borderRadius: 999,
-    backgroundColor: palette.surface,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  aiCardBadgeText: {
-    color: palette.sageDark,
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  aiStatGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  aiStatCell: {
-    width: '47%',
-    minHeight: 78,
-    backgroundColor: palette.surface,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(58, 102, 72, 0.08)',
-    padding: 12,
-    justifyContent: 'space-between',
-  },
-  aiStatValue: {
-    color: palette.soil,
-    fontSize: 22,
-    fontWeight: '900',
-  },
-  aiStatLabel: {
-    color: palette.muted,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  aiCardMeta: {
-    color: '#5f7166',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  aiEmptyCard: {
-    backgroundColor: palette.surface,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(58, 102, 72, 0.08)',
-    padding: 14,
-    gap: 4,
-  },
-  aiEmptyTitle: {
-    color: palette.sageDark,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  aiEmptyText: {
-    color: '#5f7166',
-    fontSize: 13,
-    lineHeight: 19,
-  },
   primaryActions: {
     flexDirection: 'row',
     gap: 10,
@@ -1197,11 +996,6 @@ const styles = StyleSheet.create({
     color: palette.soil,
     fontSize: 18,
     fontWeight: '800',
-  },
-  sectionSubtitle: {
-    color: palette.muted,
-    marginTop: 2,
-    lineHeight: 18,
   },
   linkText: {
     color: palette.sageDark,

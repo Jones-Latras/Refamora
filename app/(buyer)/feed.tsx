@@ -129,6 +129,7 @@ export default function FeedScreen() {
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [isAiSearchLoading, setIsAiSearchLoading] = useState(false)
   const [isLocationLoading, setIsLocationLoading] = useState(false)
+  const [isRecentExpanded, setIsRecentExpanded] = useState(false)
   const [aiSearchResult, setAiSearchResult] =
     useState<BuyerSearchAssistResult | null>(null)
   const [recentListings, setRecentListings] = useState<
@@ -336,39 +337,48 @@ export default function FeedScreen() {
               </Text>
             </Pressable>
 
-            <View style={styles.iconActions}>
-              <Pressable
-                accessibilityLabel="Open map view"
-                onPress={() => router.push('/(buyer)/map')}
-                style={[styles.iconButton, styles.iconButtonPrimary]}
-              >
-                <Text style={styles.iconGlyph}>⌖</Text>
-              </Pressable>
-              <Pressable
-                accessibilityLabel="Edit profile"
-                onPress={() => router.push('/(buyer)/profile')}
-                style={styles.iconButton}
-              >
-                <Text style={styles.iconGlyph}>✎</Text>
-              </Pressable>
-            </View>
           </View>
 
-          <View style={styles.viewToggle}>
-            <Pressable style={[styles.viewToggleOption, styles.viewToggleOptionActive]}>
-              <Text style={[styles.viewToggleText, styles.viewToggleTextActive]}>
-                List
+          <View style={styles.searchShell}>
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search listings, waste type, or city"
+              placeholderTextColor="#9e9183"
+              style={styles.search}
+            />
+            <Pressable
+              onPress={() => setIsFilterOpen(true)}
+              style={styles.searchFilterButton}
+            >
+              <Text style={styles.filterGlyph}>≡</Text>
+              <Text style={styles.searchFilterButtonText}>
+                {activeFilterCount > 0 ? `Filters (${activeFilterCount})` : 'Filters'}
               </Text>
             </Pressable>
-            <Pressable
-              onPress={() => router.push('/(buyer)/map')}
-              style={styles.viewToggleOption}
-            >
-              <Text style={styles.viewToggleText}>Map</Text>
-            </Pressable>
+            {(query.trim().length > 0 ||
+              activeFilterCount > 0 ||
+              aiSearchResult != null ||
+              buyerCoordinates != null) ? (
+              <Pressable
+                onPress={() => {
+                  setQuery('')
+                  setFilters({})
+                  setAiSearchResult(null)
+                  clearBuyerCoordinates()
+                }}
+                style={styles.searchClearButton}
+              >
+                <Text style={styles.searchClearButtonText}>Clear</Text>
+              </Pressable>
+            ) : null}
           </View>
 
-          <View style={styles.activityShortcutRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.actionRow}
+          >
             <Pressable
               onPress={() => router.push('/(buyer)/dashboard')}
               style={styles.activityShortcut}
@@ -377,17 +387,6 @@ export default function FeedScreen() {
                 View your recent activity
               </Text>
             </Pressable>
-          </View>
-
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Search listings, waste type, or city"
-            placeholderTextColor="#9e9183"
-            style={styles.search}
-          />
-
-          <View style={styles.filterRow}>
             <Pressable
               disabled={isOffline}
               onPress={() => void handleAiSearch()}
@@ -401,18 +400,6 @@ export default function FeedScreen() {
                     : 'Search with AI'}
               </Text>
             </Pressable>
-            <Pressable
-              onPress={() => setIsFilterOpen(true)}
-              style={styles.filterButton}
-            >
-              <Text style={styles.filterGlyph}>≡</Text>
-              <Text style={styles.filterButtonText}>
-                {activeFilterCount > 0 ? `Filters (${activeFilterCount})` : 'Filters'}
-              </Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.locationRow}>
             <Pressable
               onPress={() => void handleUseMyLocation()}
               style={[
@@ -433,12 +420,7 @@ export default function FeedScreen() {
                     : 'Use my location'}
               </Text>
             </Pressable>
-            {buyerCoordinates ? (
-              <Pressable onPress={clearBuyerCoordinates} style={styles.locationClearButton}>
-                <Text style={styles.locationClearButtonText}>Clear</Text>
-              </Pressable>
-            ) : null}
-          </View>
+          </ScrollView>
 
           <Text style={styles.locationHint}>
             {buyerCoordinates
@@ -493,32 +475,41 @@ export default function FeedScreen() {
           {recentListings.length > 0 ? (
             <View style={styles.recentSection}>
               <View style={styles.recentSectionHeader}>
-                <View>
+                <View style={styles.recentSectionText}>
                   <Text style={styles.recentSectionTitle}>Recently viewed</Text>
-                  <Text style={styles.recentSectionSubtitle}>
-                    Jump back into the listings you opened most recently.
-                  </Text>
                 </View>
-                <Pressable onPress={() => router.push('/(buyer)/dashboard')}>
-                  <Text style={styles.recentSectionLink}>See all</Text>
-                </Pressable>
+                <View style={styles.recentSectionActions}>
+                  <Pressable
+                    onPress={() => setIsRecentExpanded((current) => !current)}
+                    style={styles.recentToggle}
+                  >
+                    <Text numberOfLines={1} style={styles.recentToggleText}>
+                      {isRecentExpanded ? 'Hide' : 'Show'}
+                    </Text>
+                  </Pressable>
+                  <Pressable onPress={() => router.push('/(buyer)/dashboard')}>
+                    <Text style={styles.recentSectionLink}>See all</Text>
+                  </Pressable>
+                </View>
               </View>
 
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.recentScroll}
-              >
-                {recentListings.map((listing) => (
-                  <RecentListingChip
-                    key={listing.id}
-                    title={listing.title}
-                    city={listing.city}
-                    imageUrl={listing.imageUrl}
-                    onPress={() => router.push(`/(shared)/listing/${listing.id}`)}
-                  />
-                ))}
-              </ScrollView>
+              {isRecentExpanded ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.recentScroll}
+                >
+                  {recentListings.map((listing) => (
+                    <RecentListingChip
+                      key={listing.id}
+                      title={listing.title}
+                      city={listing.city}
+                      imageUrl={listing.imageUrl}
+                      onPress={() => router.push(`/(shared)/listing/${listing.id}`)}
+                    />
+                  ))}
+                </ScrollView>
+              ) : null}
             </View>
           ) : null}
         </View>
@@ -567,10 +558,14 @@ export default function FeedScreen() {
             description={
               isOffline
                 ? 'Reconnect to refresh the feed, pull the latest listings, and run search again.'
-                : 'Try widening your price range, changing the waste type, or switching to Map to explore nearby listings that are still available.'
+                : 'Try widening your price range, changing the waste type, or clearing some filters to explore more available listings.'
             }
-            actionLabel="Open map view"
-            onAction={() => router.push('/(buyer)/map')}
+            actionLabel="Clear filters"
+            onAction={() => {
+              setFilters({})
+              setQuery('')
+              setAiSearchResult(null)
+            }}
           />
         )}
       </View>
@@ -596,8 +591,8 @@ const styles = StyleSheet.create({
   headerShell: {
     paddingHorizontal: 24,
     paddingTop: 8,
-    paddingBottom: 14,
-    gap: 14,
+    paddingBottom: 10,
+    gap: 10,
     backgroundColor: palette.cream,
     borderBottomWidth: 1,
     borderBottomColor: palette.border,
@@ -639,100 +634,48 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontSize: 13,
   },
-  iconActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  iconButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#eef5ef',
-    borderWidth: 1,
-    borderColor: 'rgba(58, 102, 72, 0.14)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconButtonPrimary: {
-    backgroundColor: '#e1eee4',
-  },
-  iconGlyph: {
-    color: palette.sageDark,
-    fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 18,
-  },
-  viewToggle: {
-    flexDirection: 'row',
-    alignSelf: 'flex-start',
-    backgroundColor: palette.parchment,
-    borderRadius: 999,
-    padding: 4,
-    gap: 4,
-  },
-  viewToggleOption: {
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  viewToggleOptionActive: {
-    backgroundColor: palette.surface,
-    borderWidth: 1,
-    borderColor: palette.border,
-  },
-  viewToggleText: {
-    color: palette.muted,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  viewToggleTextActive: {
-    color: palette.soil,
-  },
-  search: {
+  searchShell: {
     backgroundColor: palette.surface,
     borderRadius: radii.sm,
     borderWidth: 1,
     borderColor: palette.border,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingLeft: 14,
+    paddingRight: 8,
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  search: {
+    flex: 1,
     fontSize: 14,
     color: palette.ink,
+    paddingVertical: 11,
   },
-  activityShortcutRow: {
-    alignItems: 'flex-start',
+  actionRow: {
+    gap: 6,
+    paddingRight: 24,
   },
   activityShortcut: {
     borderRadius: 999,
     borderWidth: 1,
     borderColor: palette.border,
     backgroundColor: palette.surface,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   activityShortcutText: {
     color: palette.clay,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
   },
-  filterRow: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
   locationButton: {
-    alignSelf: 'flex-start',
     backgroundColor: palette.surface,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: palette.border,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   locationButtonActive: {
     backgroundColor: '#e4efe6',
@@ -741,60 +684,61 @@ const styles = StyleSheet.create({
   locationButtonText: {
     color: palette.clay,
     fontWeight: '800',
-    fontSize: 13,
+    fontSize: 12,
   },
   locationButtonTextActive: {
     color: palette.sageDark,
   },
-  locationClearButton: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 6,
-    paddingVertical: 6,
-  },
-  locationClearButtonText: {
-    color: palette.muted,
-    fontSize: 13,
-    fontWeight: '700',
-  },
   locationHint: {
     color: palette.muted,
     fontSize: 12,
-    lineHeight: 18,
+    lineHeight: 16,
   },
   aiSearchButton: {
-    alignSelf: 'flex-start',
     backgroundColor: '#e4efe6',
     borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   aiSearchButtonText: {
     color: palette.sageDark,
     fontWeight: '800',
-    fontSize: 13,
+    fontSize: 12,
   },
   disabledButton: {
     opacity: 0.55,
   },
-  filterButton: {
-    alignSelf: 'flex-start',
+  searchFilterButton: {
     backgroundColor: palette.parchment,
     borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
-  filterButtonText: {
+  searchFilterButtonText: {
     color: palette.clay,
     fontWeight: '800',
-    fontSize: 13,
+    fontSize: 12,
+  },
+  searchClearButton: {
+    backgroundColor: palette.surface,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: palette.border,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  searchClearButtonText: {
+    color: palette.muted,
+    fontSize: 12,
+    fontWeight: '700',
   },
   filterGlyph: {
     color: palette.clay,
-    fontSize: 16,
-    lineHeight: 16,
+    fontSize: 14,
+    lineHeight: 14,
     fontWeight: '700',
   },
   aiReviewCard: {
@@ -875,24 +819,43 @@ const styles = StyleSheet.create({
   },
   recentSectionHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
+  },
+  recentSectionText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  recentSectionActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 8,
   },
   recentSectionTitle: {
     color: palette.soil,
     fontSize: 16,
     fontWeight: '800',
   },
-  recentSectionSubtitle: {
-    color: palette.muted,
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 2,
-  },
   recentSectionLink: {
     color: palette.sageDark,
     fontSize: 13,
+    fontWeight: '800',
+  },
+  recentToggle: {
+    minWidth: 58,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: palette.surface,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  recentToggleText: {
+    color: palette.clay,
+    fontSize: 12,
     fontWeight: '800',
   },
   recentScroll: {

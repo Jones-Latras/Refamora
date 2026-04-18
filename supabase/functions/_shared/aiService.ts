@@ -1,6 +1,7 @@
 import type {
   AIProvider,
   BuyerSearchAssistInput,
+  BuyerSearchAssistOutput,
   BuyerSearchAssistResult,
   AIHealthResult,
   InquirySummaryInput,
@@ -62,6 +63,111 @@ export function isProviderEnabled(provider: AIProvider) {
 
 function hasText(value: string | null | undefined) {
   return typeof value === 'string' && value.trim().length > 0
+}
+
+function buildBuyerSearchFallback(
+  input: BuyerSearchAssistInput,
+): BuyerSearchAssistOutput {
+  const query = input.query.trim()
+  const normalizedQuery = query.toLowerCase()
+
+  const wasteTypeMatchers: Array<{
+    wasteType: BuyerSearchAssistOutput['wasteType']
+    patterns: RegExp[]
+  }> = [
+    {
+      wasteType: 'coconut_husk',
+      patterns: [/coconut husk/, /coco husk/, /bunot/, /coconut coir/, /coir/],
+    },
+    {
+      wasteType: 'rice_straw',
+      patterns: [/rice straw/, /\bstraw\b/, /dayami/],
+    },
+    {
+      wasteType: 'corn_stalks',
+      patterns: [/corn stalk/, /maize stalk/, /corn stover/],
+    },
+    {
+      wasteType: 'banana_trunk',
+      patterns: [/banana trunk/, /banana stem/, /pseudostem/],
+    },
+    {
+      wasteType: 'sugarcane_bagasse',
+      patterns: [/bagasse/, /sugarcane bagasse/, /tubo/],
+    },
+    {
+      wasteType: 'pineapple_leaves',
+      patterns: [/pineapple leaves?/, /pina leaves?/],
+    },
+    {
+      wasteType: 'cassava_peel',
+      patterns: [/cassava peel/, /kamoteng kahoy peel/, /tapioca peel/],
+    },
+  ]
+
+  const wasteType =
+    wasteTypeMatchers.find((item) =>
+      item.patterns.some((pattern) => pattern.test(normalizedQuery)),
+    )?.wasteType ?? null
+
+  const fulfillmentType = normalizedQuery.includes('delivery')
+    ? normalizedQuery.includes('pickup')
+      ? 'both'
+      : 'delivery'
+    : normalizedQuery.includes('pickup') || normalizedQuery.includes('pick up')
+      ? 'pickup'
+      : null
+
+  const underMatch = normalizedQuery.match(
+    /(?:under|below|less than|max(?:imum)?|up to)\s*(?:php|p)?\s*([\d,]+(?:\.\d+)?)/,
+  )
+  const aboveMatch = normalizedQuery.match(
+    /(?:above|over|more than|min(?:imum)?|at least)\s*(?:php|p)?\s*([\d,]+(?:\.\d+)?)/,
+  )
+  const rangeMatch = normalizedQuery.match(
+    /(?:php|p)?\s*([\d,]+(?:\.\d+)?)\s*(?:-|to)\s*(?:php|p)?\s*([\d,]+(?:\.\d+)?)/,
+  )
+
+  const parseAmount = (value: string | undefined) =>
+    value ? Number(value.replaceAll(',', '')) : null
+
+  const minPrice = rangeMatch
+    ? parseAmount(rangeMatch[1])
+    : parseAmount(aboveMatch?.[1])
+  const maxPrice = rangeMatch
+    ? parseAmount(rangeMatch[2])
+    : parseAmount(underMatch?.[1])
+
+  const fillerPatterns = [
+    /delivery/g,
+    /pick\s*up/g,
+    /pickup/g,
+    /(?:under|below|less than|max(?:imum)?|up to)\s*(?:php|p)?\s*[\d,]+(?:\.\d+)?/g,
+    /(?:above|over|more than|min(?:imum)?|at least)\s*(?:php|p)?\s*[\d,]+(?:\.\d+)?/g,
+    /(?:php|p)?\s*[\d,]+(?:\.\d+)?\s*(?:-|to)\s*(?:php|p)?\s*[\d,]+(?:\.\d+)?/g,
+  ]
+
+  let search = query
+
+  for (const pattern of fillerPatterns) {
+    search = search.replace(pattern, ' ')
+  }
+
+  const cleanedSearch = search.replace(/\s+/g, ' ').trim()
+
+  return {
+    wasteType,
+    fulfillmentType,
+    minPrice:
+      typeof minPrice === 'number' && Number.isFinite(minPrice) ? minPrice : null,
+    maxPrice:
+      typeof maxPrice === 'number' && Number.isFinite(maxPrice) ? maxPrice : null,
+    search: cleanedSearch.length > 0 ? cleanedSearch : query,
+    notes: [
+      'AI search fallback was used because the model was unavailable.',
+      'Please review the interpreted filters before applying them.',
+    ],
+  }
 }
 
 function deriveListingAssistOutput(
@@ -194,7 +300,13 @@ export async function parseBuyerSearch(
   const order = getProviderOrder()
 
   if (order.length === 0) {
-    throw new Error('No AI providers are enabled.')
+    return {
+      eventId: null,
+      latencyMs: null,
+      provider: 'local_gemma',
+      fallbackUsed: true,
+      result: buildBuyerSearchFallback(input),
+    }
   }
 
   const errors: string[] = []
@@ -222,7 +334,21 @@ export async function parseBuyerSearch(
     }
   }
 
-  throw new Error(errors.join(' | '))
+  const fallbackResult = buildBuyerSearchFallback(input)
+
+  return {
+    eventId: null,
+    latencyMs: null,
+    provider: order[0],
+    fallbackUsed: true,
+    result: {
+      ...fallbackResult,
+      notes: [
+        ...fallbackResult.notes,
+        errors[0] ?? 'AI search parsing failed.',
+      ].slice(0, 3),
+    },
+  }
 }
 
 export async function moderateListing(
@@ -410,3 +536,4 @@ export async function getAIHealth(): Promise<AIHealthResult> {
     providers,
   }
 }
+

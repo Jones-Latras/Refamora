@@ -261,6 +261,14 @@ function asString(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value.trim() : fallback
 }
 
+function normalizePhilippineCurrencyText(value: string): string {
+  return value
+    .replace(/\$\s*(\d[\d,]*(?:\.\d+)?)/g, 'PHP $1')
+    .replace(/\bUSD\b/gi, 'PHP')
+    .replace(/\bdollars\b/gi, 'Philippine pesos')
+    .replace(/\bdollar\b/gi, 'Philippine peso')
+}
+
 function asNullableString(value: unknown): string | null {
   const text = asString(value)
   return text.length > 0 ? text : null
@@ -283,20 +291,26 @@ export function normalizeListingAssistOutput(
   const raw = typeof value === 'object' && value ? value : {}
 
   return {
-    improvedTitle: asString(
-      Reflect.get(raw, 'improvedTitle'),
-      'Polished listing title unavailable.',
+    improvedTitle: normalizePhilippineCurrencyText(
+      asString(
+        Reflect.get(raw, 'improvedTitle'),
+        'Polished listing title unavailable.',
+      ),
     ),
-    improvedDescription: asString(
-      Reflect.get(raw, 'improvedDescription'),
-      'Please review and complete the listing details manually.',
+    improvedDescription: normalizePhilippineCurrencyText(
+      asString(
+        Reflect.get(raw, 'improvedDescription'),
+        'Please review and complete the listing details manually.',
+      ),
     ),
     suggestedWasteType: asNullableString(Reflect.get(raw, 'suggestedWasteType')),
     suggestedUnit: asNullableString(Reflect.get(raw, 'suggestedUnit')),
     missingFields: asStringArray(Reflect.get(raw, 'missingFields')),
     publishReadiness:
       Reflect.get(raw, 'publishReadiness') === 'ready' ? 'ready' : 'needs_review',
-    notes: asStringArray(Reflect.get(raw, 'notes')),
+    notes: asStringArray(Reflect.get(raw, 'notes')).map(
+      normalizePhilippineCurrencyText,
+    ),
   }
 }
 

@@ -38,12 +38,14 @@ function getGeminiConfig() {
 function buildListingAssistPrompt(input: ListingAssistInput) {
   return [
     'You are Refamora listing assistant.',
+    'Refamora operates in the Philippines, so use Philippine peso language when currency is mentioned.',
     'Rewrite only the facts already present in the input.',
     'Improve grammar, clarity, and marketplace wording.',
     'Make the title short, specific, and easier to scan.',
     'Make the description cleaner and more buyer-friendly.',
     'Never invent missing details.',
     'If a detail is missing, leave it missing.',
+    'Do not use dollars or USD. Use PHP or peso wording instead.',
     'Keep output short and marketplace-ready.',
     'The title should usually be 4 to 8 words.',
     'The description should usually be 1 to 3 short sentences.',
@@ -94,6 +96,7 @@ function buildBuyerSearchPrompt(input: BuyerSearchAssistInput) {
   return [
     'You are Refamora buyer search assistant.',
     'Convert the buyer query into structured marketplace filters.',
+    'Assume prices refer to Philippine pesos unless the user clearly says otherwise.',
     'Only use these waste type values when appropriate: coconut_husk, rice_straw, corn_stalks, banana_trunk, sugarcane_bagasse, pineapple_leaves, cassava_peel, other.',
     'Use the search field for leftover location or keyword text.',
     'Do not invent unavailable constraints.',
