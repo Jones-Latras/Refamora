@@ -10,7 +10,17 @@ import {
   type RefObject,
 } from 'react'
 import { Controller, useForm } from 'react-hook-form'
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import {
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import type {
@@ -493,12 +503,6 @@ export function ListingEditor({
   const blockingQualityItems = publishQualityItems.filter((item) => item.status === 'fail')
   const warningQualityItems = publishQualityItems.filter((item) => item.status === 'warn')
   const passedQualityItems = publishQualityItems.filter((item) => item.status === 'pass')
-  const readinessLabel =
-    blockingQualityItems.length > 0
-      ? `${blockingQualityItems.length} to fix`
-      : warningQualityItems.length > 0
-        ? `${warningQualityItems.length} to review`
-        : 'Ready'
   const basicsSummary = selectedWasteTypeLabel
     ? `${selectedWasteTypeLabel} selected${hasText(titleValue) ? ' | title added' : ''}`
     : 'Choose a waste type and add a clear draft'
@@ -913,51 +917,48 @@ export function ListingEditor({
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
-      <ScrollView ref={scrollViewRef} contentContainerStyle={styles.content}>
-        {heroTitle || heroSubtitle ? (
-          <View style={styles.hero}>
-            {heroTitle ? <Text style={styles.title}>{heroTitle}</Text> : null}
-            {heroSubtitle ? (
-              <Text style={styles.subtitle}>{heroSubtitle}</Text>
-            ) : null}
-          </View>
-        ) : null}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
+        style={styles.keyboardShell}
+      >
+        <ScrollView
+          ref={scrollViewRef}
+          contentContainerStyle={styles.content}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+        >
+          {heroTitle || heroSubtitle ? (
+            <View style={styles.hero}>
+              {heroTitle ? <Text style={styles.title}>{heroTitle}</Text> : null}
+              {heroSubtitle ? (
+                <Text style={styles.subtitle}>{heroSubtitle}</Text>
+              ) : null}
+            </View>
+          ) : null}
 
-        <View style={styles.overviewCard}>
-          <View style={styles.overviewHeader}>
-            <View style={styles.overviewTextBlock}>
-              <Text style={styles.overviewTitle}>Create listing</Text>
-            </View>
-            <View
-              style={[
-                styles.qualityBadge,
-                blockingQualityItems.length > 0
-                  ? styles.qualityBadgeFail
-                  : warningQualityItems.length > 0
-                    ? styles.qualityBadgeWarn
-                    : styles.qualityBadgePass,
-              ]}
-            >
-              <Text style={styles.qualityBadgeText}>{readinessLabel}</Text>
-            </View>
-          </View>
-          <View style={styles.overviewStats}>
-            <View style={styles.overviewStat}>
-              <Text style={styles.overviewStatValue}>{passedQualityItems.length}</Text>
-              <Text style={styles.overviewStatLabel}>Passed</Text>
-            </View>
-            <View style={styles.overviewStat}>
-              <Text style={styles.overviewStatValue}>{warningQualityItems.length}</Text>
-              <Text style={styles.overviewStatLabel}>Review</Text>
-            </View>
-            <View style={styles.overviewStat}>
-              <Text style={styles.overviewStatValue}>{blockingQualityItems.length}</Text>
-              <Text style={styles.overviewStatLabel}>Fix now</Text>
-            </View>
-          </View>
-        </View>
+          <Pressable onPress={handlePickImage} style={styles.productPhotoCard}>
+            {selectedImage ? (
+              <>
+                <Image source={{ uri: selectedImage }} style={styles.productPhotoImage} />
+                <View style={styles.productPhotoOverlay}>
+                  <Text style={styles.productPhotoActionText}>Replace photo</Text>
+                </View>
+              </>
+            ) : (
+              <View style={styles.productPhotoEmptyState}>
+                <Text style={styles.productPhotoEmptyTitle}>Add product photo</Text>
+                <Text style={styles.productPhotoEmptyText}>
+                  Upload one clear image to show buyers what they will get.
+                </Text>
+                <View style={styles.productPhotoAction}>
+                  <Text style={styles.productPhotoActionText}>Add photo</Text>
+                </View>
+              </View>
+            )}
+          </Pressable>
 
-        <View style={styles.form}>
+          <View style={styles.form}>
           <CollapsibleSection
             title="Basics"
             hint="Choose the waste type, then draft the listing."
@@ -1531,15 +1532,6 @@ export function ListingEditor({
 
             {selectedImage ? (
               <>
-                <View style={styles.imageNotice}>
-                  <Text style={styles.imageNoticeTitle}>Image ready</Text>
-                  <Text style={styles.imageNoticeText}>
-                    {selectedImage.startsWith('http')
-                      ? 'This listing already has an uploaded image.'
-                      : 'The compressed image will upload when you save this listing.'}
-                  </Text>
-                </View>
-
                 {aiListingAssistEnabled ? (
                   <View style={styles.photoCheckCard}>
                     <View style={styles.photoCheckHeader}>
@@ -1657,11 +1649,6 @@ export function ListingEditor({
               </>
             ) : null}
 
-            <Pressable onPress={handlePickImage} style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>
-                {selectedImage ? 'Replace image' : 'Add image'}
-              </Text>
-            </Pressable>
           </CollapsibleSection>
 
           <CollapsibleSection
@@ -1834,6 +1821,7 @@ export function ListingEditor({
             ) : null}
           </CollapsibleSection>
 
+          </View>
           <View style={styles.submitRow}>
             {onSaveDraftValues ? (
               <Pressable
@@ -1862,8 +1850,8 @@ export function ListingEditor({
               </Text>
             </Pressable>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   )
 }
@@ -1872,6 +1860,9 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: palette.cream,
+  },
+  keyboardShell: {
+    flex: 1,
   },
   content: {
     paddingHorizontal: 16,
@@ -1892,58 +1883,58 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
   },
-  overviewCard: {
-    gap: 12,
-    backgroundColor: '#f4f7f1',
+  productPhotoCard: {
     borderRadius: radii.md,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(58, 102, 72, 0.12)',
-    padding: 14,
-  },
-  overviewHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  overviewTextBlock: {
-    flex: 1,
-    gap: 4,
-  },
-  overviewTitle: {
-    color: palette.soil,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  overviewSubtitle: {
-    color: palette.muted,
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  overviewStats: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  overviewStat: {
-    flex: 1,
+    borderColor: 'rgba(28, 16, 10, 0.08)',
     backgroundColor: palette.surface,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(58, 102, 72, 0.08)',
-    paddingVertical: 10,
+    position: 'relative',
+  },
+  productPhotoImage: {
+    width: '100%',
+    height: 210,
+    backgroundColor: palette.parchment,
+  },
+  productPhotoOverlay: {
+    position: 'absolute',
+    right: 12,
+    bottom: 12,
+    borderRadius: 999,
+    backgroundColor: 'rgba(28, 16, 10, 0.72)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  productPhotoEmptyState: {
+    minHeight: 210,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    gap: 10,
+    backgroundColor: '#f4f7f1',
   },
-  overviewStatValue: {
+  productPhotoEmptyTitle: {
     color: palette.soil,
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
   },
-  overviewStatLabel: {
+  productPhotoEmptyText: {
     color: palette.muted,
-    fontSize: 11,
-    textTransform: 'uppercase',
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: 'center',
+  },
+  productPhotoAction: {
+    borderRadius: 999,
+    backgroundColor: palette.sageDark,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  productPhotoActionText: {
+    color: palette.cream,
+    fontSize: 13,
+    fontWeight: '800',
   },
   form: {
     gap: 10,
@@ -2373,34 +2364,6 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: palette.cream,
     fontWeight: '800',
-  },
-  secondaryButton: {
-    backgroundColor: palette.surface,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: palette.border,
-    paddingVertical: 11,
-    alignItems: 'center',
-  },
-  secondaryButtonText: {
-    color: palette.soil,
-    fontWeight: '700',
-  },
-  imageNotice: {
-    backgroundColor: '#eef5ef',
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: 'rgba(58, 102, 72, 0.2)',
-    padding: 12,
-    gap: 4,
-  },
-  imageNoticeTitle: {
-    color: palette.sageDark,
-    fontWeight: '800',
-  },
-  imageNoticeText: {
-    color: palette.sageDark,
-    lineHeight: 20,
   },
   photoCheckCard: {
     gap: 10,
