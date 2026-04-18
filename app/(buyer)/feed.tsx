@@ -408,7 +408,7 @@ export default function FeedScreen() {
               onPress={() => void handleAiSearch()}
               style={[styles.aiSearchButton, isOffline ? styles.disabledButton : null, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
             >
-              <Feather name="sparkles" size={14} color={palette.sageDark} />
+              <Feather name="zap" size={14} color={palette.sageDark} />
               <Text style={styles.aiSearchButtonText}>
                 {isOffline
                   ? 'AI search offline'

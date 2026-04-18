@@ -21,6 +21,7 @@ import {
   TextInput,
   View,
 } from 'react-native'
+import { Feather } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import type {
@@ -97,6 +98,7 @@ type ListingSectionKey = 'basics' | 'pricing' | 'checks' | 'ai'
 
 type CollapsibleSectionProps = {
   title: string
+  icon?: keyof typeof Feather.glyphMap
   hint: string
   summary?: string | null
   isOpen: boolean
@@ -152,6 +154,7 @@ function normalizeDetectedWasteType(value: string | null | undefined): WasteType
 
 function CollapsibleSection({
   title,
+  icon,
   hint,
   summary,
   isOpen,
@@ -163,7 +166,10 @@ function CollapsibleSection({
     <View onLayout={onLayout} style={styles.sectionCard}>
       <Pressable onPress={onToggle} style={styles.sectionToggle}>
         <View style={styles.sectionToggleText}>
-          <Text style={styles.sectionTitle}>{title}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {icon ? <Feather name={icon} size={18} color={palette.soil} /> : null}
+            <Text style={styles.sectionTitle}>{title}</Text>
+          </View>
           <Text style={styles.sectionHint}>{isOpen ? hint : summary ?? hint}</Text>
         </View>
         <View style={styles.sectionToggleBadge}>
@@ -1110,7 +1116,8 @@ export function ListingEditor({
                 <Text style={styles.productPhotoEmptyText}>
                   Upload one clear image to show buyers what they will get.
                 </Text>
-                <View style={styles.productPhotoAction}>
+                <View style={[styles.productPhotoAction, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}>
+                  <Feather name="camera" size={14} color={palette.clay} />
                   <Text style={styles.productPhotoActionText}>Add photo</Text>
                 </View>
               </View>
@@ -1148,6 +1155,7 @@ export function ListingEditor({
           <View style={styles.form}>
           <CollapsibleSection
             title="Basics"
+            icon="info"
             hint="Choose the waste type, then draft the listing."
             summary={basicsSummary}
             isOpen={openSections.basics}
@@ -1264,6 +1272,7 @@ export function ListingEditor({
 
           <CollapsibleSection
             title="Pricing and pickup"
+            icon="tag"
             hint="Set the amount, unit, and where buyers can get it."
             summary={pricingSummary}
             isOpen={openSections.pricing}
@@ -1646,6 +1655,7 @@ export function ListingEditor({
           {aiListingAssistEnabled ? (
             <CollapsibleSection
               title="AI tools"
+              icon="zap"
               hint="Use AI only after you have a rough draft or selected waste type."
               summary={aiSummary}
               isOpen={openSections.ai}
@@ -1737,6 +1747,7 @@ export function ListingEditor({
 
           <CollapsibleSection
             title="Publish checks"
+            icon="check-circle"
             hint="Fix blockers here before the listing goes live."
             summary={checksSummary}
             isOpen={openSections.checks}
@@ -1913,8 +1924,9 @@ export function ListingEditor({
               <Pressable
                 disabled={isSavingDraft || isSubmitting || isPublishLocked}
                 onPress={() => void handleSaveDraft()}
-                style={styles.draftButton}
+                style={[styles.draftButton, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
               >
+                <Feather name="save" size={16} color={palette.clay} />
                 <Text style={styles.draftButtonText}>
                   {isSavingDraft ? draftSavedLabel : draftLabel}
                 </Text>
@@ -1923,8 +1935,9 @@ export function ListingEditor({
             <Pressable
               disabled={isSubmitting || isModerationLoading || isSavingDraft || isPublishLocked}
               onPress={onSubmit}
-              style={styles.primaryButton}
+              style={[styles.primaryButton, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
             >
+              <Feather name="upload-cloud" size={16} color={palette.cream} />
               <Text style={styles.primaryButtonText}>
                 {isSubmitting
                   ? submittingLabel
@@ -1932,7 +1945,7 @@ export function ListingEditor({
                     ? 'Running safety check...'
                     : blockingQualityItems.length > 0
                       ? 'Fix quality issues first'
-                    : submitLabel}
+                      : submitLabel}
               </Text>
             </Pressable>
           </View>
