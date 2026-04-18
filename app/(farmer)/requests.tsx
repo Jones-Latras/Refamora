@@ -226,10 +226,10 @@ export default function FarmerRequestsScreen() {
   }
 
   return (
-    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={styles.safeArea}>
       <View style={styles.headerCard}>
         <View style={styles.headerTextBlock}>
-          <Text style={styles.title}>Seller inquiry inbox</Text>
+          <Text style={styles.title}>Buyer inquiries</Text>
           <Text style={styles.subtitle}>
             Review buyer questions, see what still needs attention, and use AI to
             draft replies.
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
   },
   headerCard: {
     marginHorizontal: 24,
-    marginTop: 16,
+    marginTop: 8,
     marginBottom: 8,
     backgroundColor: '#eef6ed',
     borderRadius: radii.md,

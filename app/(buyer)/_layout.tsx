@@ -10,10 +10,10 @@ function getBuyerTabIcon(
   focused: boolean,
 ) {
   const iconByRoute: Record<string, string> = {
-    feed: '⌂',
-    map: '⌖',
-    requests: '✉',
-    profile: '◉',
+    feed: '\u2302',
+    map: '\u2316',
+    requests: '\u2709',
+    profile: '\u25C9',
   }
 
   return (
@@ -25,7 +25,7 @@ function getBuyerTabIcon(
         lineHeight: size + 2,
       }}
     >
-      {iconByRoute[routeName] ?? '•'}
+      {iconByRoute[routeName] ?? '\u2022'}
     </Text>
   )
 }

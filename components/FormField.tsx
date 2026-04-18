@@ -79,7 +79,7 @@ export const FormField = forwardRef<TextInput, FormFieldProps>(function FormFiel
 
 const styles = StyleSheet.create({
   wrapper: {
-    gap: 6,
+    gap: 4,
   },
   labelRow: {
     flexDirection: 'row',
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   label: {
     color: palette.soil,
     fontWeight: '700',
-    fontSize: 13,
+    fontSize: 12,
   },
   actionText: {
     color: palette.sageDark,
@@ -102,13 +102,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: palette.border,
     backgroundColor: palette.surface,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     fontSize: 14,
     color: palette.ink,
   },
   multiline: {
-    minHeight: 96,
+    minHeight: 84,
     textAlignVertical: 'top',
   },
   inputError: {
@@ -116,8 +116,8 @@ const styles = StyleSheet.create({
   },
   helper: {
     color: palette.muted,
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 11,
+    lineHeight: 15,
   },
   error: {
     color: palette.error,

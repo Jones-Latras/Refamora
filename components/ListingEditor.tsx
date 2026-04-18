@@ -805,844 +805,874 @@ export function ListingEditor({
         ) : null}
 
         <View style={styles.form}>
-          <View style={styles.selectorBlock}>
-          <View onLayout={registerFieldPosition('waste_type')}>
-            <Text style={styles.selectorLabel}>Waste type</Text>
-            <View style={styles.selectorWrap}>
-              {WASTE_TYPES.map((type) => {
-                const selected = selectedWasteType === type.value
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Basics</Text>
+              <Text style={styles.sectionHint}>Choose the waste type, then draft the listing.</Text>
+            </View>
 
-                return (
+            <View style={styles.selectorBlock}>
+              <View onLayout={registerFieldPosition('waste_type')}>
+                <Text style={styles.selectorLabel}>Waste type</Text>
+                <View style={styles.selectorWrap}>
+                  {WASTE_TYPES.map((type) => {
+                    const selected = selectedWasteType === type.value
+
+                    return (
+                      <Pressable
+                        key={type.value}
+                        onPress={() =>
+                          setValue('waste_type', type.value as WasteTypeValue, {
+                            shouldValidate: true,
+                          })
+                        }
+                        style={[
+                          styles.selectorChip,
+                          selected ? styles.selectorChipActive : null,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.selectorChipText,
+                            selected ? styles.selectorChipTextActive : null,
+                          ]}
+                        >
+                          {type.label}
+                        </Text>
+                      </Pressable>
+                    )
+                  })}
+                </View>
+                {errors.waste_type?.message ? (
+                  <Text style={styles.errorText}>{errors.waste_type.message}</Text>
+                ) : null}
+              </View>
+            </View>
+
+            {wasteSuggestions.length > 0 ? (
+              <WasteSuggestions
+                suggestions={wasteSuggestions}
+                onSelect={(value) => setValue('title', value)}
+              />
+            ) : null}
+
+            {aiListingAssistEnabled && selectedWasteTypeLabel ? (
+              <View style={styles.valueAdvisorCard}>
+                <View style={styles.valueAdvisorHeader}>
+                  <View style={styles.valueAdvisorTextBlock}>
+                    <Text style={styles.valueAdvisorTitle}>
+                      Waste-to-value advisor
+                    </Text>
+                    <Text style={styles.valueAdvisorSubtitle}>
+                      Quick ideas for making {selectedWasteTypeLabel.toLowerCase()} more valuable.
+                    </Text>
+                  </View>
                   <Pressable
-                    key={type.value}
-                    onPress={() =>
-                      setValue('waste_type', type.value as WasteTypeValue, {
-                        shouldValidate: true,
-                      })
-                    }
+                    disabled={isWasteAdviceLoading || isCheckingAIHealth}
+                    onPress={handleWasteValueAdvice}
                     style={[
-                      styles.selectorChip,
-                      selected ? styles.selectorChipActive : null,
+                      styles.valueAdvisorButton,
+                      isWasteAdviceLoading || isCheckingAIHealth
+                        ? styles.aiButtonDisabled
+                        : null,
                     ]}
                   >
-                    <Text
-                      style={[
-                        styles.selectorChipText,
-                        selected ? styles.selectorChipTextActive : null,
-                      ]}
-                    >
-                      {type.label}
+                    <Text style={styles.valueAdvisorButtonText}>
+                      {isCheckingAIHealth
+                        ? 'Checking...'
+                        : isWasteAdviceLoading
+                          ? 'Loading...'
+                          : 'See ideas'}
                     </Text>
                   </Pressable>
-                )
-              })}
-            </View>
-            {errors.waste_type?.message ? (
-              <Text style={styles.errorText}>{errors.waste_type.message}</Text>
-            ) : null}
-          </View>
-          </View>
-
-          {wasteSuggestions.length > 0 ? (
-            <WasteSuggestions
-              suggestions={wasteSuggestions}
-              onSelect={(value) => setValue('title', value)}
-            />
-          ) : null}
-
-          {aiListingAssistEnabled && selectedWasteTypeLabel ? (
-            <View style={styles.valueAdvisorCard}>
-              <View style={styles.valueAdvisorHeader}>
-                <View style={styles.valueAdvisorTextBlock}>
-                  <Text style={styles.valueAdvisorTitle}>
-                    Waste-to-value advisor
-                  </Text>
-                  <Text style={styles.valueAdvisorSubtitle}>
-                    See short AI ideas for making {selectedWasteTypeLabel.toLowerCase()}{' '}
-                    more valuable.
-                  </Text>
                 </View>
+
+                {wasteAdviceResult ? (
+                  <View style={styles.valueAdvisorContent}>
+                    <Text style={styles.valueAdvisorMeta}>
+                      Provider:{' '}
+                      {wasteAdviceResult.provider === 'local_gemma'
+                        ? 'Local Gemma'
+                        : 'Gemini'}
+                      {wasteAdviceResult.fallbackUsed ? ' | fallback used' : ''}
+                    </Text>
+                    {wasteAdviceResult.result.marketTip ? (
+                      <Text style={styles.valueAdvisorTip}>
+                        {wasteAdviceResult.result.marketTip}
+                      </Text>
+                    ) : null}
+                    {wasteAdviceResult.result.uses.length > 0 ? (
+                      <View style={styles.valueAdvisorListBlock}>
+                        <Text style={styles.valueAdvisorListLabel}>
+                          Possible uses
+                        </Text>
+                        {wasteAdviceResult.result.uses.map((item) => (
+                          <Text key={item} style={styles.valueAdvisorListItem}>
+                            - {item}
+                          </Text>
+                        ))}
+                      </View>
+                    ) : null}
+                    {wasteAdviceResult.result.cautions.length > 0 ? (
+                      <View style={styles.valueAdvisorListBlock}>
+                        <Text style={styles.valueAdvisorListLabel}>Cautions</Text>
+                        {wasteAdviceResult.result.cautions.map((item) => (
+                          <Text key={item} style={styles.valueAdvisorListItem}>
+                            - {item}
+                          </Text>
+                        ))}
+                      </View>
+                    ) : null}
+                    {wasteAdviceResult.result.sourceBasis.length > 0 ? (
+                      <View style={styles.valueAdvisorListBlock}>
+                        <Text style={styles.valueAdvisorListLabel}>
+                          Grounded in
+                        </Text>
+                        {wasteAdviceResult.result.sourceBasis.map((item) => (
+                          <Text key={item} style={styles.valueAdvisorSourceItem}>
+                            - {item}
+                          </Text>
+                        ))}
+                      </View>
+                    ) : null}
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+
+            <View onLayout={registerFieldPosition('title')}>
+              <Controller
+                control={control}
+                name="title"
+                render={({ field: { onChange, value } }) => (
+                  <FormField
+                    ref={titleRef}
+                    label="Listing title"
+                    value={value}
+                    onChangeText={onChange}
+                    placeholder="Dry rice straw for mushroom growing"
+                    returnKeyType="next"
+                    onSubmitEditing={() => descriptionRef.current?.focus()}
+                    error={errors.title?.message}
+                  />
+                )}
+              />
+            </View>
+            <View onLayout={registerFieldPosition('description')}>
+              <Controller
+                control={control}
+                name="description"
+                render={({ field: { onChange, value } }) => (
+                  <FormField
+                    ref={descriptionRef}
+                    label="Description"
+                    value={value}
+                    onChangeText={onChange}
+                    placeholder="Condition, moisture level, packaging, pickup notes"
+                    multiline
+                    returnKeyType="next"
+                    blurOnSubmit
+                    onSubmitEditing={() => priceRef.current?.focus()}
+                    error={errors.description?.message}
+                  />
+                )}
+              />
+            </View>
+
+            {aiListingAssistEnabled ? (
+              <View style={styles.aiSection}>
                 <Pressable
-                  disabled={isWasteAdviceLoading || isCheckingAIHealth}
-                  onPress={handleWasteValueAdvice}
+                  disabled={isAiApplying || isCheckingAIHealth}
+                  onPress={aiHealth?.available ? handleAiAssist : checkAiHealth}
                   style={[
-                    styles.valueAdvisorButton,
-                    isWasteAdviceLoading || isCheckingAIHealth
+                    styles.aiButton,
+                    isAiApplying || isCheckingAIHealth
                       ? styles.aiButtonDisabled
                       : null,
                   ]}
                 >
-                  <Text style={styles.valueAdvisorButtonText}>
+                  <Text style={styles.aiButtonText}>
                     {isCheckingAIHealth
-                      ? 'Checking...'
-                      : isWasteAdviceLoading
-                        ? 'Loading...'
-                        : 'See value ideas'}
+                      ? 'Checking AI...'
+                      : isAiApplying
+                        ? 'Improving with AI...'
+                        : aiHealth?.available
+                          ? 'Improve title and description'
+                          : 'Retry AI check'}
                   </Text>
                 </Pressable>
-              </View>
-
-              {wasteAdviceResult ? (
-                <View style={styles.valueAdvisorContent}>
-                  <Text style={styles.valueAdvisorMeta}>
-                    Provider:{' '}
-                    {wasteAdviceResult.provider === 'local_gemma'
-                      ? 'Local Gemma'
-                      : 'Gemini'}
-                    {wasteAdviceResult.fallbackUsed ? ' | fallback used' : ''}
+                {aiHealth?.available ? (
+                  <Text style={styles.aiMeta}>
+                    Refines your draft with {primaryAiProviderLabel ?? 'AI'}
+                    {hasGeminiFallback ? ' and Gemini fallback if needed.' : '.'}
                   </Text>
-                  {wasteAdviceResult.result.marketTip ? (
-                    <Text style={styles.valueAdvisorTip}>
-                      {wasteAdviceResult.result.marketTip}
+                ) : (
+                  <View style={styles.aiUnavailableCard}>
+                    <Text style={styles.aiUnavailableTitle}>
+                      AI is not ready right now
                     </Text>
-                  ) : null}
-                  {wasteAdviceResult.result.uses.length > 0 ? (
-                    <View style={styles.valueAdvisorListBlock}>
-                      <Text style={styles.valueAdvisorListLabel}>
-                        Possible uses
-                      </Text>
-                      {wasteAdviceResult.result.uses.map((item) => (
-                        <Text key={item} style={styles.valueAdvisorListItem}>
-                          - {item}
-                        </Text>
-                      ))}
-                    </View>
-                  ) : null}
-                  {wasteAdviceResult.result.cautions.length > 0 ? (
-                    <View style={styles.valueAdvisorListBlock}>
-                      <Text style={styles.valueAdvisorListLabel}>Cautions</Text>
-                      {wasteAdviceResult.result.cautions.map((item) => (
-                        <Text key={item} style={styles.valueAdvisorListItem}>
-                          - {item}
-                        </Text>
-                      ))}
-                    </View>
-                  ) : null}
-                  {wasteAdviceResult.result.sourceBasis.length > 0 ? (
-                    <View style={styles.valueAdvisorListBlock}>
-                      <Text style={styles.valueAdvisorListLabel}>
-                        Grounded in
-                      </Text>
-                      {wasteAdviceResult.result.sourceBasis.map((item) => (
-                        <Text key={item} style={styles.valueAdvisorSourceItem}>
-                          - {item}
-                        </Text>
-                      ))}
-                    </View>
-                  ) : null}
-                </View>
-              ) : null}
-            </View>
-          ) : null}
-
-          <View onLayout={registerFieldPosition('title')}>
-            <Controller
-              control={control}
-              name="title"
-              render={({ field: { onChange, value } }) => (
-                <FormField
-                  ref={titleRef}
-                  label="Listing title"
-                  value={value}
-                  onChangeText={onChange}
-                  placeholder="Dry rice straw for mushroom growing"
-                  returnKeyType="next"
-                  onSubmitEditing={() => descriptionRef.current?.focus()}
-                  error={errors.title?.message}
-                />
-              )}
-            />
-          </View>
-          <View onLayout={registerFieldPosition('description')}>
-            <Controller
-              control={control}
-              name="description"
-              render={({ field: { onChange, value } }) => (
-                <FormField
-                  ref={descriptionRef}
-                  label="Description"
-                  value={value}
-                  onChangeText={onChange}
-                  placeholder="Short details about moisture, condition, and volume"
-                  multiline
-                  returnKeyType="next"
-                  blurOnSubmit
-                  onSubmitEditing={() => priceRef.current?.focus()}
-                  error={errors.description?.message}
-                />
-              )}
-            />
-          </View>
-
-          {aiListingAssistEnabled ? (
-            <View style={styles.aiSection}>
-              <Pressable
-                disabled={isAiApplying || isCheckingAIHealth}
-                onPress={aiHealth?.available ? handleAiAssist : checkAiHealth}
-                style={[
-                  styles.aiButton,
-                  isAiApplying || isCheckingAIHealth
-                    ? styles.aiButtonDisabled
-                    : null,
-                ]}
-              >
-                <Text style={styles.aiButtonText}>
-                  {isCheckingAIHealth
-                    ? 'Checking AI...'
-                    : isAiApplying
-                      ? 'Improving with AI...'
-                      : aiHealth?.available
-                        ? 'Improve with AI'
-                        : 'Retry AI check'}
-                </Text>
-              </Pressable>
-              {aiHealth?.available ? (
-                <Text style={styles.aiMeta}>
-                  Ready to refine your title and description with{' '}
-                  {primaryAiProviderLabel ?? 'AI'}
-                  {hasGeminiFallback ? ' and Gemini fallback if needed.' : '.'}
-                </Text>
-              ) : (
-                <View style={styles.aiUnavailableCard}>
-                  <Text style={styles.aiUnavailableTitle}>
-                    AI is not ready right now
-                  </Text>
-                  <Text style={styles.aiUnavailableText}>
-                    {aiHealthError ??
-                      'We could not reach the configured providers. You can keep writing manually and retry later.'}
-                  </Text>
-                </View>
-              )}
-              {aiAssistResult ? (
-                <View style={styles.aiResultCard}>
-                  <View style={styles.aiResultHeader}>
-                    <Text style={styles.aiResultTitle}>AI suggestions ready</Text>
-                    <View
-                      style={[
-                        styles.aiReadinessBadge,
-                        aiAssistResult.result.publishReadiness === 'ready'
-                          ? styles.aiReadinessBadgeReady
-                          : styles.aiReadinessBadgeReview,
-                      ]}
-                    >
-                      <Text style={styles.aiReadinessText}>
-                        {aiAssistResult.result.publishReadiness === 'ready'
-                          ? 'Ready'
-                          : 'Review'}
-                      </Text>
-                    </View>
+                    <Text style={styles.aiUnavailableText}>
+                      {aiHealthError ??
+                        'We could not reach the configured providers. You can keep writing manually and retry later.'}
+                    </Text>
                   </View>
-                  <Text style={styles.aiProviderMeta}>
-                    Provider:{' '}
-                    {aiAssistResult.provider === 'local_gemma'
-                      ? 'Local Gemma'
-                      : 'Gemini'}
-                    {aiAssistResult.fallbackUsed ? ' | fallback used' : ''}
-                  </Text>
-                  {aiAssistResult.result.notes.length > 0 ? (
-                    <View style={styles.aiListBlock}>
-                      <Text style={styles.aiListLabel}>Notes</Text>
-                      {aiAssistResult.result.notes.map((note) => (
-                        <Text key={note} style={styles.aiListItem}>
-                          - {note}
-                        </Text>
-                      ))}
-                    </View>
-                  ) : null}
-                  {aiAssistResult.result.missingFields.length > 0 ? (
-                    <View style={styles.aiListBlock}>
-                      <Text style={styles.aiListLabel}>Still review</Text>
-                      {aiAssistResult.result.missingFields.map((item) => (
-                        <Text key={item} style={styles.aiListItem}>
-                          - {item}
-                        </Text>
-                      ))}
-                    </View>
-                  ) : null}
-                  {aiFeedbackStatus ? (
-                    <Text style={styles.aiFeedbackNote}>
-                      {aiFeedbackStatus === 'accepted'
-                        ? 'Suggestion kept. You can continue editing before you publish.'
-                        : 'Previous draft restored. You can keep editing or run AI again.'}
-                    </Text>
-                  ) : (
-                    <View style={styles.aiFeedbackActions}>
-                      <Pressable
-                        disabled={isSubmittingAiFeedback}
-                        onPress={handleAcceptAiSuggestion}
+                )}
+                {aiAssistResult ? (
+                  <View style={styles.aiResultCard}>
+                    <View style={styles.aiResultHeader}>
+                      <Text style={styles.aiResultTitle}>AI suggestions ready</Text>
+                      <View
                         style={[
-                          styles.aiFeedbackPrimaryButton,
-                          isSubmittingAiFeedback
-                            ? styles.aiFeedbackButtonDisabled
-                            : null,
+                          styles.aiReadinessBadge,
+                          aiAssistResult.result.publishReadiness === 'ready'
+                            ? styles.aiReadinessBadgeReady
+                            : styles.aiReadinessBadgeReview,
                         ]}
                       >
-                        <Text style={styles.aiFeedbackPrimaryText}>
-                          {isSubmittingAiFeedback
-                            ? 'Saving...'
-                            : 'Use suggestion'}
+                        <Text style={styles.aiReadinessText}>
+                          {aiAssistResult.result.publishReadiness === 'ready'
+                            ? 'Ready'
+                            : 'Review'}
                         </Text>
-                      </Pressable>
-                      <Pressable
-                        disabled={isSubmittingAiFeedback}
-                        onPress={handleRejectAiSuggestion}
-                        style={[
-                          styles.aiFeedbackSecondaryButton,
-                          isSubmittingAiFeedback
-                            ? styles.aiFeedbackButtonDisabled
-                            : null,
-                        ]}
-                      >
-                        <Text style={styles.aiFeedbackSecondaryText}>
-                          Not helpful
-                        </Text>
-                      </Pressable>
+                      </View>
                     </View>
-                  )}
-                </View>
-              ) : null}
-            </View>
-          ) : null}
-
-          <View
-            style={styles.row}
-            onLayout={(event) => {
-              registerFieldPosition('price')(event)
-              registerFieldPosition('quantity')(event)
-            }}
-          >
-            <Controller
-              control={control}
-              name="price"
-              render={({ field: { onChange, value } }) => (
-                <View style={styles.flex}>
-                  <FormField
-                    ref={priceRef}
-                    label="Price"
-                    value={String(value)}
-                    onChangeText={onChange}
-                    keyboardType="number-pad"
-                    returnKeyType="next"
-                    onSubmitEditing={() => quantityRef.current?.focus()}
-                    helperText="Enter the listing price in pesos, for example 250 or 250.50."
-                    error={errors.price?.message}
-                  />
-                </View>
-              )}
-            />
-            <Controller
-              control={control}
-              name="quantity"
-              render={({ field: { onChange, value } }) => (
-                <View style={styles.flex}>
-                  <FormField
-                    ref={quantityRef}
-                    label="Quantity"
-                    value={String(value)}
-                    onChangeText={onChange}
-                    keyboardType="number-pad"
-                    returnKeyType="next"
-                    onSubmitEditing={() => unitRef.current?.focus()}
-                    helperText="Use numbers only, such as 10, 25, or 1.5."
-                    error={errors.quantity?.message}
-                  />
-                </View>
-              )}
-            />
-          </View>
-          <View
-            style={styles.row}
-            onLayout={(event) => {
-              registerFieldPosition('unit')(event)
-              registerFieldPosition('city')(event)
-            }}
-          >
-            <Controller
-              control={control}
-              name="unit"
-              render={({ field: { onChange, value } }) => (
-                <View style={styles.flex}>
-                  <FormField
-                    ref={unitRef}
-                    label="Unit"
-                    value={value}
-                    onChangeText={onChange}
-                    placeholder="kg"
-                    returnKeyType="next"
-                    onSubmitEditing={() => cityRef.current?.focus()}
-                    error={errors.unit?.message}
-                  />
-                </View>
-              )}
-            />
-            <Controller
-              control={control}
-              name="city"
-              render={({ field: { onChange, value } }) => (
-                <View style={styles.flex}>
-                  <FormField
-                    ref={cityRef}
-                    label="City"
-                    value={value}
-                    onChangeText={onChange}
-                    placeholder="Malaybalay"
-                    returnKeyType="next"
-                    onSubmitEditing={() => addressRef.current?.focus()}
-                    helperText="Use the city buyers will search for."
-                    error={errors.city?.message}
-                  />
-                </View>
-              )}
-            />
-          </View>
-          <View style={styles.selectorBlock}>
-            <Text style={styles.selectorLabel}>Common units</Text>
-            <View style={styles.selectorWrap}>
-              {unitPresets.map((unit) => {
-                const selected = selectedUnit === unit
-
-                return (
-                  <Pressable
-                    key={unit}
-                    onPress={() =>
-                      setValue('unit', unit, {
-                        shouldValidate: true,
-                      })
-                    }
-                    style={[
-                      styles.selectorChip,
-                      selected ? styles.selectorChipActive : null,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.selectorChipText,
-                        selected ? styles.selectorChipTextActive : null,
-                      ]}
-                    >
-                      {unit}
+                    <Text style={styles.aiProviderMeta}>
+                      Provider:{' '}
+                      {aiAssistResult.provider === 'local_gemma'
+                        ? 'Local Gemma'
+                        : 'Gemini'}
+                      {aiAssistResult.fallbackUsed ? ' | fallback used' : ''}
                     </Text>
-                  </Pressable>
-                )
-              })}
-            </View>
-          </View>
-          <View onLayout={registerFieldPosition('address')}>
-            <Controller
-              control={control}
-              name="address"
-              render={({ field: { onChange, value } }) => (
-                <FormField
-                  ref={addressRef}
-                  label="Pickup address"
-                  value={value}
-                  onChangeText={onChange}
-                  placeholder="Purok 3, Malaybalay, Bukidnon"
-                  returnKeyType="done"
-                  onSubmitEditing={() => void onSubmit()}
-                  error={errors.address?.message}
-                />
-              )}
-            />
-          </View>
-          <View
-            style={styles.selectorBlock}
-            onLayout={registerFieldPosition('fulfillment_type')}
-          >
-            <Text style={styles.selectorLabel}>Fulfillment type</Text>
-            <View style={styles.selectorWrap}>
-              {fulfillmentOptions.map((option) => {
-                const selected = selectedFulfillmentType === option.value
-
-                return (
-                  <Pressable
-                    key={option.value}
-                    onPress={() =>
-                      setValue('fulfillment_type', option.value, {
-                        shouldValidate: true,
-                      })
-                    }
-                    style={[
-                      styles.selectorChip,
-                      selected ? styles.selectorChipActive : null,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.selectorChipText,
-                        selected ? styles.selectorChipTextActive : null,
-                      ]}
-                    >
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                )
-              })}
-            </View>
-            {errors.fulfillment_type?.message ? (
-              <Text style={styles.errorText}>
-                {errors.fulfillment_type.message}
-              </Text>
+                    {aiAssistResult.result.notes.length > 0 ? (
+                      <View style={styles.aiListBlock}>
+                        <Text style={styles.aiListLabel}>Notes</Text>
+                        {aiAssistResult.result.notes.map((note) => (
+                          <Text key={note} style={styles.aiListItem}>
+                            - {note}
+                          </Text>
+                        ))}
+                      </View>
+                    ) : null}
+                    {aiAssistResult.result.missingFields.length > 0 ? (
+                      <View style={styles.aiListBlock}>
+                        <Text style={styles.aiListLabel}>Still review</Text>
+                        {aiAssistResult.result.missingFields.map((item) => (
+                          <Text key={item} style={styles.aiListItem}>
+                            - {item}
+                          </Text>
+                        ))}
+                      </View>
+                    ) : null}
+                    {aiFeedbackStatus ? (
+                      <Text style={styles.aiFeedbackNote}>
+                        {aiFeedbackStatus === 'accepted'
+                          ? 'Suggestion kept. You can continue editing before you publish.'
+                          : 'Previous draft restored. You can keep editing or run AI again.'}
+                      </Text>
+                    ) : (
+                      <View style={styles.aiFeedbackActions}>
+                        <Pressable
+                          disabled={isSubmittingAiFeedback}
+                          onPress={handleAcceptAiSuggestion}
+                          style={[
+                            styles.aiFeedbackPrimaryButton,
+                            isSubmittingAiFeedback
+                              ? styles.aiFeedbackButtonDisabled
+                              : null,
+                          ]}
+                        >
+                          <Text style={styles.aiFeedbackPrimaryText}>
+                            {isSubmittingAiFeedback
+                              ? 'Saving...'
+                              : 'Use suggestion'}
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          disabled={isSubmittingAiFeedback}
+                          onPress={handleRejectAiSuggestion}
+                          style={[
+                            styles.aiFeedbackSecondaryButton,
+                            isSubmittingAiFeedback
+                              ? styles.aiFeedbackButtonDisabled
+                              : null,
+                          ]}
+                        >
+                          <Text style={styles.aiFeedbackSecondaryText}>
+                            Not helpful
+                          </Text>
+                        </Pressable>
+                      </View>
+                    )}
+                  </View>
+                ) : null}
+              </View>
             ) : null}
           </View>
 
-          <Pressable
-            onPress={() =>
-              setValue('accept_offers', !acceptsOffers, {
-                shouldValidate: true,
-              })
-            }
-            style={[
-              styles.toggleCard,
-              acceptsOffers ? styles.toggleCardActive : null,
-            ]}
-          >
-            <View style={styles.toggleTextBlock}>
-              <Text style={styles.toggleTitle}>Accept offers</Text>
-              <Text style={styles.toggleMeta}>
-                Let buyers negotiate instead of seeing a fixed price only.
-              </Text>
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Pricing and pickup</Text>
+              <Text style={styles.sectionHint}>Set the amount, unit, and where buyers can get it.</Text>
+            </View>
+
+            <View
+              style={styles.row}
+              onLayout={(event) => {
+                registerFieldPosition('price')(event)
+                registerFieldPosition('quantity')(event)
+              }}
+            >
+              <Controller
+                control={control}
+                name="price"
+                render={({ field: { onChange, value } }) => (
+                  <View style={styles.flex}>
+                    <FormField
+                      ref={priceRef}
+                      label="Price"
+                      value={String(value)}
+                      onChangeText={onChange}
+                      keyboardType="number-pad"
+                      returnKeyType="next"
+                      onSubmitEditing={() => quantityRef.current?.focus()}
+                      helperText="Pesos only."
+                      error={errors.price?.message}
+                    />
+                  </View>
+                )}
+              />
+              <Controller
+                control={control}
+                name="quantity"
+                render={({ field: { onChange, value } }) => (
+                  <View style={styles.flex}>
+                    <FormField
+                      ref={quantityRef}
+                      label="Quantity"
+                      value={String(value)}
+                      onChangeText={onChange}
+                      keyboardType="number-pad"
+                      returnKeyType="next"
+                      onSubmitEditing={() => unitRef.current?.focus()}
+                      helperText="Numbers only."
+                      error={errors.quantity?.message}
+                    />
+                  </View>
+                )}
+              />
             </View>
             <View
-              style={[
-                styles.toggleBadge,
-                acceptsOffers ? styles.toggleBadgeActive : null,
-              ]}
+              style={styles.row}
+              onLayout={(event) => {
+                registerFieldPosition('unit')(event)
+                registerFieldPosition('city')(event)
+              }}
             >
-              <Text
-                style={[
-                  styles.toggleBadgeText,
-                  acceptsOffers ? styles.toggleBadgeTextActive : null,
-                ]}
-              >
-                {acceptsOffers ? 'On' : 'Off'}
-              </Text>
+              <Controller
+                control={control}
+                name="unit"
+                render={({ field: { onChange, value } }) => (
+                  <View style={styles.flex}>
+                    <FormField
+                      ref={unitRef}
+                      label="Unit"
+                      value={value}
+                      onChangeText={onChange}
+                      placeholder="kg"
+                      returnKeyType="next"
+                      onSubmitEditing={() => cityRef.current?.focus()}
+                      error={errors.unit?.message}
+                    />
+                  </View>
+                )}
+              />
+              <Controller
+                control={control}
+                name="city"
+                render={({ field: { onChange, value } }) => (
+                  <View style={styles.flex}>
+                    <FormField
+                      ref={cityRef}
+                      label="City"
+                      value={value}
+                      onChangeText={onChange}
+                      placeholder="Malaybalay"
+                      returnKeyType="next"
+                      onSubmitEditing={() => addressRef.current?.focus()}
+                      helperText="Buyer search city."
+                      error={errors.city?.message}
+                    />
+                  </View>
+                )}
+              />
             </View>
-          </Pressable>
+            <View style={styles.selectorBlock}>
+              <Text style={styles.selectorLabel}>Common units</Text>
+              <View style={styles.selectorWrap}>
+                {unitPresets.map((unit) => {
+                  const selected = selectedUnit === unit
 
-          <LocationPicker
-            value={coordinates}
-            onChange={(value) => {
-              setValue('latitude', value.latitude, { shouldValidate: true })
-              setValue('longitude', value.longitude, { shouldValidate: true })
-            }}
-            onResolvedAddress={(value) => {
-              if (value.address) {
-                setValue('address', value.address, { shouldValidate: true })
-              }
-
-              if (value.city) {
-                setValue('city', value.city, { shouldValidate: true })
-              }
-            }}
-          />
-
-          {selectedImage ? (
-            <>
-              <View style={styles.imageNotice}>
-                <Text style={styles.imageNoticeTitle}>Image ready</Text>
-                <Text style={styles.imageNoticeText}>
-                  {selectedImage.startsWith('http')
-                    ? 'This listing already has an uploaded image.'
-                    : 'The compressed image will upload to Supabase Storage when you save this listing.'}
-                </Text>
-              </View>
-
-              {aiListingAssistEnabled ? (
-                <View style={styles.photoCheckCard}>
-                  <View style={styles.photoCheckHeader}>
-                    <View style={styles.photoCheckTextBlock}>
-                      <Text style={styles.photoCheckTitle}>Photo check</Text>
-                      <Text style={styles.photoCheckSubtitle}>
-                        Review image clarity, framing, and waste visibility before
-                        you publish.
-                      </Text>
-                    </View>
+                  return (
                     <Pressable
-                      disabled={isPhotoCheckLoading || isCheckingAIHealth}
-                      onPress={handlePhotoCheck}
+                      key={unit}
+                      onPress={() =>
+                        setValue('unit', unit, {
+                          shouldValidate: true,
+                        })
+                      }
                       style={[
-                        styles.photoCheckButton,
-                        isPhotoCheckLoading || isCheckingAIHealth
-                          ? styles.aiButtonDisabled
-                          : null,
+                        styles.selectorChip,
+                        selected ? styles.selectorChipActive : null,
                       ]}
                     >
-                      <Text style={styles.photoCheckButtonText}>
-                        {isCheckingAIHealth
-                          ? 'Checking...'
-                          : isPhotoCheckLoading
-                            ? 'Reviewing...'
-                            : canRunPhotoCheck
-                              ? 'Check photo'
-                              : 'Replace to check'}
+                      <Text
+                        style={[
+                          styles.selectorChipText,
+                          selected ? styles.selectorChipTextActive : null,
+                        ]}
+                      >
+                        {unit}
                       </Text>
                     </Pressable>
-                  </View>
+                  )
+                })}
+              </View>
+            </View>
+            <View onLayout={registerFieldPosition('address')}>
+              <Controller
+                control={control}
+                name="address"
+                render={({ field: { onChange, value } }) => (
+                  <FormField
+                    ref={addressRef}
+                    label="Pickup address"
+                    value={value}
+                    onChangeText={onChange}
+                    placeholder="Purok 3, Malaybalay, Bukidnon"
+                    returnKeyType="done"
+                    onSubmitEditing={() => void onSubmit()}
+                    error={errors.address?.message}
+                  />
+                )}
+              />
+            </View>
+            <View
+              style={styles.selectorBlock}
+              onLayout={registerFieldPosition('fulfillment_type')}
+            >
+              <Text style={styles.selectorLabel}>Fulfillment type</Text>
+              <View style={styles.selectorWrap}>
+                {fulfillmentOptions.map((option) => {
+                  const selected = selectedFulfillmentType === option.value
 
-                  {!canRunPhotoCheck ? (
-                    <Text style={styles.photoCheckHint}>
-                      Replace the current uploaded image if you want AI to review it
-                      again before saving.
-                    </Text>
-                  ) : null}
-
-                  {photoCheckResult ? (
-                    <View style={styles.photoCheckResultCard}>
-                      <View style={styles.photoCheckResultHeader}>
-                        <View style={styles.photoCheckScoreBlock}>
-                          <Text style={styles.photoCheckScoreValue}>
-                            {photoCheckResult.result.qualityScore}
-                          </Text>
-                          <Text style={styles.photoCheckScoreLabel}>
-                            quality score
-                          </Text>
-                        </View>
-                        <View
-                          style={[
-                            styles.photoCheckBadge,
-                            photoCheckResult.result.readiness === 'good'
-                              ? styles.photoCheckBadgeGood
-                              : photoCheckResult.result.readiness === 'retake'
-                                ? styles.photoCheckBadgeRetake
-                                : styles.photoCheckBadgeReview,
-                          ]}
-                        >
-                          <Text style={styles.photoCheckBadgeText}>
-                            {photoCheckResult.result.readiness === 'good'
-                              ? 'Looks good'
-                              : photoCheckResult.result.readiness === 'retake'
-                                ? 'Retake suggested'
-                                : 'Needs review'}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <Text style={styles.photoCheckMeta}>
-                        Provider:{' '}
-                        {photoCheckResult.provider === 'local_gemma'
-                          ? 'Local Gemma'
-                          : 'Gemini'}
-                        {photoCheckResult.fallbackUsed ? ' | fallback used' : ''}
+                  return (
+                    <Pressable
+                      key={option.value}
+                      onPress={() =>
+                        setValue('fulfillment_type', option.value, {
+                          shouldValidate: true,
+                        })
+                      }
+                      style={[
+                        styles.selectorChip,
+                        selected ? styles.selectorChipActive : null,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.selectorChipText,
+                          selected ? styles.selectorChipTextActive : null,
+                        ]}
+                      >
+                        {option.label}
                       </Text>
-
-                      {photoCheckResult.result.retakeSuggestions.length > 0 ? (
-                        <View style={styles.photoCheckListBlock}>
-                          <Text style={styles.photoCheckListLabel}>
-                            Retake suggestions
-                          </Text>
-                          {photoCheckResult.result.retakeSuggestions.map((item) => (
-                            <Text key={item} style={styles.photoCheckListItem}>
-                              - {item}
-                            </Text>
-                          ))}
-                        </View>
-                      ) : null}
-
-                      {photoCheckResult.result.likelyWasteType &&
-                      photoCheckResult.result.likelyWasteTypeConfidence ===
-                        'high' ? (
-                        <Text style={styles.photoCheckLikelyType}>
-                          Likely waste type: {photoCheckResult.result.likelyWasteType}
-                        </Text>
-                      ) : null}
-
-                      {photoCheckResult.result.notes.length > 0 ? (
-                        <View style={styles.photoCheckListBlock}>
-                          <Text style={styles.photoCheckListLabel}>Notes</Text>
-                          {photoCheckResult.result.notes.map((item) => (
-                            <Text key={item} style={styles.photoCheckListItem}>
-                              - {item}
-                            </Text>
-                          ))}
-                        </View>
-                      ) : null}
-
-                      {photoCheckResult.result.moderationStatus === 'review' ? (
-                        <Text style={styles.photoCheckModeration}>
-                          This image may need a manual review before it is safe to
-                          trust as a marketplace photo.
-                        </Text>
-                      ) : null}
-                    </View>
-                  ) : null}
-                </View>
+                    </Pressable>
+                  )
+                })}
+              </View>
+              {errors.fulfillment_type?.message ? (
+                <Text style={styles.errorText}>
+                  {errors.fulfillment_type.message}
+                </Text>
               ) : null}
-            </>
-          ) : null}
+            </View>
 
-          <Pressable onPress={handlePickImage} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>
-              {selectedImage ? 'Replace Image' : 'Pick and Compress Image'}
-            </Text>
-          </Pressable>
-
-          <View
-            onLayout={(event) => {
-              qualityPanelPosition.current = event.nativeEvent.layout.y
-            }}
-            style={styles.qualityCard}
-          >
-            <View style={styles.qualityHeader}>
-              <View style={styles.qualityTextBlock}>
-                <Text style={styles.qualityTitle}>Publish readiness</Text>
-                <Text style={styles.qualitySubtitle}>
-                  Refamora checks the essentials before your listing goes live.
+            <Pressable
+              onPress={() =>
+                setValue('accept_offers', !acceptsOffers, {
+                  shouldValidate: true,
+                })
+              }
+              style={[
+                styles.toggleCard,
+                acceptsOffers ? styles.toggleCardActive : null,
+              ]}
+            >
+              <View style={styles.toggleTextBlock}>
+                <Text style={styles.toggleTitle}>Accept offers</Text>
+                <Text style={styles.toggleMeta}>
+                  Let buyers negotiate instead of seeing a fixed price only.
                 </Text>
               </View>
               <View
                 style={[
-                  styles.qualityBadge,
-                  blockingQualityItems.length > 0
-                    ? styles.qualityBadgeFail
-                    : warningQualityItems.length > 0
-                      ? styles.qualityBadgeWarn
-                      : styles.qualityBadgePass,
+                  styles.toggleBadge,
+                  acceptsOffers ? styles.toggleBadgeActive : null,
                 ]}
               >
-                <Text style={styles.qualityBadgeText}>
-                  {blockingQualityItems.length > 0
-                    ? `${blockingQualityItems.length} fix`
-                    : warningQualityItems.length > 0
-                      ? `${warningQualityItems.length} review`
-                      : 'Ready'}
+                <Text
+                  style={[
+                    styles.toggleBadgeText,
+                    acceptsOffers ? styles.toggleBadgeTextActive : null,
+                  ]}
+                >
+                  {acceptsOffers ? 'On' : 'Off'}
                 </Text>
               </View>
-            </View>
-
-            <Text style={styles.qualitySummary}>
-              {passedQualityItems.length} passed
-              {warningQualityItems.length > 0 ? ` • ${warningQualityItems.length} review` : ''}
-              {blockingQualityItems.length > 0 ? ` • ${blockingQualityItems.length} fix now` : ''}
-            </Text>
-
-            <View style={styles.qualityList}>
-              {publishQualityItems.map((item) => (
-                <View key={item.id} style={styles.qualityItem}>
-                  <View
-                    style={[
-                      styles.qualityItemBadge,
-                      item.status === 'pass'
-                        ? styles.qualityItemBadgePass
-                        : item.status === 'warn'
-                          ? styles.qualityItemBadgeWarn
-                          : styles.qualityItemBadgeFail,
-                    ]}
-                  >
-                    <Text style={styles.qualityItemBadgeText}>
-                      {item.status === 'pass'
-                        ? 'Pass'
-                        : item.status === 'warn'
-                          ? 'Review'
-                          : 'Fix'}
-                    </Text>
-                  </View>
-                  <View style={styles.qualityItemText}>
-                    <Text style={styles.qualityItemTitle}>{item.label}</Text>
-                    <Text style={styles.qualityItemDescription}>{item.description}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
+            </Pressable>
           </View>
 
-          {aiListingAssistEnabled ? (
-            <View style={styles.moderationCard}>
-              <View style={styles.moderationHeader}>
-                <View style={styles.moderationTextBlock}>
-                  <Text style={styles.moderationTitle}>Listing safety check</Text>
-                  <Text style={styles.moderationSubtitle}>
-                    Refamora reviews your listing text and image before publish.
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Map pin</Text>
+              <Text style={styles.sectionHint}>Drop a pin so buyers can judge pickup distance quickly.</Text>
+            </View>
+
+            <LocationPicker
+              value={coordinates}
+              onChange={(value) => {
+                setValue('latitude', value.latitude, { shouldValidate: true })
+                setValue('longitude', value.longitude, { shouldValidate: true })
+              }}
+              onResolvedAddress={(value) => {
+                if (value.address) {
+                  setValue('address', value.address, { shouldValidate: true })
+                }
+
+                if (value.city) {
+                  setValue('city', value.city, { shouldValidate: true })
+                }
+              }}
+            />
+          </View>
+
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Photos</Text>
+              <Text style={styles.sectionHint}>Add one clear image and optionally run the AI check before publishing.</Text>
+            </View>
+
+            {selectedImage ? (
+              <>
+                <View style={styles.imageNotice}>
+                  <Text style={styles.imageNoticeTitle}>Image ready</Text>
+                  <Text style={styles.imageNoticeText}>
+                    {selectedImage.startsWith('http')
+                      ? 'This listing already has an uploaded image.'
+                      : 'The compressed image will upload when you save this listing.'}
                   </Text>
                 </View>
-                {isModerationLoading ? (
-                  <View style={styles.moderationBadgePending}>
-                    <Text style={styles.moderationBadgeText}>Checking</Text>
+
+                {aiListingAssistEnabled ? (
+                  <View style={styles.photoCheckCard}>
+                    <View style={styles.photoCheckHeader}>
+                      <View style={styles.photoCheckTextBlock}>
+                        <Text style={styles.photoCheckTitle}>Photo check</Text>
+                        <Text style={styles.photoCheckSubtitle}>
+                          Review clarity, framing, and waste visibility.
+                        </Text>
+                      </View>
+                      <Pressable
+                        disabled={isPhotoCheckLoading || isCheckingAIHealth}
+                        onPress={handlePhotoCheck}
+                        style={[
+                          styles.photoCheckButton,
+                          isPhotoCheckLoading || isCheckingAIHealth
+                            ? styles.aiButtonDisabled
+                            : null,
+                        ]}
+                      >
+                        <Text style={styles.photoCheckButtonText}>
+                          {isCheckingAIHealth
+                            ? 'Checking...'
+                            : isPhotoCheckLoading
+                              ? 'Reviewing...'
+                              : canRunPhotoCheck
+                                ? 'Check photo'
+                                : 'Replace to check'}
+                        </Text>
+                      </Pressable>
+                    </View>
+
+                    {!canRunPhotoCheck ? (
+                      <Text style={styles.photoCheckHint}>
+                        Replace the current uploaded image if you want AI to review it again.
+                      </Text>
+                    ) : null}
+
+                    {photoCheckResult ? (
+                      <View style={styles.photoCheckResultCard}>
+                        <View style={styles.photoCheckResultHeader}>
+                          <View style={styles.photoCheckScoreBlock}>
+                            <Text style={styles.photoCheckScoreValue}>
+                              {photoCheckResult.result.qualityScore}
+                            </Text>
+                            <Text style={styles.photoCheckScoreLabel}>
+                              quality score
+                            </Text>
+                          </View>
+                          <View
+                            style={[
+                              styles.photoCheckBadge,
+                              photoCheckResult.result.readiness === 'good'
+                                ? styles.photoCheckBadgeGood
+                                : photoCheckResult.result.readiness === 'retake'
+                                  ? styles.photoCheckBadgeRetake
+                                  : styles.photoCheckBadgeReview,
+                            ]}
+                          >
+                            <Text style={styles.photoCheckBadgeText}>
+                              {photoCheckResult.result.readiness === 'good'
+                                ? 'Looks good'
+                                : photoCheckResult.result.readiness === 'retake'
+                                  ? 'Retake suggested'
+                                  : 'Needs review'}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <Text style={styles.photoCheckMeta}>
+                          Provider:{' '}
+                          {photoCheckResult.provider === 'local_gemma'
+                            ? 'Local Gemma'
+                            : 'Gemini'}
+                          {photoCheckResult.fallbackUsed ? ' | fallback used' : ''}
+                        </Text>
+
+                        {photoCheckResult.result.retakeSuggestions.length > 0 ? (
+                          <View style={styles.photoCheckListBlock}>
+                            <Text style={styles.photoCheckListLabel}>
+                              Retake suggestions
+                            </Text>
+                            {photoCheckResult.result.retakeSuggestions.map((item) => (
+                              <Text key={item} style={styles.photoCheckListItem}>
+                                - {item}
+                              </Text>
+                            ))}
+                          </View>
+                        ) : null}
+
+                        {photoCheckResult.result.likelyWasteType &&
+                        photoCheckResult.result.likelyWasteTypeConfidence === 'high' ? (
+                          <Text style={styles.photoCheckLikelyType}>
+                            Likely waste type: {photoCheckResult.result.likelyWasteType}
+                          </Text>
+                        ) : null}
+
+                        {photoCheckResult.result.notes.length > 0 ? (
+                          <View style={styles.photoCheckListBlock}>
+                            <Text style={styles.photoCheckListLabel}>Notes</Text>
+                            {photoCheckResult.result.notes.map((item) => (
+                              <Text key={item} style={styles.photoCheckListItem}>
+                                - {item}
+                              </Text>
+                            ))}
+                          </View>
+                        ) : null}
+
+                        {photoCheckResult.result.moderationStatus === 'review' ? (
+                          <Text style={styles.photoCheckModeration}>
+                            This image may need a manual review before it is safe to
+                            trust as a marketplace photo.
+                          </Text>
+                        ) : null}
+                      </View>
+                    ) : null}
                   </View>
-                ) : moderationResult ? (
-                  <View
-                    style={[
-                      styles.moderationBadge,
-                      moderationResult.result.decision === 'allow'
-                        ? styles.moderationBadgeAllow
-                        : moderationResult.result.decision === 'block'
-                          ? styles.moderationBadgeBlock
-                          : styles.moderationBadgeReview,
-                    ]}
-                  >
-                    <Text style={styles.moderationBadgeText}>
-                      {moderationResult.result.decision === 'allow'
-                        ? 'Ready'
-                        : moderationResult.result.decision === 'block'
-                          ? 'Blocked'
-                          : 'Needs review'}
-                    </Text>
-                  </View>
-                ) : (
-                  <View style={styles.moderationBadgePending}>
-                    <Text style={styles.moderationBadgeText}>Runs on publish</Text>
-                  </View>
-                )}
+                ) : null}
+              </>
+            ) : null}
+
+            <Pressable onPress={handlePickImage} style={styles.secondaryButton}>
+              <Text style={styles.secondaryButtonText}>
+                {selectedImage ? 'Replace image' : 'Add image'}
+              </Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Publish checks</Text>
+              <Text style={styles.sectionHint}>Fix blockers here before the listing goes live.</Text>
+            </View>
+
+            <View
+              onLayout={(event) => {
+                qualityPanelPosition.current = event.nativeEvent.layout.y
+              }}
+              style={styles.qualityCard}
+            >
+              <View style={styles.qualityHeader}>
+                <View style={styles.qualityTextBlock}>
+                  <Text style={styles.qualityTitle}>Publish readiness</Text>
+                  <Text style={styles.qualitySubtitle}>
+                    Refamora checks the essentials before your listing goes live.
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    styles.qualityBadge,
+                    blockingQualityItems.length > 0
+                      ? styles.qualityBadgeFail
+                      : warningQualityItems.length > 0
+                        ? styles.qualityBadgeWarn
+                        : styles.qualityBadgePass,
+                  ]}
+                >
+                  <Text style={styles.qualityBadgeText}>
+                    {blockingQualityItems.length > 0
+                      ? `${blockingQualityItems.length} fix`
+                      : warningQualityItems.length > 0
+                        ? `${warningQualityItems.length} review`
+                        : 'Ready'}
+                  </Text>
+                </View>
               </View>
 
-              {moderationResult ? (
-                <View style={styles.moderationResultCard}>
-                  <Text style={styles.moderationMeta}>
-                    Provider:{' '}
-                    {moderationResult.provider === 'local_gemma'
-                      ? 'Local Gemma'
-                      : 'Gemini'}
-                    {moderationResult.fallbackUsed ? ' | fallback used' : ''}
-                  </Text>
+              <Text style={styles.qualitySummary}>
+                {passedQualityItems.length} passed
+                {warningQualityItems.length > 0 ? ` | ${warningQualityItems.length} review` : ''}
+                {blockingQualityItems.length > 0 ? ` | ${blockingQualityItems.length} fix now` : ''}
+              </Text>
 
-                  {moderationResult.result.reasons.length > 0 ? (
-                    <View style={styles.moderationListBlock}>
-                      <Text style={styles.moderationListLabel}>Decision notes</Text>
-                      {moderationResult.result.reasons.map((item) => (
-                        <Text key={item} style={styles.moderationListItem}>
-                          - {item}
-                        </Text>
-                      ))}
+              <View style={styles.qualityList}>
+                {publishQualityItems.map((item) => (
+                  <View key={item.id} style={styles.qualityItem}>
+                    <View
+                      style={[
+                        styles.qualityItemBadge,
+                        item.status === 'pass'
+                          ? styles.qualityItemBadgePass
+                          : item.status === 'warn'
+                            ? styles.qualityItemBadgeWarn
+                            : styles.qualityItemBadgeFail,
+                      ]}
+                    >
+                      <Text style={styles.qualityItemBadgeText}>
+                        {item.status === 'pass'
+                          ? 'Pass'
+                          : item.status === 'warn'
+                            ? 'Review'
+                            : 'Fix'}
+                      </Text>
                     </View>
-                  ) : null}
-
-                  {moderationResult.queuedForReview ? (
-                    <Text style={styles.moderationQueueNote}>
-                      Added to admin review queue
-                      {moderationResult.reviewQueueId ? `: ${moderationResult.reviewQueueId}` : ''}
-                    </Text>
-                  ) : null}
-
-                  {moderationResult.result.fieldWarnings.length > 0 ? (
-                    <View style={styles.moderationListBlock}>
-                      <Text style={styles.moderationListLabel}>Text warnings</Text>
-                      {moderationResult.result.fieldWarnings.map((item) => (
-                        <Text key={item} style={styles.moderationListItem}>
-                          - {item}
-                        </Text>
-                      ))}
+                    <View style={styles.qualityItemText}>
+                      <Text style={styles.qualityItemTitle}>{item.label}</Text>
+                      <Text style={styles.qualityItemDescription}>{item.description}</Text>
                     </View>
-                  ) : null}
-
-                  {moderationResult.result.imageWarnings.length > 0 ? (
-                    <View style={styles.moderationListBlock}>
-                      <Text style={styles.moderationListLabel}>Image warnings</Text>
-                      {moderationResult.result.imageWarnings.map((item) => (
-                        <Text key={item} style={styles.moderationListItem}>
-                          - {item}
-                        </Text>
-                      ))}
-                    </View>
-                  ) : null}
-                </View>
-              ) : (
-                <Text style={styles.moderationHint}>
-                  Publish will automatically run the AI safety check and stop if the
-                  listing needs review.
-                </Text>
-              )}
+                  </View>
+                ))}
+              </View>
             </View>
-          ) : null}
+
+            {aiListingAssistEnabled ? (
+              <View style={styles.moderationCard}>
+                <View style={styles.moderationHeader}>
+                  <View style={styles.moderationTextBlock}>
+                    <Text style={styles.moderationTitle}>Listing safety check</Text>
+                    <Text style={styles.moderationSubtitle}>
+                      Refamora reviews your listing text and image before publish.
+                    </Text>
+                  </View>
+                  {isModerationLoading ? (
+                    <View style={styles.moderationBadgePending}>
+                      <Text style={styles.moderationBadgeText}>Checking</Text>
+                    </View>
+                  ) : moderationResult ? (
+                    <View
+                      style={[
+                        styles.moderationBadge,
+                        moderationResult.result.decision === 'allow'
+                          ? styles.moderationBadgeAllow
+                          : moderationResult.result.decision === 'block'
+                            ? styles.moderationBadgeBlock
+                            : styles.moderationBadgeReview,
+                      ]}
+                    >
+                      <Text style={styles.moderationBadgeText}>
+                        {moderationResult.result.decision === 'allow'
+                          ? 'Ready'
+                          : moderationResult.result.decision === 'block'
+                            ? 'Blocked'
+                            : 'Needs review'}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={styles.moderationBadgePending}>
+                      <Text style={styles.moderationBadgeText}>Runs on publish</Text>
+                    </View>
+                  )}
+                </View>
+
+                {moderationResult ? (
+                  <View style={styles.moderationResultCard}>
+                    <Text style={styles.moderationMeta}>
+                      Provider:{' '}
+                      {moderationResult.provider === 'local_gemma'
+                        ? 'Local Gemma'
+                        : 'Gemini'}
+                      {moderationResult.fallbackUsed ? ' | fallback used' : ''}
+                    </Text>
+
+                    {moderationResult.result.reasons.length > 0 ? (
+                      <View style={styles.moderationListBlock}>
+                        <Text style={styles.moderationListLabel}>Decision notes</Text>
+                        {moderationResult.result.reasons.map((item) => (
+                          <Text key={item} style={styles.moderationListItem}>
+                            - {item}
+                          </Text>
+                        ))}
+                      </View>
+                    ) : null}
+
+                    {moderationResult.queuedForReview ? (
+                      <Text style={styles.moderationQueueNote}>
+                        Added to admin review queue
+                        {moderationResult.reviewQueueId ? `: ${moderationResult.reviewQueueId}` : ''}
+                      </Text>
+                    ) : null}
+
+                    {moderationResult.result.fieldWarnings.length > 0 ? (
+                      <View style={styles.moderationListBlock}>
+                        <Text style={styles.moderationListLabel}>Text warnings</Text>
+                        {moderationResult.result.fieldWarnings.map((item) => (
+                          <Text key={item} style={styles.moderationListItem}>
+                            - {item}
+                          </Text>
+                        ))}
+                      </View>
+                    ) : null}
+
+                    {moderationResult.result.imageWarnings.length > 0 ? (
+                      <View style={styles.moderationListBlock}>
+                        <Text style={styles.moderationListLabel}>Image warnings</Text>
+                        {moderationResult.result.imageWarnings.map((item) => (
+                          <Text key={item} style={styles.moderationListItem}>
+                            - {item}
+                          </Text>
+                        ))}
+                      </View>
+                    ) : null}
+                  </View>
+                ) : (
+                  <Text style={styles.moderationHint}>
+                    Publish will automatically run the AI safety check and stop if the
+                    listing needs review.
+                  </Text>
+                )}
+              </View>
+            ) : null}
+          </View>
 
           <View style={styles.submitRow}>
             {onSaveDraftValues ? (
@@ -1684,32 +1714,56 @@ const styles = StyleSheet.create({
     backgroundColor: palette.cream,
   },
   content: {
-    padding: 24,
-    gap: 20,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 24,
+    gap: 14,
   },
   hero: {
-    gap: 6,
+    gap: 4,
   },
   title: {
     color: palette.soil,
-    fontSize: 30,
+    fontSize: 27,
     fontWeight: '800',
   },
   subtitle: {
     color: palette.muted,
-    lineHeight: 22,
+    fontSize: 13,
+    lineHeight: 19,
   },
   form: {
-    gap: 16,
+    gap: 12,
+  },
+  sectionCard: {
+    gap: 12,
+    backgroundColor: palette.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: palette.border,
+    padding: 14,
+  },
+  sectionHeader: {
+    gap: 3,
+  },
+  sectionTitle: {
+    color: palette.soil,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  sectionHint: {
+    color: palette.muted,
+    fontSize: 12,
+    lineHeight: 17,
   },
   aiSection: {
-    gap: 10,
+    gap: 8,
   },
   aiButton: {
     backgroundColor: palette.sageDark,
     borderRadius: radii.md,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1723,16 +1777,16 @@ const styles = StyleSheet.create({
   },
   aiMeta: {
     color: palette.muted,
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: 12,
+    lineHeight: 17,
   },
   aiUnavailableCard: {
-    gap: 6,
+    gap: 4,
     backgroundColor: '#fbf0ec',
     borderWidth: 1,
     borderColor: 'rgba(173, 72, 34, 0.18)',
     borderRadius: radii.md,
-    padding: 14,
+    padding: 12,
   },
   aiUnavailableTitle: {
     color: '#a14628',
@@ -1745,12 +1799,12 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   aiResultCard: {
-    gap: 10,
+    gap: 8,
     backgroundColor: palette.parchment,
     borderWidth: 1,
     borderColor: palette.border,
     borderRadius: radii.md,
-    padding: 16,
+    padding: 12,
   },
   aiResultHeader: {
     flexDirection: 'row',
@@ -1784,7 +1838,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   aiListBlock: {
-    gap: 6,
+    gap: 4,
   },
   aiListLabel: {
     color: palette.soil,
@@ -1797,15 +1851,15 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   valueAdvisorCard: {
-    gap: 12,
+    gap: 10,
     backgroundColor: '#eef6ed',
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: 'rgba(58, 102, 72, 0.12)',
-    padding: 14,
+    padding: 12,
   },
   valueAdvisorHeader: {
-    gap: 10,
+    gap: 8,
   },
   valueAdvisorTextBlock: {
     gap: 4,
@@ -1826,8 +1880,8 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     borderColor: 'rgba(58, 102, 72, 0.12)',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   valueAdvisorButtonText: {
     color: palette.sageDark,
@@ -1835,12 +1889,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   valueAdvisorContent: {
-    gap: 10,
+    gap: 8,
     backgroundColor: palette.surface,
     borderRadius: radii.sm,
     borderWidth: 1,
     borderColor: 'rgba(58, 102, 72, 0.08)',
-    padding: 14,
+    padding: 12,
   },
   valueAdvisorMeta: {
     color: palette.muted,
@@ -1872,14 +1926,14 @@ const styles = StyleSheet.create({
   },
   aiFeedbackActions: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
     marginTop: 2,
   },
   aiFeedbackPrimaryButton: {
     flex: 1,
     backgroundColor: palette.sageDark,
     borderRadius: 999,
-    paddingVertical: 12,
+    paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1889,7 +1943,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(160, 69, 50, 0.18)',
     borderRadius: 999,
-    paddingVertical: 12,
+    paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1912,7 +1966,7 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   selectorBlock: {
-    gap: 10,
+    gap: 8,
   },
   selectorLabel: {
     color: palette.soil,
@@ -1922,15 +1976,15 @@ const styles = StyleSheet.create({
   selectorWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
   },
   selectorChip: {
     backgroundColor: palette.surface,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: palette.border,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   selectorChipActive: {
     backgroundColor: palette.sage,
@@ -1950,18 +2004,18 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
   flex: {
     flex: 1,
   },
   qualityCard: {
-    gap: 12,
+    gap: 10,
     backgroundColor: '#f4f7f1',
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: 'rgba(58, 102, 72, 0.12)',
-    padding: 14,
+    padding: 12,
   },
   qualityHeader: {
     flexDirection: 'row',
@@ -2008,7 +2062,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   qualityList: {
-    gap: 10,
+    gap: 8,
   },
   qualityItem: {
     flexDirection: 'row',
@@ -2018,7 +2072,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
     borderWidth: 1,
     borderColor: 'rgba(58, 102, 72, 0.08)',
-    padding: 12,
+    padding: 10,
   },
   qualityItemBadge: {
     minWidth: 54,
@@ -2058,7 +2112,7 @@ const styles = StyleSheet.create({
   },
   submitRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
   },
   draftButton: {
     flex: 1,
@@ -2066,7 +2120,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     borderColor: palette.border,
-    paddingVertical: 16,
+    paddingVertical: 14,
     alignItems: 'center',
   },
   draftButtonText: {
@@ -2077,7 +2131,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: palette.sage,
     borderRadius: 999,
-    paddingVertical: 16,
+    paddingVertical: 14,
     alignItems: 'center',
   },
   primaryButtonText: {
@@ -2089,7 +2143,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     borderColor: palette.border,
-    paddingVertical: 14,
+    paddingVertical: 12,
     alignItems: 'center',
   },
   secondaryButtonText: {
@@ -2101,7 +2155,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: 'rgba(58, 102, 72, 0.2)',
-    padding: 16,
+    padding: 12,
     gap: 4,
   },
   imageNoticeTitle: {
@@ -2113,15 +2167,15 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   photoCheckCard: {
-    gap: 12,
+    gap: 10,
     backgroundColor: '#f3f7f2',
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: 'rgba(58, 102, 72, 0.12)',
-    padding: 14,
+    padding: 12,
   },
   photoCheckHeader: {
-    gap: 10,
+    gap: 8,
   },
   photoCheckTextBlock: {
     gap: 4,
@@ -2142,8 +2196,8 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     borderColor: 'rgba(58, 102, 72, 0.12)',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   photoCheckButtonText: {
     color: palette.sageDark,
@@ -2156,12 +2210,12 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   photoCheckResultCard: {
-    gap: 10,
+    gap: 8,
     backgroundColor: palette.surface,
     borderRadius: radii.sm,
     borderWidth: 1,
     borderColor: 'rgba(58, 102, 72, 0.08)',
-    padding: 14,
+    padding: 12,
   },
   photoCheckResultHeader: {
     flexDirection: 'row',
@@ -2231,12 +2285,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   moderationCard: {
-    gap: 12,
+    gap: 10,
     backgroundColor: '#f8f5ee',
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: 'rgba(87, 68, 42, 0.12)',
-    padding: 14,
+    padding: 12,
   },
   moderationHeader: {
     flexDirection: 'row',
@@ -2289,12 +2343,12 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   moderationResultCard: {
-    gap: 10,
+    gap: 8,
     backgroundColor: palette.surface,
     borderRadius: radii.sm,
     borderWidth: 1,
     borderColor: 'rgba(87, 68, 42, 0.08)',
-    padding: 14,
+    padding: 12,
   },
   moderationMeta: {
     color: palette.muted,
@@ -2324,7 +2378,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: palette.border,
-    padding: 16,
+    padding: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',

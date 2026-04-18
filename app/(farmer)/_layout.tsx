@@ -10,11 +10,11 @@ function getFarmerTabIcon(
   focused: boolean,
 ) {
   const iconByRoute: Record<string, string> = {
-    dashboard: '⌂',
+    dashboard: '\u2302',
     'create-listing': '+',
-    'my-listings': '▤',
-    requests: '✉',
-    profile: '◉',
+    'my-listings': '\u25A4',
+    requests: '\u2709',
+    profile: '\u25C9',
   }
 
   return (
@@ -26,7 +26,7 @@ function getFarmerTabIcon(
         lineHeight: size + 2,
       }}
     >
-      {iconByRoute[routeName] ?? '•'}
+      {iconByRoute[routeName] ?? '\u2022'}
     </Text>
   )
 }
@@ -85,6 +85,7 @@ export default function FarmerLayout() {
         name="requests"
         options={{
           title: 'Requests',
+          headerShown: false,
         }}
       />
       <Tabs.Screen

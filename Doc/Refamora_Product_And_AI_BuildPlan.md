@@ -18,6 +18,7 @@ The goal is simple: keep Refamora useful as a real marketplace first, then use A
 
 Status legend: `[x]` done, `[~]` in progress / partial, `[ ]` not started
 Latest note: 2026-04-17 buyer discovery now includes save, distance, map improvements, richer seller trust details on listing pages, a visible seller-verification placeholder, a real report-listing flow, stronger success feedback after key actions, clearer image-upload failure messages for size, type, and network issues, consistent loading skeletons across dashboards, profile, listing details, and requests, more helpful empty states that explain what is happening and where to go next, gentler session-expiry recovery that redirects users back to sign-in with context preserved, a shared offline banner with graceful offline handling on feed, map, and profile surfaces, better submit guidance across auth, profile, listing, and report flows with focus and scroll-to-error behavior, and shared error-state coverage with retry actions across the app shell, feed, map, dashboards, profile, requests, listing details, and farmer listings, while farmer operations now show listing performance, grouped inquiry inboxes, per-listing activity timelines, seller reminders, bulk status cleanup, duplicate listing support, resumable listing drafts, shared profile completion prompts across the app, a visible publish-readiness panel that stops weak listings before publish, stronger validation for phone, city, quantity, and price formats, and clearer listing status badges for active, sold, unavailable, and draft states.
+Latest note update: 2026-04-18 the create-listing experience was compacted into clearer sections with tighter spacing and shared field sizing, and the lower build-order checklist was aligned with the real delivery state so navigation cleanup and admin/governance work are now the clearest remaining priorities.
 
 ### AI Phase 0 - Foundations
 
@@ -168,41 +169,49 @@ These are not user-facing first, but they matter before scale.
 
 ## Suggested Build Order
 
-This is the safest non-AI sequence.
+This section reflects the current state of delivery and the safest next sequence from here.
 
 ### Phase A: Harden Core UX
 
-- [ ] Error boundaries
-- [ ] Better toasts and retries
-- [ ] Offline states
-- [ ] Submit validation and scroll-to-error
-- [ ] Consistent loading and empty states
+- [x] Error boundaries
+- [x] Better toasts and retries
+- [x] Offline states
+- [x] Submit validation and scroll-to-error
+- [x] Consistent loading and empty states
 
 ### Phase B: Fix Navigation
 
-- [ ] Standardize tabs and route hierarchy
-- [ ] Add deep linking and share
-- [ ] Remove remaining redundant screen actions
+- [~] Standardize tabs and route hierarchy
+- [x] Add deep linking and share
+- [~] Remove remaining redundant screen actions
 
 ### Phase C: Strengthen Trust
 
 - [x] Profile completion
-- [ ] Better seller identity block
-- [ ] Listing status quality checks
-- [ ] Report listing flow
+- [x] Better seller identity block
+- [x] Listing status quality checks
+- [x] Report listing flow
 
 ### Phase D: Improve Discovery
 
-- [ ] Distance-aware browsing
+- [x] Distance-aware browsing
 - [x] Better map/list switching
-- [ ] Saved filters and favorites
-- [ ] Related listings
+- [x] Saved filters and favorites
+- [x] Related listings
 
 ### Phase E: Add Operations Layer
 
-- [ ] Inquiry inbox improvements
-- [ ] Listing analytics
-- [ ] Admin and moderation basics
+- [x] Inquiry inbox improvements
+- [x] Listing analytics
+- [~] Admin and moderation basics
+
+### Phase F: Admin, Analytics, And Governance
+
+- [ ] Add admin dashboard requirements document
+- [ ] Add basic product analytics events beyond AI metrics
+- [ ] Add audit logging for critical record changes
+- [ ] Add abuse-report review flow
+- [ ] Finalize rate limiting plan for auth, uploads, and AI endpoints
 
 ## AI Strategy For Refamora
 
@@ -618,13 +627,13 @@ type PhotoReviewOutput = {
 
 ## Guardrails
 
-- [ ] AI never writes directly to the database without user confirmation
-- [ ] AI suggestions must stay editable
-- [ ] AI results must pass schema validation before UI use
-- [ ] All AI features need explicit loading, error, and fallback states
-- [ ] Sensitive prompts should send only minimum necessary data
+- [x] AI never writes directly to the database without user confirmation
+- [x] AI suggestions must stay editable
+- [x] AI results must pass schema validation before UI use
+- [x] All AI features need explicit loading, error, and fallback states
+- [~] Sensitive prompts should send only minimum necessary data
 - [ ] Prompt and output logs should be sampled for QA, not stored blindly forever
-- [ ] Add moderation for both input and output where needed
+- [~] Add moderation for both input and output where needed
 
 ## What Success Looks Like
 
@@ -646,14 +655,14 @@ type PhotoReviewOutput = {
 
 If we want the highest-impact next move, the order should be:
 
-1. harden the core product flows
-2. implement AI Phase 0 foundations
-3. ship Listing Copilot first on `Local Gemma`
-4. ship Buyer Search Assistant second on `Local Gemma`
-5. keep `Gemini 2.5 Flash` as the hosted fallback
-6. add photo analysis and moderation after the provider layer is stable
+1. finish navigation cleanup and remove remaining redundant screen-level actions
+2. standardize the remaining buyer and farmer route hierarchy around persistent tabs and clearer headers
+3. add basic non-AI product analytics for sign-in, listing create, inquiry send, and profile completion
+4. define the admin dashboard and abuse-review workflow
+5. tighten AI guardrails around data minimization, logging retention, and moderation coverage
+6. continue incremental UI polish only after the system-level navigation and governance gaps are closed
 
-That path gives Refamora visible AI value without turning the app into an unstable or overcomplicated system.
+That path keeps Refamora moving from feature-rich MVP toward a more coherent, reviewable, and demo-stable product.
 
 ## References
 
