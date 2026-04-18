@@ -274,6 +274,7 @@ export default function ListingDetailScreen() {
         latitude: listing.latitude,
         longitude: listing.longitude,
       }),
+      buyerCoordinates.accuracyMeters,
     )
   }, [buyerCoordinates, listing])
 

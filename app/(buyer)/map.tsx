@@ -139,6 +139,7 @@ export default function MapScreen() {
         latitude: selectedListing.latitude,
         longitude: selectedListing.longitude,
       }),
+      buyerCoordinates.accuracyMeters,
     )
   }, [buyerCoordinates, selectedListing])
 

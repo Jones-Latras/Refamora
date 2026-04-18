@@ -16,9 +16,86 @@ import { getSupabaseClient, hasSupabaseEnv } from './supabase'
 type ListingRow = Tables<'listings'>
 type SellerRow = Tables<'users'>
 const PAGE_SIZE = 12
+const DUPLICATE_LISTING_ERROR_MESSAGE =
+  'You already have an active listing with the same details. Edit the existing listing instead of publishing it again.'
 
 function hasText(value?: string | null) {
   return Boolean(value?.trim())
+}
+
+function normalizeListingText(value?: string | null) {
+  return value?.trim().replace(/\s+/g, ' ').toLowerCase() ?? ''
+}
+
+function matchesOptionalText(
+  left?: string | null,
+  right?: string | null,
+) {
+  return normalizeListingText(left) === normalizeListingText(right)
+}
+
+function isDuplicateActiveListing(
+  listing: TablesInsert<'listings'>,
+  existing: ListingRow,
+) {
+  return (
+    normalizeListingText(existing.title) === normalizeListingText(listing.title) &&
+    existing.waste_type === listing.waste_type &&
+    Number(existing.price) === Number(listing.price) &&
+    Number(existing.quantity) === Number(listing.quantity) &&
+    existing.unit === listing.unit &&
+    existing.fulfillment_type === (listing.fulfillment_type ?? 'pickup') &&
+    existing.accept_offers === (listing.accept_offers ?? false) &&
+    matchesOptionalText(existing.city, listing.city) &&
+    matchesOptionalText(existing.address, listing.address)
+  )
+}
+
+async function findDuplicateActiveListing(
+  listing: TablesInsert<'listings'>,
+): Promise<ServiceResult<ListingRow>> {
+  const { data, error } = await getSupabaseClient()
+    .from('listings')
+    .select('*')
+    .eq('seller_id', listing.seller_id)
+    .eq('status', 'active')
+    .eq('waste_type', listing.waste_type)
+    .eq('unit', listing.unit)
+    .eq('price', listing.price)
+    .eq('quantity', listing.quantity)
+    .eq('fulfillment_type', listing.fulfillment_type ?? 'pickup')
+    .eq('accept_offers', listing.accept_offers ?? false)
+
+  if (error) {
+    return { data: null, error }
+  }
+
+  const duplicate =
+    data?.find((existing) => isDuplicateActiveListing(listing, existing)) ?? null
+
+  return { data: duplicate, error: null }
+}
+
+function mapCreateListingError(error: unknown) {
+  if (error && typeof error === 'object' && 'code' in error) {
+    const code = String((error as { code?: unknown }).code ?? '')
+
+    if (code === '23505') {
+      return new Error(DUPLICATE_LISTING_ERROR_MESSAGE)
+    }
+  }
+
+  return error instanceof Error
+    ? error
+    : new Error('We could not publish this listing right now.')
+}
+
+function mapDeleteListingError(error: unknown) {
+  if (error instanceof Error) {
+    return error
+  }
+
+  return new Error('We could not delete this listing from the database right now.')
 }
 
 function mapListing(row: ListingRow): ListingPreview {
@@ -515,13 +592,32 @@ export async function createListing(
     return { data: null, error: new Error('Supabase is not configured yet.') }
   }
 
+  if ((listing.status ?? 'active') === 'active') {
+    const duplicateResult = await findDuplicateActiveListing(listing)
+
+    if (duplicateResult.error) {
+      return { data: null, error: duplicateResult.error }
+    }
+
+    if (duplicateResult.data) {
+      return {
+        data: null,
+        error: new Error(DUPLICATE_LISTING_ERROR_MESSAGE),
+      }
+    }
+  }
+
   const { data, error } = await getSupabaseClient()
     .from('listings')
     .insert(listing)
     .select()
     .single()
 
-  return { data, error }
+  if (error) {
+    return { data: null, error: mapCreateListingError(error) }
+  }
+
+  return { data, error: null }
 }
 
 export async function updateListing(
@@ -554,9 +650,41 @@ export async function deleteListing(
     .delete()
     .eq('id', listingId)
     .select()
-    .single()
+    .maybeSingle()
 
-  return { data, error }
+  if (error) {
+    return { data: null, error: mapDeleteListingError(error) }
+  }
+
+  if (!data) {
+    return {
+      data: null,
+      error: new Error('This listing was not deleted from the database. Try again.'),
+    }
+  }
+
+  const verification = await getSupabaseClient()
+    .from('listings')
+    .select('id', { count: 'exact', head: true })
+    .eq('id', listingId)
+
+  if (verification.error) {
+    return {
+      data: null,
+      error: new Error(
+        'The listing was removed, but database verification failed. Refresh your listings to confirm.',
+      ),
+    }
+  }
+
+  if ((verification.count ?? 0) > 0) {
+    return {
+      data: null,
+      error: new Error('The listing still exists in the database after delete.'),
+    }
+  }
+
+  return { data, error: null }
 }
 
 export async function setListingStatus(

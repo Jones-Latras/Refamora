@@ -27,14 +27,35 @@ export function getDistanceKm(from: Coordinates, to: Coordinates) {
   return EARTH_RADIUS_KM * c
 }
 
-export function formatDistanceAway(distanceKm: number) {
+export function formatDistanceAway(
+  distanceKm: number,
+  accuracyMeters?: number | null,
+) {
+  const roundedAccuracy =
+    typeof accuracyMeters === 'number' && Number.isFinite(accuracyMeters)
+      ? Math.max(0, Math.round(accuracyMeters))
+      : null
+  const isApproximate = roundedAccuracy != null && roundedAccuracy > 120
+
   if (distanceKm < 1) {
-    return `${Math.max(100, Math.round(distanceKm * 1000))} m away`
+    const meterStep = isApproximate ? 50 : 10
+    const metersAway = Math.max(
+      meterStep,
+      Math.round((distanceKm * 1000) / meterStep) * meterStep,
+    )
+
+    return `${isApproximate ? 'About ' : ''}${metersAway} m away`
   }
 
-  if (distanceKm < 10) {
-    return `${distanceKm.toFixed(1)} km away`
+  if (distanceKm < 5) {
+    return `${isApproximate ? 'About ' : ''}${distanceKm.toFixed(
+      isApproximate ? 1 : 2,
+    )} km away`
   }
 
-  return `${Math.round(distanceKm)} km away`
+  if (distanceKm < 20) {
+    return `${isApproximate ? 'About ' : ''}${distanceKm.toFixed(1)} km away`
+  }
+
+  return `${isApproximate ? 'About ' : ''}${Math.round(distanceKm)} km away`
 }

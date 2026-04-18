@@ -27,7 +27,6 @@ import type {
   AIHealthResult,
   ListingAssistResult,
   ListingModerationResult,
-  PhotoCheckResult,
   WasteValueAdviceResult,
 } from '../types/app'
 import type { ListingFormValues } from '../utils/schemas'
@@ -36,8 +35,8 @@ import type { WasteTypeValue } from '../utils/wasteTypes'
 import {
   assistListing,
   getAIHealth,
-  moderateListing,
   getPhotoCheck,
+  moderateListing,
   getWasteValueAdvice,
   submitAIFeedback,
 } from '../services/aiService'
@@ -67,6 +66,7 @@ type ListingEditorProps = {
   draftLabel?: string
   draftSavedLabel?: string
   initialValues: ListingFormValues
+  formResetSignal?: number
   onSubmitValues: (values: ListingFormValues) => Promise<void>
   onSaveDraftValues?: (values: ListingFormValues) => Promise<void>
   onInfo: (message: string) => void
@@ -87,6 +87,12 @@ type PublishQualityItem = {
   status: PublishQualityStatus
 }
 
+type PhotoWasteTypeSuggestion = {
+  value: WasteTypeValue
+  label: string
+  confidence: 'high' | 'medium'
+}
+
 type ListingSectionKey = 'basics' | 'pricing' | 'checks' | 'ai'
 
 type CollapsibleSectionProps = {
@@ -101,6 +107,47 @@ type CollapsibleSectionProps = {
 
 function hasText(value?: string | null) {
   return Boolean(value?.trim())
+}
+
+function normalizeDetectedWasteType(value: string | null | undefined): WasteTypeValue | null {
+  if (!value) {
+    return null
+  }
+
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_')
+    .replace(/[^\w]/g, '')
+
+  const directMatch = WASTE_TYPES.find((item) => item.value === normalized)
+
+  if (directMatch) {
+    return directMatch.value
+  }
+
+  const aliases: Record<string, WasteTypeValue> = {
+    coconut: 'coconut_husk',
+    coconut_husks: 'coconut_husk',
+    coco_husk: 'coconut_husk',
+    coco_husks: 'coconut_husk',
+    rice: 'rice_straw',
+    rice_straws: 'rice_straw',
+    straw: 'rice_straw',
+    corn: 'corn_stalks',
+    corn_stalk: 'corn_stalks',
+    maize_stalks: 'corn_stalks',
+    banana: 'banana_trunk',
+    banana_stem: 'banana_trunk',
+    sugarcane: 'sugarcane_bagasse',
+    bagasse: 'sugarcane_bagasse',
+    pineapple: 'pineapple_leaves',
+    pineapple_leaf: 'pineapple_leaves',
+    cassava: 'cassava_peel',
+    cassava_peels: 'cassava_peel',
+  }
+
+  return aliases[normalized] ?? null
 }
 
 function CollapsibleSection({
@@ -137,6 +184,7 @@ export function ListingEditor({
   draftLabel = 'Save Draft',
   draftSavedLabel = 'Saving draft...',
   initialValues,
+  formResetSignal = 0,
   onSubmitValues,
   onSaveDraftValues,
   onInfo,
@@ -148,6 +196,8 @@ export function ListingEditor({
   const qualityPanelPosition = useRef(0)
   const pricingSectionPosition = useRef(0)
   const mapSectionPosition = useRef(0)
+  const autoDetectImageUriRef = useRef<string | null>(null)
+  const publishInFlightRef = useRef(false)
   const titleRef = useRef<TextInput>(null)
   const descriptionRef = useRef<TextInput>(null)
   const priceRef = useRef<TextInput>(null)
@@ -159,20 +209,22 @@ export function ListingEditor({
   const [aiHealthError, setAiHealthError] = useState<string | null>(null)
   const [isCheckingAIHealth, setIsCheckingAIHealth] =
     useState(aiListingAssistEnabled)
+  const [isAutoDetectingWasteType, setIsAutoDetectingWasteType] = useState(false)
+  const [photoWasteTypeSuggestion, setPhotoWasteTypeSuggestion] =
+    useState<PhotoWasteTypeSuggestion | null>(null)
+  const [photoWasteTypeMessage, setPhotoWasteTypeMessage] = useState<string | null>(null)
   const [isAiApplying, setIsAiApplying] = useState(false)
   const [isWasteAdviceLoading, setIsWasteAdviceLoading] = useState(false)
-  const [isPhotoCheckLoading, setIsPhotoCheckLoading] = useState(false)
   const [isModerationLoading, setIsModerationLoading] = useState(false)
   const [isSubmittingAiFeedback, setIsSubmittingAiFeedback] = useState(false)
   const [isSavingDraft, setIsSavingDraft] = useState(false)
+  const [isPublishLocked, setIsPublishLocked] = useState(false)
   const [aiAssistResult, setAiAssistResult] =
     useState<ListingAssistResult | null>(null)
   const [wasteAdviceResult, setWasteAdviceResult] =
     useState<WasteValueAdviceResult | null>(null)
   const [moderationResult, setModerationResult] =
     useState<ListingModerationResult | null>(null)
-  const [photoCheckResult, setPhotoCheckResult] =
-    useState<PhotoCheckResult | null>(null)
   const [aiDraftSnapshot, setAiDraftSnapshot] =
     useState<ListingDraftSnapshot | null>(null)
   const [aiFeedbackStatus, setAiFeedbackStatus] = useState<
@@ -197,9 +249,27 @@ export function ListingEditor({
     defaultValues: initialValues,
   })
 
+  const resetEditorState = useCallback(() => {
+    autoDetectImageUriRef.current = null
+    setPhotoWasteTypeSuggestion(null)
+    setPhotoWasteTypeMessage(null)
+    setAiAssistResult(null)
+    setWasteAdviceResult(null)
+    setModerationResult(null)
+    setAiDraftSnapshot(null)
+    setAiFeedbackStatus(null)
+    setOpenSections({
+      basics: true,
+      pricing: true,
+      checks: false,
+      ai: false,
+    })
+  }, [])
+
   useEffect(() => {
     reset(initialValues)
-  }, [initialValues, reset])
+    resetEditorState()
+  }, [formResetSignal, initialValues, reset, resetEditorState])
 
   const checkAiHealth = async () => {
     if (!aiListingAssistEnabled) {
@@ -277,8 +347,11 @@ export function ListingEditor({
     ) ?? false
   const selectedWasteTypeLabel =
     WASTE_TYPES.find((item) => item.value === selectedWasteType)?.label ?? null
-  const canRunPhotoCheck =
-    Boolean(selectedImage) && !selectedImage?.startsWith('http')
+  const pendingWasteTypeSuggestion =
+    photoWasteTypeSuggestion &&
+    photoWasteTypeSuggestion.value !== selectedWasteType
+      ? photoWasteTypeSuggestion
+      : null
   const fieldOrder = useMemo<(keyof ListingFormValues)[]>(
     () => [
       'waste_type',
@@ -293,10 +366,6 @@ export function ListingEditor({
     ],
     [],
   )
-
-  useEffect(() => {
-    setPhotoCheckResult(null)
-  }, [selectedImage])
 
   useEffect(() => {
     setModerationResult(null)
@@ -497,26 +566,10 @@ export function ListingEditor({
         label: 'Listing photo',
         description: !hasImage
           ? 'Add a product photo so buyers can trust what they are seeing.'
-          : !aiListingAssistEnabled
-            ? 'A photo is attached and ready to publish.'
-            : !photoCheckResult
-              ? 'A photo is attached. Run Check photo for extra quality feedback.'
-              : photoCheckResult.result.readiness === 'retake'
-                ? 'The current photo should be retaken before publishing.'
-                : photoCheckResult.result.readiness === 'needs_review'
-                  ? 'The photo is attached, but the checker suggests a quick review first.'
-                  : 'The photo check says this image looks ready for the marketplace.',
+          : 'A photo is attached and ready to publish.',
         status: !hasImage
           ? 'fail'
-          : !aiListingAssistEnabled
-            ? 'pass'
-            : !photoCheckResult
-              ? 'warn'
-              : photoCheckResult.result.readiness === 'retake'
-                ? 'fail'
-                : photoCheckResult.result.readiness === 'needs_review'
-                  ? 'warn'
-                  : 'pass',
+          : 'pass',
       },
       {
         id: 'safety',
@@ -539,7 +592,7 @@ export function ListingEditor({
               : 'fail',
       },
     ]
-  }, [moderationResult, photoCheckResult])
+  }, [moderationResult])
 
   const publishQualityItems = useMemo(
     () =>
@@ -568,6 +621,9 @@ export function ListingEditor({
   const blockingQualityItems = publishQualityItems.filter((item) => item.status === 'fail')
   const warningQualityItems = publishQualityItems.filter((item) => item.status === 'warn')
   const passedQualityItems = publishQualityItems.filter((item) => item.status === 'pass')
+  const unresolvedQualityItems = publishQualityItems.filter(
+    (item) => item.status !== 'pass',
+  )
   const basicsSummary = selectedWasteTypeLabel
     ? `${selectedWasteTypeLabel} selected${hasText(titleValue) ? ' | title added' : ''}`
     : 'Choose a waste type and add a clear draft'
@@ -603,20 +659,12 @@ export function ListingEditor({
   }
 
   useEffect(() => {
-    if (selectedImage) {
-      setOpenSections((current) =>
-        current.photos ? current : { ...current, photos: true },
-      )
-    }
-  }, [selectedImage])
-
-  useEffect(() => {
-    if (blockingQualityItems.length > 0 || moderationResult || photoCheckResult) {
+    if (blockingQualityItems.length > 0 || moderationResult) {
       setOpenSections((current) =>
         current.checks ? current : { ...current, checks: true },
       )
     }
-  }, [blockingQualityItems.length, moderationResult, photoCheckResult])
+  }, [blockingQualityItems.length, moderationResult])
 
   useEffect(() => {
     if (aiAssistResult || wasteAdviceResult || aiHealthError) {
@@ -626,28 +674,36 @@ export function ListingEditor({
     }
   }, [aiAssistResult, wasteAdviceResult, aiHealthError])
 
-  const onSubmit = handleSubmit(
+  const submitForm = handleSubmit(
     async (values) => {
-      const qualityItems = buildPublishQualityItems(values)
-      const blockingItems = qualityItems.filter((item) => item.status === 'fail')
+      try {
+        const qualityItems = buildPublishQualityItems(values)
+        const blockingItems = qualityItems.filter((item) => item.status === 'fail')
 
-      if (blockingItems.length > 0) {
-        focusBlockingQualityItem(blockingItems[0]?.id ?? '')
-        onError(blockingItems[0]?.description ?? 'Fix the listing quality issues before publishing.')
-        return
-      }
-
-      if (aiListingAssistEnabled) {
-        const canContinue = await runListingModeration(values)
-
-        if (!canContinue) {
+        if (blockingItems.length > 0) {
+          focusBlockingQualityItem(blockingItems[0]?.id ?? '')
+          onError(blockingItems[0]?.description ?? 'Fix the listing quality issues before publishing.')
           return
         }
-      }
 
-      await onSubmitValues(values)
+        if (aiListingAssistEnabled) {
+          const canContinue = await runListingModeration(values)
+
+          if (!canContinue) {
+            return
+          }
+        }
+
+        await onSubmitValues(values)
+      } finally {
+        publishInFlightRef.current = false
+        setIsPublishLocked(false)
+      }
     },
     (fieldErrors) => {
+      publishInFlightRef.current = false
+      setIsPublishLocked(false)
+
       const firstErrorField = fieldOrder.find((fieldName) => fieldErrors[fieldName])
 
       if (firstErrorField) {
@@ -664,6 +720,18 @@ export function ListingEditor({
     },
   )
 
+  const onSubmit = () => {
+    if (publishInFlightRef.current || isPublishLocked || isModerationLoading) {
+      onInfo('Listing publish is already in progress.')
+      return
+    }
+
+    publishInFlightRef.current = true
+    setIsPublishLocked(true)
+
+    void submitForm()
+  }
+
   const handleSaveDraft = async () => {
     if (!onSaveDraftValues) {
       return
@@ -678,6 +746,65 @@ export function ListingEditor({
     }
   }
 
+  const handleAutoDetectWasteType = async (imageUri: string) => {
+    if (!aiListingAssistEnabled || imageUri.startsWith('http')) {
+      return
+    }
+
+    autoDetectImageUriRef.current = imageUri
+    setPhotoWasteTypeSuggestion(null)
+    setPhotoWasteTypeMessage(null)
+    setIsAutoDetectingWasteType(true)
+
+    try {
+      const aiReady = aiHealth?.available ? true : await checkAiHealth()
+
+      if (!aiReady) {
+        setPhotoWasteTypeMessage('AI could not analyze this photo right now.')
+        return
+      }
+
+      const imageBase64 = await readImageAsBase64(imageUri)
+      const result = await getPhotoCheck({
+        imageBase64,
+        imageMimeType: 'image/jpeg',
+        wasteType: null,
+      })
+
+      if (getValues().image_url !== imageUri || result.error || !result.data) {
+        return
+      }
+
+      const detectedWasteType = normalizeDetectedWasteType(
+        result.data.result.likelyWasteType,
+      )
+      const detectedConfidence = result.data.result.likelyWasteTypeConfidence
+      const detectedWaste = WASTE_TYPES.find((item) => item.value === detectedWasteType)
+
+      if (
+        !detectedWaste ||
+        (detectedConfidence !== 'high' && detectedConfidence !== 'medium')
+      ) {
+        setPhotoWasteTypeMessage('No clear waste-type suggestion came from this photo.')
+        return
+      }
+
+      setPhotoWasteTypeSuggestion({
+        value: detectedWaste.value as WasteTypeValue,
+        label: detectedWaste.label,
+        confidence: detectedConfidence,
+      })
+      onInfo(`Photo suggests ${detectedWaste.label}. Review it before applying.`)
+    } catch {
+      setPhotoWasteTypeMessage('Photo analysis is unavailable right now.')
+    } finally {
+      if (autoDetectImageUriRef.current === imageUri) {
+        autoDetectImageUriRef.current = null
+        setIsAutoDetectingWasteType(false)
+      }
+    }
+  }
+
   const handlePickImage = async () => {
     const imageUri = await pickAndCompressImage()
 
@@ -686,7 +813,23 @@ export function ListingEditor({
     }
 
     setValue('image_url', imageUri, { shouldValidate: true })
+    setPhotoWasteTypeSuggestion(null)
+    setPhotoWasteTypeMessage(null)
     onInfo('Image ready for upload.')
+    void handleAutoDetectWasteType(imageUri)
+  }
+
+  const handleApplyPhotoSuggestion = () => {
+    if (!pendingWasteTypeSuggestion) {
+      return
+    }
+
+    setValue('waste_type', pendingWasteTypeSuggestion.value as WasteTypeValue, {
+      shouldValidate: true,
+    })
+    setPhotoWasteTypeSuggestion(null)
+    setPhotoWasteTypeMessage(null)
+    onInfo(`Waste type set to ${pendingWasteTypeSuggestion.label}.`)
   }
 
   const runListingModeration = async (values: ListingFormValues) => {
@@ -784,61 +927,6 @@ export function ListingEditor({
       onInfo('Waste value ideas are ready to review.')
     } finally {
       setIsWasteAdviceLoading(false)
-    }
-  }
-
-  const handlePhotoCheck = async () => {
-    if (!selectedImage) {
-      onError('Add a listing photo first before running the photo checker.')
-      return
-    }
-
-    if (selectedImage.startsWith('http')) {
-      onInfo('Replace the image first if you want to run the photo checker again.')
-      return
-    }
-
-    if (isCheckingAIHealth) {
-      return
-    }
-
-    if (!aiHealth?.available) {
-      onError('AI is unavailable right now. You can continue manually.')
-      return
-    }
-
-    setIsPhotoCheckLoading(true)
-
-    try {
-      const imageBase64 = await readImageAsBase64(selectedImage)
-      const result = await getPhotoCheck({
-        imageBase64,
-        imageMimeType: 'image/jpeg',
-        wasteType: selectedWasteTypeLabel ?? selectedWasteType ?? null,
-      })
-
-      if (result.error || !result.data) {
-        onError(result.error?.message ?? 'Photo check is unavailable right now.')
-        return
-      }
-
-      setPhotoCheckResult(result.data)
-
-      if (result.data.result.readiness === 'good') {
-        onInfo('Photo check complete. This image looks ready for a listing.')
-        return
-      }
-
-      if (result.data.result.readiness === 'retake') {
-        onInfo('Photo check complete. A retake is recommended before publishing.')
-        return
-      }
-
-      onInfo('Photo check complete. Review the suggestions before publishing.')
-    } catch {
-      onError('Photo check is unavailable right now. You can continue manually.')
-    } finally {
-      setIsPhotoCheckLoading(false)
     }
   }
 
@@ -1011,7 +1099,9 @@ export function ListingEditor({
               <>
                 <Image source={{ uri: selectedImage }} style={styles.productPhotoImage} />
                 <View style={styles.productPhotoOverlay}>
-                  <Text style={styles.productPhotoActionText}>Replace photo</Text>
+                  <Text style={styles.productPhotoActionText}>
+                    {isAutoDetectingWasteType ? 'Analyzing photo...' : 'Replace photo'}
+                  </Text>
                 </View>
               </>
             ) : (
@@ -1026,6 +1116,34 @@ export function ListingEditor({
               </View>
             )}
           </Pressable>
+          {pendingWasteTypeSuggestion ? (
+            <View style={styles.photoSuggestionCard}>
+              <View style={styles.photoSuggestionTextBlock}>
+                <Text style={styles.photoSuggestionTitle}>
+                  Photo suggests {pendingWasteTypeSuggestion.label}
+                </Text>
+                <Text style={styles.photoSuggestionText}>
+                  {pendingWasteTypeSuggestion.confidence === 'high'
+                    ? 'High confidence from the uploaded photo.'
+                    : 'Medium confidence from the uploaded photo.'}
+                </Text>
+              </View>
+              <Pressable
+                onPress={handleApplyPhotoSuggestion}
+                style={styles.photoSuggestionButton}
+              >
+                <Text style={styles.photoSuggestionButtonText}>
+                  Use suggestion
+                </Text>
+              </Pressable>
+            </View>
+          ) : photoWasteTypeMessage ? (
+            <View style={styles.photoSuggestionMessageCard}>
+              <Text style={styles.photoSuggestionMessageText}>
+                {photoWasteTypeMessage}
+              </Text>
+            </View>
+          ) : null}
 
           <View style={styles.form}>
           <CollapsibleSection
@@ -1070,6 +1188,28 @@ export function ListingEditor({
                 </View>
                 {errors.waste_type?.message ? (
                   <Text style={styles.errorText}>{errors.waste_type.message}</Text>
+                ) : null}
+                {pendingWasteTypeSuggestion ? (
+                  <View style={styles.photoSuggestionCard}>
+                    <View style={styles.photoSuggestionTextBlock}>
+                      <Text style={styles.photoSuggestionTitle}>
+                        Photo suggests {pendingWasteTypeSuggestion.label}
+                      </Text>
+                      <Text style={styles.photoSuggestionText}>
+                        {pendingWasteTypeSuggestion.confidence === 'high'
+                          ? 'High confidence from the uploaded photo.'
+                          : 'Medium confidence from the uploaded photo.'}
+                      </Text>
+                    </View>
+                    <Pressable
+                      onPress={handleApplyPhotoSuggestion}
+                      style={styles.photoSuggestionButton}
+                    >
+                      <Text style={styles.photoSuggestionButtonText}>
+                        Use suggestion
+                      </Text>
+                    </Pressable>
+                  </View>
                 ) : null}
               </View>
             </View>
@@ -1640,18 +1780,9 @@ export function ListingEditor({
               </Text>
 
               <View style={styles.qualityList}>
-                {publishQualityItems.map((item) => (
-                  <View key={item.id} style={styles.qualityItem}>
-                    {item.status === 'pass' ? (
-                      <View
-                        style={[
-                          styles.qualityItemBadge,
-                          styles.qualityItemBadgePass,
-                        ]}
-                      >
-                        <Text style={styles.qualityItemBadgeText}>Pass</Text>
-                      </View>
-                    ) : (
+                {unresolvedQualityItems.length > 0 ? (
+                  unresolvedQualityItems.map((item) => (
+                    <View key={item.id} style={styles.qualityItem}>
                       <Pressable
                         onPress={() => focusBlockingQualityItem(item.id)}
                         style={[
@@ -1666,130 +1797,19 @@ export function ListingEditor({
                           {item.status === 'warn' ? 'Review' : 'Fix'}
                         </Text>
                       </Pressable>
-                    )}
-                    <View style={styles.qualityItemText}>
-                      <Text style={styles.qualityItemTitle}>{item.label}</Text>
-                      <Text style={styles.qualityItemDescription}>{item.description}</Text>
+                      <View style={styles.qualityItemText}>
+                        <Text style={styles.qualityItemTitle}>{item.label}</Text>
+                        <Text style={styles.qualityItemDescription}>{item.description}</Text>
+                      </View>
                     </View>
-                  </View>
-                ))}
+                  ))
+                ) : (
+                  <Text style={styles.qualitySummary}>
+                    No open publish issues right now.
+                  </Text>
+                )}
               </View>
             </View>
-
-            {selectedImage && aiListingAssistEnabled ? (
-              <View style={styles.photoCheckCard}>
-                <View style={styles.photoCheckHeader}>
-                  <View style={styles.photoCheckTextBlock}>
-                    <Text style={styles.photoCheckTitle}>Photo check</Text>
-                  </View>
-                  <Pressable
-                    disabled={isPhotoCheckLoading || isCheckingAIHealth}
-                    onPress={handlePhotoCheck}
-                    style={[
-                      styles.photoCheckButton,
-                      isPhotoCheckLoading || isCheckingAIHealth
-                        ? styles.aiButtonDisabled
-                        : null,
-                    ]}
-                  >
-                    <Text style={styles.photoCheckButtonText}>
-                      {isCheckingAIHealth
-                        ? 'Checking...'
-                        : isPhotoCheckLoading
-                          ? 'Reviewing...'
-                          : canRunPhotoCheck
-                            ? 'Check photo'
-                            : 'Replace to check'}
-                    </Text>
-                  </Pressable>
-                </View>
-
-                {!canRunPhotoCheck ? (
-                  <Text style={styles.photoCheckHint}>
-                    Replace the current uploaded image if you want AI to review it again.
-                  </Text>
-                ) : null}
-
-                {photoCheckResult ? (
-                  <View style={styles.photoCheckResultCard}>
-                    <View style={styles.photoCheckResultHeader}>
-                      <View style={styles.photoCheckScoreBlock}>
-                        <Text style={styles.photoCheckScoreValue}>
-                          {photoCheckResult.result.qualityScore}
-                        </Text>
-                        <Text style={styles.photoCheckScoreLabel}>
-                          quality score
-                        </Text>
-                      </View>
-                      <View
-                        style={[
-                          styles.photoCheckBadge,
-                          photoCheckResult.result.readiness === 'good'
-                            ? styles.photoCheckBadgeGood
-                            : photoCheckResult.result.readiness === 'retake'
-                              ? styles.photoCheckBadgeRetake
-                              : styles.photoCheckBadgeReview,
-                        ]}
-                      >
-                        <Text style={styles.photoCheckBadgeText}>
-                          {photoCheckResult.result.readiness === 'good'
-                            ? 'Looks good'
-                            : photoCheckResult.result.readiness === 'retake'
-                              ? 'Retake suggested'
-                              : 'Needs review'}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <Text style={styles.photoCheckMeta}>
-                      Provider:{' '}
-                      {photoCheckResult.provider === 'local_gemma'
-                        ? 'Local Gemma'
-                        : 'Gemini'}
-                      {photoCheckResult.fallbackUsed ? ' | fallback used' : ''}
-                    </Text>
-
-                    {photoCheckResult.result.retakeSuggestions.length > 0 ? (
-                      <View style={styles.photoCheckListBlock}>
-                        <Text style={styles.photoCheckListLabel}>
-                          Retake suggestions
-                        </Text>
-                        {photoCheckResult.result.retakeSuggestions.map((item) => (
-                          <Text key={item} style={styles.photoCheckListItem}>
-                            - {item}
-                          </Text>
-                        ))}
-                      </View>
-                    ) : null}
-
-                    {photoCheckResult.result.likelyWasteType &&
-                    photoCheckResult.result.likelyWasteTypeConfidence === 'high' ? (
-                      <Text style={styles.photoCheckLikelyType}>
-                        Likely waste type: {photoCheckResult.result.likelyWasteType}
-                      </Text>
-                    ) : null}
-
-                    {photoCheckResult.result.notes.length > 0 ? (
-                      <View style={styles.photoCheckListBlock}>
-                        <Text style={styles.photoCheckListLabel}>Notes</Text>
-                        {photoCheckResult.result.notes.map((item) => (
-                          <Text key={item} style={styles.photoCheckListItem}>
-                            - {item}
-                          </Text>
-                        ))}
-                      </View>
-                    ) : null}
-
-                    {photoCheckResult.result.moderationStatus === 'review' ? (
-                      <Text style={styles.photoCheckModeration}>
-                        This image may need a manual review before it is safe to
-                        trust as a marketplace photo.
-                      </Text>
-                    ) : null}
-                  </View>
-                ) : null}
-              </View>
-            ) : null}
 
             {aiListingAssistEnabled ? (
               <View style={styles.moderationCard}>
@@ -1891,7 +1911,7 @@ export function ListingEditor({
           <View style={styles.submitRow}>
             {onSaveDraftValues ? (
               <Pressable
-                disabled={isSavingDraft || isSubmitting}
+                disabled={isSavingDraft || isSubmitting || isPublishLocked}
                 onPress={() => void handleSaveDraft()}
                 style={styles.draftButton}
               >
@@ -1901,7 +1921,7 @@ export function ListingEditor({
               </Pressable>
             ) : null}
             <Pressable
-              disabled={isSubmitting || isModerationLoading || isSavingDraft}
+              disabled={isSubmitting || isModerationLoading || isSavingDraft || isPublishLocked}
               onPress={onSubmit}
               style={styles.primaryButton}
             >
@@ -2274,6 +2294,52 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
+  photoSuggestionCard: {
+    marginTop: 10,
+    gap: 10,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(58, 102, 72, 0.14)',
+    backgroundColor: '#f3f7f2',
+    padding: 12,
+  },
+  photoSuggestionTextBlock: {
+    gap: 4,
+  },
+  photoSuggestionTitle: {
+    color: palette.sageDark,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  photoSuggestionText: {
+    color: palette.muted,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  photoSuggestionButton: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    backgroundColor: palette.sageDark,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  photoSuggestionButtonText: {
+    color: palette.cream,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  photoSuggestionMessageCard: {
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(28, 16, 10, 0.08)',
+    backgroundColor: palette.surface,
+    padding: 12,
+  },
+  photoSuggestionMessageText: {
+    color: palette.muted,
+    fontSize: 12,
+    lineHeight: 18,
+  },
   selectorChip: {
     backgroundColor: palette.surface,
     borderRadius: 999,
@@ -2437,124 +2503,6 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: palette.cream,
     fontWeight: '800',
-  },
-  photoCheckCard: {
-    gap: 10,
-    backgroundColor: '#f3f7f2',
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: 'rgba(58, 102, 72, 0.12)',
-    padding: 12,
-  },
-  photoCheckHeader: {
-    gap: 8,
-  },
-  photoCheckTextBlock: {
-    gap: 4,
-  },
-  photoCheckTitle: {
-    color: palette.sageDark,
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  photoCheckSubtitle: {
-    color: palette.muted,
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  photoCheckButton: {
-    alignSelf: 'flex-start',
-    backgroundColor: palette.surface,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(58, 102, 72, 0.12)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  photoCheckButtonText: {
-    color: palette.sageDark,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  photoCheckHint: {
-    color: palette.muted,
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  photoCheckResultCard: {
-    gap: 8,
-    backgroundColor: palette.surface,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(58, 102, 72, 0.08)',
-    padding: 12,
-  },
-  photoCheckResultHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  photoCheckScoreBlock: {
-    gap: 2,
-  },
-  photoCheckScoreValue: {
-    color: palette.soil,
-    fontSize: 24,
-    fontWeight: '800',
-  },
-  photoCheckScoreLabel: {
-    color: palette.muted,
-    fontSize: 12,
-    textTransform: 'uppercase',
-  },
-  photoCheckBadge: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  photoCheckBadgeGood: {
-    backgroundColor: 'rgba(58, 102, 72, 0.14)',
-  },
-  photoCheckBadgeReview: {
-    backgroundColor: 'rgba(176, 126, 40, 0.14)',
-  },
-  photoCheckBadgeRetake: {
-    backgroundColor: 'rgba(160, 69, 50, 0.12)',
-  },
-  photoCheckBadgeText: {
-    color: palette.soil,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  photoCheckMeta: {
-    color: palette.muted,
-    fontSize: 12,
-  },
-  photoCheckListBlock: {
-    gap: 6,
-  },
-  photoCheckListLabel: {
-    color: palette.sageDark,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  photoCheckListItem: {
-    color: palette.muted,
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  photoCheckLikelyType: {
-    color: palette.soil,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 19,
-  },
-  photoCheckModeration: {
-    color: palette.error,
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: '700',
   },
   moderationCard: {
     gap: 10,

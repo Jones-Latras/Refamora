@@ -79,6 +79,7 @@ export default function FarmerLayout() {
         name="my-listings"
         options={{
           title: 'Listings',
+          headerShown: false,
         }}
       />
       <Tabs.Screen

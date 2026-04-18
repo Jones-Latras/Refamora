@@ -5,6 +5,8 @@ import { createJSONStorage, persist } from 'zustand/middleware'
 type BuyerCoordinates = {
   latitude: number
   longitude: number
+  accuracyMeters?: number | null
+  capturedAt?: string
 }
 
 type BuyerLocationState = {

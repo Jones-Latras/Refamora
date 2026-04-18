@@ -4,38 +4,119 @@ import { useCallback, useMemo, useState } from 'react'
 import {
   Alert,
   FlatList,
+  Image,
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { EmptyState } from '../../components/EmptyState'
 import { ErrorState } from '../../components/ErrorState'
-import { ListingCard } from '../../components/ListingCard'
+import { FulfillmentLabel } from '../../components/FulfillmentLabel'
 import { ListingStatusBadge } from '../../components/ListingStatusBadge'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
 import { useListingDraftStore } from '../../hooks/useListingDrafts'
 import { useFarmerListings } from '../../hooks/useListings'
-import type {
-  ListingActivityItem,
-  ListingPerformanceSummary,
-  ListingStatus,
-} from '../../types/app'
 import {
+  deleteListing,
   getSellerListingActivity,
   getSellerListingPerformance,
   setListingsStatus,
   setListingStatus,
 } from '../../services/listingService'
-import { formatDateTime } from '../../utils/formatters'
-import { palette, radii } from '../../utils/theme'
+import type {
+  ListingActivityItem,
+  ListingPerformanceSummary,
+  ListingPreview,
+  ListingStatus,
+} from '../../types/app'
+import { formatDate, formatDateTime, formatPrice, titleCase } from '../../utils/formatters'
+import { palette, radii, shadow } from '../../utils/theme'
+
+type StatusFilter = 'all' | ListingStatus
+type SortMode = 'newest' | 'oldest' | 'price_high' | 'price_low'
+
+const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'active', label: 'Active' },
+  { value: 'sold', label: 'Sold' },
+  { value: 'unavailable', label: 'Paused' },
+]
+
+const SORT_OPTIONS: { value: SortMode; label: string }[] = [
+  { value: 'newest', label: 'Newest' },
+  { value: 'oldest', label: 'Oldest' },
+  { value: 'price_high', label: 'High price' },
+  { value: 'price_low', label: 'Low price' },
+]
 
 function getListingAgeInDays(createdAt: string) {
   const diffMs = Date.now() - new Date(createdAt).getTime()
   return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)))
+}
+
+function formatWasteTypeLabel(value: string) {
+  return titleCase(value.replaceAll('_', ' '))
+}
+
+function formatListingQuantity(quantity: number, unit: string) {
+  const displayQuantity = Number.isInteger(quantity)
+    ? String(quantity)
+    : quantity.toFixed(2).replace(/\.?0+$/, '')
+
+  return `${displayQuantity} ${unit}`
+}
+
+function getCompactListingTitle(listing: ListingPreview) {
+  const cleanedTitle = listing.title
+    .replace(/\s*[-|]\s*\d+(?:\.\d+)?\s*[a-zA-Z]+\s*$/u, '')
+    .trim()
+
+  return cleanedTitle || formatWasteTypeLabel(listing.wasteType)
+}
+
+function buildActivityHighlights(
+  listing: ListingPreview,
+  performance: ListingPerformanceSummary | undefined,
+  listingActivity: ListingActivityItem[],
+) {
+  const highlights = [`Created on ${formatDate(listing.createdAt)}`]
+  const inquiryCount = performance?.inquiryCount ?? 0
+  const pendingCount = performance?.pendingInquiryCount ?? 0
+  const viewCount = performance?.viewCount ?? 0
+  const latestBuyerEvent = listingActivity.find(
+    (event) => event.type !== 'listing_created',
+  )
+
+  if (inquiryCount > 0) {
+    highlights.push(
+      `${inquiryCount} ${inquiryCount === 1 ? 'inquiry' : 'inquiries'} received${
+        pendingCount > 0
+          ? ` • ${pendingCount} ${pendingCount === 1 ? 'pending' : 'pending'}`
+          : ''
+      }`,
+    )
+  } else {
+    highlights.push('No buyer inquiries yet')
+  }
+
+  highlights.push(
+    viewCount > 0
+      ? `${viewCount} ${viewCount === 1 ? 'view' : 'views'} so far`
+      : 'No buyer views yet',
+  )
+
+  if (latestBuyerEvent) {
+    highlights.push(
+      `${latestBuyerEvent.title} on ${formatDateTime(latestBuyerEvent.createdAt)}`,
+    )
+  }
+
+  return highlights.slice(0, 4)
 }
 
 export default function MyListingsScreen() {
@@ -48,6 +129,9 @@ export default function MyListingsScreen() {
   const [performance, setPerformance] = useState<ListingPerformanceSummary[]>([])
   const [activity, setActivity] = useState<ListingActivityItem[]>([])
   const [expandedListingId, setExpandedListingId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [sortMode, setSortMode] = useState<SortMode>('newest')
 
   const refreshSupportingData = useCallback(async () => {
     if (!user?.id) {
@@ -107,31 +191,85 @@ export default function MyListingsScreen() {
     await refreshSupportingData()
   }
 
-  const openStatusMenu = (listingId: string, currentStatus: ListingStatus) => {
-    Alert.alert('Update listing status', 'Choose the new visibility for this listing.', [
-      {
-        text: 'Keep Active',
-        onPress: () => void handleStatusChange(listingId, 'active', currentStatus),
-      },
-      {
-        text: 'Mark as Sold',
-        onPress: () => void handleStatusChange(listingId, 'sold', currentStatus),
-      },
-      {
-        text: 'Mark Unavailable',
-        onPress: () =>
-          void handleStatusChange(listingId, 'unavailable', currentStatus),
-      },
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-    ])
+  const handleDeleteListing = async (listingId: string) => {
+    const result = await deleteListing(listingId)
+
+    if (result.error) {
+      showToast(result.error.message, 'error')
+      return
+    }
+
+    setExpandedListingId((current) => (current === listingId ? null : current))
+    showToast('Listing deleted.', 'success')
+    await refetch()
+    await refreshSupportingData()
   }
 
-  const performanceByListing = new Map(
-    performance.map((item) => [item.listingId, item]),
+  const confirmDeleteListing = (listingId: string) => {
+    Alert.alert(
+      'Delete listing',
+      'This will permanently remove the listing from your account and buyers will no longer be able to find it.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => void handleDeleteListing(listingId),
+        },
+      ],
+    )
+  }
+
+  const openListingActions = (listingId: string, currentStatus: ListingStatus) => {
+    const actions: {
+      text: string
+      onPress?: () => void
+      style?: 'cancel'
+    }[] = [
+      {
+        text: 'Duplicate Listing',
+        onPress: () =>
+          router.push({
+            pathname: '/(farmer)/create-listing',
+            params: { duplicateFromId: listingId },
+          }),
+      },
+    ]
+
+    if (currentStatus !== 'sold') {
+      actions.push({
+        text: 'Mark as Sold',
+        onPress: () => void handleStatusChange(listingId, 'sold', currentStatus),
+      })
+    }
+
+    if (currentStatus !== 'unavailable') {
+      actions.push({
+        text: 'Pause Listing',
+        onPress: () => void handleStatusChange(listingId, 'unavailable', currentStatus),
+      })
+    }
+
+    if (currentStatus !== 'active') {
+      actions.push({
+        text: 'Mark as Active',
+        onPress: () => void handleStatusChange(listingId, 'active', currentStatus),
+      })
+    }
+
+    actions.push({ text: 'Cancel', style: 'cancel' })
+
+    Alert.alert('Listing actions', 'Choose what to do with this listing.', actions)
+  }
+
+  const performanceByListing = useMemo(
+    () => new Map(performance.map((item) => [item.listingId, item])),
+    [performance],
   )
+
   const activityByListing = useMemo(
     () =>
       activity.reduce(
@@ -145,6 +283,7 @@ export default function MyListingsScreen() {
       ),
     [activity],
   )
+
   const olderActiveListings = useMemo(
     () =>
       (data ?? []).filter(
@@ -153,6 +292,49 @@ export default function MyListingsScreen() {
       ),
     [data],
   )
+
+  const filteredListings = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase()
+    const source = [...(data ?? [])]
+
+    const filtered = source.filter((listing) => {
+      if (statusFilter !== 'all' && listing.status !== statusFilter) {
+        return false
+      }
+
+      if (!normalizedQuery) {
+        return true
+      }
+
+      const searchable = [
+        listing.title,
+        listing.city,
+        formatWasteTypeLabel(listing.wasteType),
+      ]
+        .join(' ')
+        .toLowerCase()
+
+      return searchable.includes(normalizedQuery)
+    })
+
+    filtered.sort((left, right) => {
+      if (sortMode === 'oldest') {
+        return new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime()
+      }
+
+      if (sortMode === 'price_high') {
+        return right.price - left.price
+      }
+
+      if (sortMode === 'price_low') {
+        return left.price - right.price
+      }
+
+      return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+    })
+
+    return filtered
+  }, [data, searchQuery, sortMode, statusFilter])
 
   const handleBulkStatusChange = async (status: ListingStatus) => {
     const listingIds = olderActiveListings.map((listing) => listing.id)
@@ -192,11 +374,11 @@ export default function MyListingsScreen() {
       } that have been live for 30+ days.`,
       [
         {
-          text: 'Mark Unavailable',
+          text: 'Pause listings',
           onPress: () => void handleBulkStatusChange('unavailable'),
         },
         {
-          text: 'Mark as Sold',
+          text: 'Mark as sold',
           onPress: () => void handleBulkStatusChange('sold'),
         },
         {
@@ -207,8 +389,124 @@ export default function MyListingsScreen() {
     )
   }
 
+  const renderHeader = () => (
+    <View style={styles.headerStack}>
+      <View style={styles.pageHeader}>
+        <View style={styles.pageHeaderText}>
+          <Text style={styles.pageTitle}>My Listings</Text>
+          <Text style={styles.pageSubtitle}>
+            {data?.length ?? 0} total listing{(data?.length ?? 0) === 1 ? '' : 's'}
+          </Text>
+        </View>
+        <Pressable
+          onPress={() => router.push('/(farmer)/create-listing')}
+          style={styles.addButton}
+        >
+          <Text style={styles.addButtonText}>Add listing</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.utilityCard}>
+        <TextInput
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search title, waste type, or city"
+          placeholderTextColor={palette.muted}
+          style={styles.searchInput}
+        />
+        <View style={styles.chipRow}>
+          {STATUS_FILTERS.map((filter) => {
+            const selected = statusFilter === filter.value
+
+            return (
+              <Pressable
+                key={filter.value}
+                onPress={() => setStatusFilter(filter.value)}
+                style={[styles.utilityChip, selected ? styles.utilityChipActive : null]}
+              >
+                <Text
+                  style={[
+                    styles.utilityChipText,
+                    selected ? styles.utilityChipTextActive : null,
+                  ]}
+                >
+                  {filter.label}
+                </Text>
+              </Pressable>
+            )
+          })}
+        </View>
+        <View style={styles.chipRow}>
+          {SORT_OPTIONS.map((option) => {
+            const selected = sortMode === option.value
+
+            return (
+              <Pressable
+                key={option.value}
+                onPress={() => setSortMode(option.value)}
+                style={[styles.utilityChip, selected ? styles.utilityChipActive : null]}
+              >
+                <Text
+                  style={[
+                    styles.utilityChipText,
+                    selected ? styles.utilityChipTextActive : null,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              </Pressable>
+            )
+          })}
+        </View>
+      </View>
+
+      {savedDraft ? (
+        <View style={styles.draftCard}>
+          <View style={styles.draftHeader}>
+            <View style={styles.draftText}>
+              <View style={styles.draftTitleRow}>
+                <Text style={styles.draftTitle}>
+                  {savedDraft.values.title.trim() || 'Untitled draft listing'}
+                </Text>
+                <ListingStatusBadge status="draft" />
+              </View>
+              <Text style={styles.draftDescription}>
+                Last updated {formatDateTime(savedDraft.updatedAt)}. Resume this draft to
+                finish and publish it.
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => router.push('/(farmer)/create-listing')}
+              style={styles.draftAction}
+            >
+              <Text style={styles.draftActionText}>Resume draft</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+
+      {olderActiveListings.length > 0 ? (
+        <View style={styles.bulkCard}>
+          <View style={styles.bulkHeader}>
+            <View style={styles.bulkText}>
+              <Text style={styles.bulkTitle}>Older active listings</Text>
+              <Text style={styles.bulkDescription}>
+                {olderActiveListings.length} listing
+                {olderActiveListings.length === 1 ? '' : 's'} have been live for 30+
+                days and may need a status cleanup.
+              </Text>
+            </View>
+            <Pressable onPress={openBulkStatusMenu} style={styles.bulkAction}>
+              <Text style={styles.bulkActionText}>Bulk update</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+    </View>
+  )
+
   return (
-    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={styles.safeArea}>
       {isLoading && data === null ? (
         <View style={styles.center}>
           <Text style={styles.helper}>Loading your listings...</Text>
@@ -226,166 +524,131 @@ export default function MyListingsScreen() {
         </View>
       ) : data && data.length > 0 ? (
         <FlatList
-          data={data}
+          data={filteredListings}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
-          ListHeaderComponent={
-            savedDraft || olderActiveListings.length > 0 ? (
-              <View style={styles.headerStack}>
-                {savedDraft ? (
-                  <View style={styles.draftCard}>
-                    <View style={styles.draftHeader}>
-                      <View style={styles.draftText}>
-                        <View style={styles.draftTitleRow}>
-                          <Text style={styles.draftTitle}>
-                            {savedDraft.values.title.trim() || 'Untitled draft listing'}
-                          </Text>
-                          <ListingStatusBadge status="draft" />
-                        </View>
-                        <Text style={styles.draftDescription}>
-                          Last updated {formatDateTime(savedDraft.updatedAt)}. Resume this draft
-                          to finish and publish it.
-                        </Text>
-                      </View>
-                      <Pressable
-                        onPress={() => router.push('/(farmer)/create-listing')}
-                        style={styles.draftAction}
-                      >
-                        <Text style={styles.draftActionText}>Resume draft</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                ) : null}
-
-                {olderActiveListings.length > 0 ? (
-                  <View style={styles.bulkCard}>
-                    <View style={styles.bulkHeader}>
-                      <View style={styles.bulkText}>
-                        <Text style={styles.bulkTitle}>Older active listings</Text>
-                        <Text style={styles.bulkDescription}>
-                          {olderActiveListings.length} listing
-                          {olderActiveListings.length === 1 ? '' : 's'} have been live
-                          for 30+ days and may need a status cleanup.
-                        </Text>
-                      </View>
-                      <Pressable onPress={openBulkStatusMenu} style={styles.bulkAction}>
-                        <Text style={styles.bulkActionText}>Bulk update</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                ) : null}
-              </View>
-            ) : null
-          }
-          renderItem={({ item }) => (
-            <View style={styles.item}>
-              <ListingCard
-                listing={item}
-                onPress={() => router.push(`/(farmer)/edit-listing/${item.id}`)}
+          ListHeaderComponent={renderHeader}
+          ListEmptyComponent={
+            <View style={styles.filteredEmpty}>
+              <EmptyState
+                title="No listings match"
+                description="Try a different search term, filter, or sort option to find the listing you want to manage."
+                actionLabel="Clear filters"
+                onAction={() => {
+                  setSearchQuery('')
+                  setStatusFilter('all')
+                  setSortMode('newest')
+                }}
               />
-              <View style={styles.performanceRow}>
-                <View style={styles.performanceChip}>
-                  <Text style={styles.performanceValue}>
-                    {performanceByListing.get(item.id)?.viewCount ?? 0}
-                  </Text>
-                  <Text style={styles.performanceLabel}>Views</Text>
-                </View>
-                <View style={styles.performanceChip}>
-                  <Text style={styles.performanceValue}>
-                    {performanceByListing.get(item.id)?.inquiryCount ?? 0}
-                  </Text>
-                  <Text style={styles.performanceLabel}>Inquiries</Text>
-                </View>
-                <View style={styles.performanceChip}>
-                  <Text style={styles.performanceValue}>
-                    {performanceByListing.get(item.id)?.pendingInquiryCount ?? 0}
-                  </Text>
-                  <Text style={styles.performanceLabel}>Pending</Text>
-                </View>
-              </View>
-              <View style={styles.timelineCard}>
-                <View style={styles.timelineHeader}>
-                  <View style={styles.timelineHeaderText}>
-                    <Text style={styles.timelineTitle}>Activity timeline</Text>
-                    <Text style={styles.timelineSubtitle}>
-                      {(activityByListing.get(item.id)?.length ?? 0) > 0
-                        ? `${Math.min(
-                            activityByListing.get(item.id)?.length ?? 0,
-                            4,
-                          )} recent event${
-                            (activityByListing.get(item.id)?.length ?? 0) === 1
-                              ? ''
-                              : 's'
-                          }`
-                        : 'No activity yet'}
-                    </Text>
-                  </View>
-                  <Pressable
-                    onPress={() =>
-                      setExpandedListingId((current) =>
-                        current === item.id ? null : item.id,
-                      )
-                    }
-                    style={styles.timelineToggle}
-                  >
-                    <Text style={styles.timelineToggleText}>
-                      {expandedListingId === item.id ? 'Hide' : 'View'}
-                    </Text>
-                  </Pressable>
-                </View>
+            </View>
+          }
+          renderItem={({ item }) => {
+            const isExpanded = expandedListingId === item.id
+            const listingPerformance = performanceByListing.get(item.id)
+            const listingActivity = activityByListing.get(item.id) ?? []
+            const activityHighlights = buildActivityHighlights(
+              item,
+              listingPerformance,
+              listingActivity,
+            )
 
-                {expandedListingId === item.id ? (
-                  <View style={styles.timelineStack}>
-                    {(activityByListing.get(item.id) ?? []).slice(0, 4).map((event) => (
-                      <View key={event.id} style={styles.timelineItem}>
-                        <View style={styles.timelineDot} />
-                        <View style={styles.timelineItemText}>
-                          <Text style={styles.timelineItemTitle}>{event.title}</Text>
-                          <Text style={styles.timelineItemDescription}>
-                            {event.description}
-                          </Text>
-                          <Text style={styles.timelineItemMeta}>
-                            {formatDateTime(event.createdAt)}
-                          </Text>
-                        </View>
-                      </View>
-                    ))}
-
-                    {(activityByListing.get(item.id)?.length ?? 0) === 0 ? (
-                      <Text style={styles.timelineEmpty}>
-                        Buyer views and inquiries will appear here as this listing gets attention.
-                      </Text>
-                    ) : null}
-                  </View>
-                ) : null}
-              </View>
-              <View style={styles.actions}>
-                <Pressable
-                  onPress={() => router.push(`/(farmer)/edit-listing/${item.id}`)}
-                  style={styles.primaryButton}
-                >
-                  <Text style={styles.primaryButtonText}>Edit Listing</Text>
-                </Pressable>
+            return (
+              <View style={styles.listingBlock}>
                 <Pressable
                   onPress={() =>
-                    router.push({
-                      pathname: '/(farmer)/create-listing',
-                      params: { duplicateFromId: item.id },
-                    })
+                    setExpandedListingId((current) => (current === item.id ? null : item.id))
                   }
-                  style={styles.tertiaryButton}
+                  style={styles.compactCard}
                 >
-                  <Text style={styles.tertiaryButtonText}>Duplicate</Text>
+                  {item.imageUrl ? (
+                    <Image source={{ uri: item.imageUrl }} style={styles.compactImage} />
+                  ) : (
+                    <View style={styles.compactImagePlaceholder}>
+                      <Text style={styles.compactImageLabel}>
+                        {formatWasteTypeLabel(item.wasteType)}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={styles.compactContent}>
+                    <View style={styles.compactHeader}>
+                      <Text style={styles.compactTitle}>{getCompactListingTitle(item)}</Text>
+                      <ListingStatusBadge status={item.status} />
+                    </View>
+                    <Text style={styles.compactMeta}>
+                      {item.city} • {formatListingQuantity(item.quantity, item.unit)}
+                    </Text>
+                    <Text style={styles.compactPrice}>{formatPrice(item.price, item.unit)}</Text>
+                    <View style={styles.compactFooter}>
+                      <FulfillmentLabel type={item.fulfillmentType} />
+                      <Text style={styles.compactFooterText}>
+                        Created {formatDate(item.createdAt)}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.manageToggle}>
+                    <Text style={styles.manageToggleText}>
+                      {isExpanded ? 'Hide' : 'Manage'}
+                    </Text>
+                  </View>
                 </Pressable>
-                <Pressable
-                  onPress={() => openStatusMenu(item.id, item.status)}
-                  style={styles.secondaryButton}
-                >
-                  <Text style={styles.secondaryButtonText}>Change Status</Text>
-                </Pressable>
+
+                {isExpanded ? (
+                  <View style={styles.expandedPanel}>
+                    <View style={styles.performanceRow}>
+                      <View style={styles.performanceChip}>
+                        <Text style={styles.performanceValue}>
+                          {listingPerformance?.viewCount ?? 0}
+                        </Text>
+                        <Text style={styles.performanceLabel}>Views</Text>
+                      </View>
+                      <View style={styles.performanceChip}>
+                        <Text style={styles.performanceValue}>
+                          {listingPerformance?.inquiryCount ?? 0}
+                        </Text>
+                        <Text style={styles.performanceLabel}>Inquiries</Text>
+                      </View>
+                      <View style={styles.performanceChip}>
+                        <Text style={styles.performanceValue}>
+                          {listingPerformance?.pendingInquiryCount ?? 0}
+                        </Text>
+                        <Text style={styles.performanceLabel}>Pending</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.activityCard}>
+                      <Text style={styles.activityTitle}>Recent activity</Text>
+                      {activityHighlights.map((line) => (
+                        <Text key={line} style={styles.activityLine}>
+                          • {line}
+                        </Text>
+                      ))}
+                    </View>
+
+                    <View style={styles.actions}>
+                      <Pressable
+                        onPress={() => router.push(`/(farmer)/edit-listing/${item.id}`)}
+                        style={styles.primaryButton}
+                      >
+                        <Text style={styles.primaryButtonText}>Edit</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => openListingActions(item.id, item.status)}
+                        style={styles.secondaryButton}
+                      >
+                        <Text style={styles.secondaryButtonText}>More actions</Text>
+                      </Pressable>
+                    </View>
+                    <Pressable
+                      onPress={() => confirmDeleteListing(item.id)}
+                      style={styles.deleteButton}
+                    >
+                      <Text style={styles.deleteButtonText}>Delete listing</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
               </View>
-            </View>
-          )}
+            )
+          }}
         />
       ) : (
         <View style={styles.list}>
@@ -415,15 +678,87 @@ const styles = StyleSheet.create({
     color: palette.muted,
   },
   list: {
-    padding: 24,
-    gap: 16,
-  },
-  item: {
-    gap: 10,
+    padding: 20,
+    gap: 18,
+    paddingBottom: 32,
   },
   headerStack: {
     gap: 14,
-    marginBottom: 16,
+    marginBottom: 18,
+  },
+  pageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  pageHeaderText: {
+    flex: 1,
+    gap: 4,
+  },
+  pageTitle: {
+    color: palette.soil,
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  pageSubtitle: {
+    color: palette.muted,
+    fontSize: 13,
+  },
+  addButton: {
+    borderRadius: 999,
+    backgroundColor: palette.sageDark,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  addButtonText: {
+    color: palette.cream,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  utilityCard: {
+    gap: 10,
+    backgroundColor: palette.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: palette.border,
+    padding: 14,
+    ...shadow,
+  },
+  searchInput: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: '#f8faf7',
+    color: palette.soil,
+    fontSize: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  utilityChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: palette.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  utilityChipActive: {
+    backgroundColor: palette.sage,
+    borderColor: palette.sage,
+  },
+  utilityChipText: {
+    color: palette.clay,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  utilityChipTextActive: {
+    color: palette.cream,
   },
   draftCard: {
     gap: 10,
@@ -515,105 +850,131 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
   },
-  performanceRow: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
+  filteredEmpty: {
+    paddingTop: 8,
   },
-  performanceChip: {
+  listingBlock: {
+    gap: 10,
+  },
+  compactCard: {
     flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 12,
+    backgroundColor: palette.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: palette.border,
+    padding: 12,
+    ...shadow,
+  },
+  compactImage: {
+    width: 88,
+    height: 88,
+    borderRadius: 14,
+    backgroundColor: palette.parchment,
+  },
+  compactImagePlaceholder: {
+    width: 88,
+    height: 88,
+    borderRadius: 14,
+    backgroundColor: '#eef1ee',
     alignItems: 'center',
+    justifyContent: 'center',
+    padding: 10,
+  },
+  compactImageLabel: {
+    color: palette.soil,
+    fontSize: 11,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  compactContent: {
+    flex: 1,
     gap: 6,
+  },
+  compactHeader: {
+    gap: 6,
+  },
+  compactTitle: {
+    color: palette.soil,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  compactMeta: {
+    color: palette.muted,
+    fontSize: 13,
+  },
+  compactPrice: {
+    color: palette.sageDark,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  compactFooter: {
+    gap: 6,
+  },
+  compactFooterText: {
+    color: palette.clay,
+    fontSize: 12,
+  },
+  manageToggle: {
+    alignSelf: 'flex-start',
     borderRadius: 999,
-    backgroundColor: '#eef5ef',
+    backgroundColor: '#f4f7f1',
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  performanceValue: {
-    color: palette.soil,
+  manageToggleText: {
+    color: palette.sageDark,
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
   },
-  performanceLabel: {
-    color: palette.muted,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  timelineCard: {
+  expandedPanel: {
     gap: 10,
-    backgroundColor: '#f8faf7',
+    backgroundColor: palette.surface,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: palette.border,
     padding: 12,
   },
-  timelineHeader: {
+  performanceRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 12,
+    gap: 8,
   },
-  timelineHeaderText: {
+  performanceChip: {
     flex: 1,
+    borderRadius: 16,
+    backgroundColor: '#eef5ef',
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 2,
   },
-  timelineTitle: {
+  performanceValue: {
+    color: palette.soil,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  performanceLabel: {
+    color: palette.muted,
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  activityCard: {
+    gap: 8,
+    borderRadius: 16,
+    backgroundColor: '#f8faf7',
+    borderWidth: 1,
+    borderColor: palette.border,
+    padding: 12,
+  },
+  activityTitle: {
     color: palette.soil,
     fontSize: 14,
     fontWeight: '800',
   },
-  timelineSubtitle: {
-    color: palette.muted,
-    fontSize: 12,
-  },
-  timelineToggle: {
-    alignSelf: 'flex-start',
-    borderRadius: 999,
-    backgroundColor: palette.surface,
-    borderWidth: 1,
-    borderColor: palette.border,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  timelineToggleText: {
-    color: palette.clay,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  timelineStack: {
-    gap: 12,
-  },
-  timelineItem: {
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'flex-start',
-  },
-  timelineDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    marginTop: 5,
-    backgroundColor: palette.sage,
-  },
-  timelineItemText: {
-    flex: 1,
-    gap: 2,
-  },
-  timelineItemTitle: {
-    color: palette.soil,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  timelineItemDescription: {
-    color: palette.muted,
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  timelineItemMeta: {
-    color: palette.clay,
-    fontSize: 12,
-  },
-  timelineEmpty: {
+  activityLine: {
     color: palette.muted,
     fontSize: 13,
     lineHeight: 19,
@@ -621,15 +982,13 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     gap: 10,
-    flexWrap: 'wrap',
   },
   primaryButton: {
     flex: 1,
-    minWidth: 120,
     backgroundColor: palette.sage,
     borderRadius: radii.md,
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 13,
   },
   primaryButtonText: {
     color: palette.cream,
@@ -637,28 +996,27 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     flex: 1,
-    minWidth: 120,
-    backgroundColor: '#efe1c3',
-    borderRadius: radii.md,
-    alignItems: 'center',
-    paddingVertical: 14,
-  },
-  secondaryButtonText: {
-    color: palette.clay,
-    fontWeight: '800',
-  },
-  tertiaryButton: {
-    flex: 1,
-    minWidth: 120,
     backgroundColor: palette.surface,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: palette.border,
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 13,
   },
-  tertiaryButtonText: {
+  secondaryButtonText: {
     color: palette.clay,
+    fontWeight: '800',
+  },
+  deleteButton: {
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(160, 69, 50, 0.2)',
+    backgroundColor: '#fbf0ec',
+    alignItems: 'center',
+    paddingVertical: 13,
+  },
+  deleteButtonText: {
+    color: palette.error,
     fontWeight: '800',
   },
 })

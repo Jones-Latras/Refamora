@@ -285,6 +285,40 @@ function asStringArray(value: unknown): string[] {
     .filter(Boolean)
 }
 
+function normalizeModerationWarning(value: string): string | null {
+  const normalized = value.trim().replace(/\s+/g, ' ').toLowerCase()
+
+  if (
+    normalized === 'attached' ||
+    normalized === 'image attached' ||
+    normalized === 'attachment' ||
+    normalized === 'description' ||
+    normalized === 'price' ||
+    normalized === 'unit' ||
+    normalized === 'waste type' ||
+    normalized === 'title' ||
+    normalized === 'city' ||
+    normalized === 'address' ||
+    normalized === 'location'
+  ) {
+    return null
+  }
+
+  return value.trim()
+}
+
+function hasStrongModerationSignal(value: string): boolean {
+  return /\b(unsafe|abusive|illegal|scam|fraud|suspicious|unrelated|off-topic|sexual|violent|explicit|adult|weapon|drug|harass|hate|misrepresent)\b/i.test(
+    value,
+  )
+}
+
+function hasWeakQualitySignal(value: string): boolean {
+  return /\b(verbose|informal|specific|specificity|context|clearer|clarity|target audience|more detail|description|price|unit|waste type|title|buyer-ready|brief|short|wording|could be more|lacks context|doesn'?t clearly state)\b/i.test(
+    value,
+  )
+}
+
 export function normalizeListingAssistOutput(
   value: unknown,
 ): ListingAssistOutput {
@@ -391,9 +425,28 @@ export function normalizeListingModerationOutput(
 ): ListingModerationOutput {
   const raw = typeof value === 'object' && value ? value : {}
   const decision = Reflect.get(raw, 'decision')
+  const reasons = asStringArray(Reflect.get(raw, 'reasons')).slice(0, 3)
+  const fieldWarnings = asStringArray(Reflect.get(raw, 'fieldWarnings'))
+    .map(normalizeModerationWarning)
+    .filter((item): item is string => Boolean(item))
+    .slice(0, 4)
+  const imageWarnings = asStringArray(Reflect.get(raw, 'imageWarnings'))
+    .map(normalizeModerationWarning)
+    .filter((item): item is string => Boolean(item))
+    .slice(0, 4)
+  const reviewLooksLowSignal =
+    decision === 'review' &&
+    reasons.length > 0 &&
+    reasons.every((item) => !hasStrongModerationSignal(item) && hasWeakQualitySignal(item)) &&
+    fieldWarnings.length === 0 &&
+    imageWarnings.length === 0
 
   const normalizedDecision =
-    decision === 'block' || decision === 'review' ? decision : 'allow'
+    decision === 'block'
+      ? 'block'
+      : decision === 'review' && !reviewLooksLowSignal
+        ? 'review'
+        : 'allow'
 
   return {
     decision: normalizedDecision,
@@ -403,9 +456,9 @@ export function normalizeListingModerationOutput(
         : Reflect.get(raw, 'safeToPublish') === true
           ? true
           : false,
-    reasons: asStringArray(Reflect.get(raw, 'reasons')).slice(0, 3),
-    fieldWarnings: asStringArray(Reflect.get(raw, 'fieldWarnings')).slice(0, 4),
-    imageWarnings: asStringArray(Reflect.get(raw, 'imageWarnings')).slice(0, 4),
+    reasons: normalizedDecision === 'allow' && reviewLooksLowSignal ? [] : reasons,
+    fieldWarnings,
+    imageWarnings,
   }
 }
 

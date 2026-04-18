@@ -32,6 +32,28 @@ export default function CreateListingScreen() {
   const clearDraft = useListingDraftStore((state) => state.clearDraft)
   const [sourceListing, setSourceListing] = useState<ListingDetail | null>(null)
   const [isLoadingDuplicate, setIsLoadingDuplicate] = useState(Boolean(duplicateFromId))
+  const [forcedInitialValues, setForcedInitialValues] =
+    useState<ListingFormValues | null>(null)
+  const [formResetSignal, setFormResetSignal] = useState(0)
+
+  const blankInitialValues = useMemo<ListingFormValues>(
+    () => ({
+      title: '',
+      description: '',
+      waste_type: 'rice_straw',
+      price: 0,
+      quantity: 1,
+      unit: 'kg',
+      city: '',
+      address: '',
+      latitude: null,
+      longitude: null,
+      fulfillment_type: 'pickup',
+      accept_offers: false,
+      image_url: null,
+    }),
+    [],
+  )
 
   useEffect(() => {
     let isMounted = true
@@ -67,9 +89,17 @@ export default function CreateListingScreen() {
     }
   }, [duplicateFromId, showToast])
 
+  useEffect(() => {
+    if (duplicateFromId || sourceListing || savedDraft?.values) {
+      setForcedInitialValues(null)
+    }
+  }, [duplicateFromId, savedDraft?.values, sourceListing])
+
   const initialValues = useMemo<ListingFormValues>(
     () =>
-      sourceListing
+      forcedInitialValues
+        ? forcedInitialValues
+        : sourceListing
         ? {
             title: `${sourceListing.title} Copy`,
             description: sourceListing.description ?? '',
@@ -87,22 +117,8 @@ export default function CreateListingScreen() {
           }
         : savedDraft?.values
           ? savedDraft.values
-        : {
-            title: '',
-            description: '',
-            waste_type: 'rice_straw',
-            price: 0,
-            quantity: 1,
-            unit: 'kg',
-            city: '',
-            address: '',
-            latitude: null,
-            longitude: null,
-            fulfillment_type: 'pickup',
-            accept_offers: false,
-            image_url: null,
-          },
-    [savedDraft?.values, sourceListing],
+        : blankInitialValues,
+    [blankInitialValues, forcedInitialValues, savedDraft?.values, sourceListing],
   )
 
   const handleSubmitValues = async (values: ListingFormValues) => {
@@ -154,12 +170,15 @@ export default function CreateListingScreen() {
     }
 
     clearDraft(user.id)
+    setSourceListing(null)
+    setForcedInitialValues(blankInitialValues)
+    setFormResetSignal((current) => current + 1)
     showToast({
       title: 'Listing published',
-      message: 'Your listing is now live in Refamora and ready for buyers to discover.',
+      message: 'Your listing is now live. You can create another one from this screen.',
       variant: 'success',
     })
-    router.replace('/(farmer)/my-listings')
+    router.replace('/(farmer)/create-listing')
   }
 
   const handleSaveDraftValues = async (values: ListingFormValues) => {
@@ -223,6 +242,7 @@ export default function CreateListingScreen() {
       draftLabel="Save Draft"
       draftSavedLabel="Saving draft..."
       initialValues={initialValues}
+      formResetSignal={formResetSignal}
       onSubmitValues={handleSubmitValues}
       onSaveDraftValues={handleSaveDraftValues}
       onInfo={(message) => showToast(message, 'info')}

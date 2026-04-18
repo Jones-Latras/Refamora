@@ -5,6 +5,8 @@ import type { ServiceResult } from '../types/app'
 type Coordinates = {
   latitude: number
   longitude: number
+  accuracyMeters: number | null
+  capturedAt: string
 }
 
 export async function requestCurrentCoordinates(): Promise<
@@ -20,14 +22,25 @@ export async function requestCurrentCoordinates(): Promise<
       }
     }
 
-    const position = await ExpoLocation.getCurrentPositionAsync({
-      accuracy: ExpoLocation.Accuracy.Balanced,
+    const lastKnownPosition = await ExpoLocation.getLastKnownPositionAsync({
+      maxAge: 60_000,
+      requiredAccuracy: 75,
     })
+
+    const position =
+      lastKnownPosition ??
+      (await ExpoLocation.getCurrentPositionAsync({
+        accuracy: ExpoLocation.Accuracy.Highest,
+        distanceInterval: 1,
+        mayShowUserSettingsDialog: true,
+      }))
 
     return {
       data: {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
+        accuracyMeters: position.coords.accuracy ?? null,
+        capturedAt: new Date(position.timestamp).toISOString(),
       },
       error: null,
     }

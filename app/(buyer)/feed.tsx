@@ -545,7 +545,10 @@ export default function FeedScreen() {
                 listing={item.listing}
                 distanceLabel={
                   item.distanceKm != null
-                    ? formatDistanceAway(item.distanceKm)
+                    ? formatDistanceAway(
+                        item.distanceKm,
+                        buyerCoordinates?.accuracyMeters,
+                      )
                     : null
                 }
                 onPress={() => router.push(`/(shared)/listing/${item.listing.id}`)}
