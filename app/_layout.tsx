@@ -9,6 +9,7 @@ import { OfflineBanner } from '../components/OfflineBanner'
 import { ToastProvider, useToast } from '../components/Toast'
 import { AuthProvider, useAuth } from '../hooks/useAuth'
 import { ConnectivityProvider } from '../hooks/useConnectivity'
+import { UnreadMessagesProvider } from '../hooks/useUnreadMessages'
 import { palette } from '../utils/theme'
 
 function normalizeRedirectPath(pathname: string) {
@@ -121,7 +122,9 @@ export default function RootLayout() {
       <ToastProvider>
         <ConnectivityProvider>
           <AuthProvider>
-            <AppChrome />
+            <UnreadMessagesProvider>
+              <AppChrome />
+            </UnreadMessagesProvider>
           </AuthProvider>
         </ConnectivityProvider>
       </ToastProvider>

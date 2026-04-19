@@ -1,13 +1,15 @@
 import { Tabs } from 'expo-router'
 import { Feather } from '@expo/vector-icons'
+import { StyleSheet, View } from 'react-native'
 
+import { useUnreadMessages } from '../../hooks/useUnreadMessages'
 import { palette } from '../../utils/theme'
 
 function getFarmerTabIcon(
   routeName: string,
   color: string,
   size: number,
-  focused: boolean,
+  showUnreadDot: boolean,
 ) {
   let iconName: React.ComponentProps<typeof Feather>['name'] = 'home'
 
@@ -31,10 +33,17 @@ function getFarmerTabIcon(
       iconName = 'home'
   }
 
-  return <Feather name={iconName} size={size} color={color} />
+  return (
+    <View style={styles.iconContainer}>
+      <Feather name={iconName} size={size} color={color} />
+      {showUnreadDot ? <View style={styles.unreadDot} /> : null}
+    </View>
+  )
 }
 
 export default function FarmerLayout() {
+  const { hasUnreadMessages } = useUnreadMessages()
+
   return (
     <Tabs
       screenOptions={({ route }) => ({
@@ -55,8 +64,13 @@ export default function FarmerLayout() {
         tabBarIconStyle: {
           marginBottom: 2,
         },
-        tabBarIcon: ({ color, size, focused }) =>
-          getFarmerTabIcon(route.name, color, size, focused),
+        tabBarIcon: ({ color, size }) =>
+          getFarmerTabIcon(
+            route.name,
+            color,
+            size,
+            route.name === 'requests' && hasUnreadMessages,
+          ),
         headerShadowVisible: false,
         headerTintColor: palette.soil,
         headerStyle: { backgroundColor: palette.cream },
@@ -108,3 +122,23 @@ export default function FarmerLayout() {
     </Tabs>
   )
 }
+
+const styles = StyleSheet.create({
+  iconContainer: {
+    minWidth: 22,
+    minHeight: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unreadDot: {
+    position: 'absolute',
+    top: 0,
+    right: -2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: palette.sage,
+    borderWidth: 1,
+    borderColor: palette.surface,
+  },
+})

@@ -18,6 +18,7 @@ import { InquiryAiModal } from '../../components/InquiryAiModal'
 import { RequestsScreenSkeleton } from '../../components/ScreenSkeleton'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
+import { useUnreadMessages } from '../../hooks/useUnreadMessages'
 import { getInquirySummary } from '../../services/aiService'
 import {
   getSellerInquiries,
@@ -69,6 +70,7 @@ function matchesQuery(request: ContactRequestSummary, query: string) {
 
 export default function FarmerRequestsScreen() {
   const { user } = useAuth()
+  const { refreshUnreadMessages } = useUnreadMessages()
   const { showToast } = useToast()
   const [requests, setRequests] = useState<ContactRequestSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -150,6 +152,7 @@ export default function FarmerRequestsScreen() {
         status: 'seen',
       })),
     )
+    void refreshUnreadMessages()
     showToast('Messages marked as seen.', 'success')
   }
 

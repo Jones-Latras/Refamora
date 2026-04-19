@@ -21,6 +21,7 @@ import { EmptyState } from '../../../components/EmptyState'
 import { ErrorState } from '../../../components/ErrorState'
 import { useToast } from '../../../components/Toast'
 import { useAuth } from '../../../hooks/useAuth'
+import { useUnreadMessages } from '../../../hooks/useUnreadMessages'
 import { getReplyDraft } from '../../../services/aiService'
 import {
   getContactConversation,
@@ -46,6 +47,7 @@ export default function ContactConversationScreen() {
   const headerHeight = useHeaderHeight()
   const insets = useSafeAreaInsets()
   const { user, role } = useAuth()
+  const { refreshUnreadMessages } = useUnreadMessages()
   const { showToast } = useToast()
   const [conversation, setConversation] = useState<ContactConversation | null>(null)
   const [composerValue, setComposerValue] = useState('')
@@ -90,6 +92,7 @@ export default function ContactConversationScreen() {
               }
             : current,
         )
+        void refreshUnreadMessages()
       }
     }
 
@@ -116,9 +119,10 @@ export default function ContactConversationScreen() {
               }
             : current,
         )
+        void refreshUnreadMessages()
       }
     }
-  }, [id, role, user])
+  }, [id, refreshUnreadMessages, role, user])
 
   useFocusEffect(
     useCallback(() => {
@@ -206,6 +210,7 @@ export default function ContactConversationScreen() {
         ],
       }
     })
+    void refreshUnreadMessages()
     showToast(role === 'farmer' ? 'Reply sent.' : 'Message sent.', 'success')
   }
 
