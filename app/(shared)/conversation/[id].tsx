@@ -24,6 +24,7 @@ import { useAuth } from '../../../hooks/useAuth'
 import { getReplyDraft } from '../../../services/aiService'
 import {
   getContactConversation,
+  markBuyerConversationRead,
   markInquirySeen,
   sendContactRequestMessage,
 } from '../../../services/contactService'
@@ -91,6 +92,32 @@ export default function ContactConversationScreen() {
         )
       }
     }
+
+    if (
+      role === 'buyer' &&
+      result.data.request.lastMessageSenderId === result.data.request.sellerId &&
+      (!result.data.request.buyerLastReadAt ||
+        new Date(result.data.request.buyerLastReadAt).getTime() <
+          new Date(result.data.request.updatedAt).getTime())
+    ) {
+      const readResult = await markBuyerConversationRead(result.data.request.id)
+
+      if (!readResult.error) {
+        setConversation((current) =>
+          current
+            ? {
+                ...current,
+                request: {
+                  ...current.request,
+                  buyerLastReadAt:
+                    readResult.data?.buyer_last_read_at ??
+                    new Date().toISOString(),
+                },
+              }
+            : current,
+        )
+      }
+    }
   }, [id, role, user])
 
   useFocusEffect(
@@ -145,6 +172,8 @@ export default function ContactConversationScreen() {
       return
     }
 
+    const sentMessage = result.data
+
     setComposerValue('')
     setConversation((current) => {
       if (!current) {
@@ -156,20 +185,23 @@ export default function ContactConversationScreen() {
       return {
         request: {
           ...current.request,
-          message: result.data.message,
+          message: sentMessage.message,
           messageCount: current.request.messageCount + 1,
-          lastMessageSenderId: result.data.sender_id,
+          lastMessageSenderId: sentMessage.sender_id,
+          buyerLastReadAt: isSellerMessage
+            ? current.request.buyerLastReadAt
+            : sentMessage.created_at,
           status: isSellerMessage ? 'responded' : 'pending',
-          updatedAt: result.data.created_at,
+          updatedAt: sentMessage.created_at,
         },
         messages: [
           ...current.messages,
           {
-            id: result.data.id,
-            requestId: result.data.request_id,
-            senderId: result.data.sender_id,
-            message: result.data.message,
-            createdAt: result.data.created_at,
+            id: sentMessage.id,
+            requestId: sentMessage.request_id,
+            senderId: sentMessage.sender_id,
+            message: sentMessage.message,
+            createdAt: sentMessage.created_at,
           },
         ],
       }

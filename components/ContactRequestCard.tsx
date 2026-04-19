@@ -49,9 +49,14 @@ function getAttentionState(
 
   const sellerSentLatest =
     request.status === 'responded' && request.lastMessageSenderId === request.sellerId
+  const hasUnreadSellerReply =
+    sellerSentLatest &&
+    (!request.buyerLastReadAt ||
+      new Date(request.buyerLastReadAt).getTime() <
+        new Date(request.updatedAt).getTime())
 
   return {
-    showDot: sellerSentLatest,
+    showDot: hasUnreadSellerReply,
     badgeLabel: sellerSentLatest ? 'Reply' : null,
   }
 }

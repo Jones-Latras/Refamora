@@ -148,6 +148,7 @@ async function enrichRequests(
       listingTitle: listing?.title ?? 'Untitled listing',
       listingImageUrl: listing?.image_url ?? null,
       buyerId: request.buyer_id,
+      buyerLastReadAt: request.buyer_last_read_at ?? null,
       sellerId: request.seller_id,
       counterpartName: getCounterpartDisplayName(counterpart, counterpartBy),
       counterpartAvatarUrl: counterpart?.avatar_url ?? null,
@@ -159,7 +160,7 @@ async function enrichRequests(
         (fallbackMessage ? 1 : 0),
       lastMessageSenderId:
         latestMessage?.sender_id ?? (fallbackMessage ? request.buyer_id : null),
-      status: request.status,
+      status: request.status as ContactRequestSummary['status'],
       createdAt: request.created_at,
       updatedAt: latestMessage?.created_at ?? request.updated_at ?? request.created_at,
     }
@@ -350,6 +351,23 @@ export async function markInquirySeen(
     .eq('status', 'pending')
     .select()
     .maybeSingle()
+
+  return { data, error }
+}
+
+export async function markBuyerConversationRead(
+  requestId: string,
+): Promise<ServiceResult<ContactRequest>> {
+  if (!hasSupabaseEnv) {
+    return { data: null, error: new Error('Supabase is not configured yet.') }
+  }
+
+  const { data, error } = await getSupabaseClient().rpc(
+    'mark_buyer_conversation_read',
+    {
+      p_request_id: requestId,
+    },
+  )
 
   return { data, error }
 }

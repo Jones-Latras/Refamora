@@ -99,6 +99,7 @@ export type ContactRequestSummary = {
   listingTitle: string
   listingImageUrl: string | null
   buyerId: string
+  buyerLastReadAt: string | null
   sellerId: string
   counterpartName: string
   counterpartAvatarUrl: string | null
