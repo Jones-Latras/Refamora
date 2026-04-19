@@ -19,6 +19,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { EmptyState } from '../../../components/EmptyState'
 import { ErrorState } from '../../../components/ErrorState'
+import { BrandedLoadingScreen } from '../../../components/BrandedLoadingScreen'
 import { useToast } from '../../../components/Toast'
 import { useAuth } from '../../../hooks/useAuth'
 import { useUnreadMessages } from '../../../hooks/useUnreadMessages'
@@ -253,10 +254,7 @@ export default function ContactConversationScreen() {
   if (isLoading) {
     return (
       <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={styles.safeArea}>
-        <View style={styles.centerState}>
-          <ActivityIndicator color={palette.sageDark} size="small" />
-          <Text style={styles.helperText}>Loading conversation...</Text>
-        </View>
+        <BrandedLoadingScreen message="Loading conversation..." />
       </SafeAreaView>
     )
   }
@@ -480,15 +478,6 @@ const styles = StyleSheet.create({
   },
   messageScroll: {
     flex: 1,
-  },
-  centerState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  helperText: {
-    color: palette.muted,
   },
   stateWrapper: {
     flex: 1,

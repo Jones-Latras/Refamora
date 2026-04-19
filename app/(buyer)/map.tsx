@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { EmptyState } from '../../components/EmptyState'
 import { ErrorState } from '../../components/ErrorState'
+import { BrandedLoadingScreen } from '../../components/BrandedLoadingScreen'
 import { MapMarker } from '../../components/MapMarker'
 import { PinPopup } from '../../components/PinPopup'
 import { useToast } from '../../components/Toast'
@@ -199,10 +200,7 @@ export default function MapScreen() {
         </View>
 
         {isLoading ? (
-          <View style={styles.loadingState}>
-            <ActivityIndicator color={palette.sage} size="small" />
-            <Text style={styles.loadingText}>Loading map pins...</Text>
-          </View>
+          <BrandedLoadingScreen message="Loading map pins..." />
         ) : loadError && pins.length === 0 ? (
           <View style={styles.emptyWrapper}>
             <ErrorState
@@ -359,17 +357,6 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
-  },
-  loadingState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    backgroundColor: '#dfe8de',
-  },
-  loadingText: {
-    color: palette.sageDark,
-    fontWeight: '600',
   },
   emptyWrapper: {
     flex: 1,

@@ -109,31 +109,83 @@ function buildBuyerSearchFallback(
   }> = [
     {
       wasteType: 'coconut_husk',
-      patterns: [/coconut husk/, /coco husk/, /bunot/, /coconut coir/, /coir/],
+      patterns: [
+        /coconut husk/,
+        /coco husk/,
+        /bunot/,
+        /coconut coir/,
+        /coco coir/,
+        /coconut fib(?:er|re)/,
+        /coco fib(?:er|re)/,
+        /coir/,
+      ],
     },
     {
       wasteType: 'rice_straw',
-      patterns: [/rice straw/, /\bstraw\b/, /dayami/],
+      patterns: [
+        /rice straw/,
+        /\bstraw\b/,
+        /dayami/,
+        /rice hay/,
+        /rice stalks?/,
+        /palay straw/,
+        /palay residue/,
+      ],
     },
     {
       wasteType: 'corn_stalks',
-      patterns: [/corn stalk/, /maize stalk/, /corn stover/],
+      patterns: [
+        /corn stalks?/,
+        /maize stalks?/,
+        /corn stover/,
+        /corn residue/,
+        /maize residue/,
+        /mais stalk/,
+        /tangkay ng mais/,
+      ],
     },
     {
       wasteType: 'banana_trunk',
-      patterns: [/banana trunk/, /banana stem/, /pseudostem/],
+      patterns: [
+        /banana trunk/,
+        /banana stem/,
+        /banana stalk/,
+        /banana core/,
+        /pseudostem/,
+        /saging trunk/,
+        /saging stem/,
+      ],
     },
     {
       wasteType: 'sugarcane_bagasse',
-      patterns: [/bagasse/, /sugarcane bagasse/, /tubo/],
+      patterns: [
+        /bagasse/,
+        /sugarcane bagasse/,
+        /sugar cane bagasse/,
+        /sugarcane fib(?:er|re)/,
+        /tubo/,
+        /tubo residue/,
+      ],
     },
     {
       wasteType: 'pineapple_leaves',
-      patterns: [/pineapple leaves?/, /pina leaves?/],
+      patterns: [
+        /pineapple leaves?/,
+        /pina leaves?/,
+        /pina fib(?:er|re)/,
+        /pineapple fib(?:er|re)/,
+        /dahon ng pinya/,
+      ],
     },
     {
       wasteType: 'cassava_peel',
-      patterns: [/cassava peel/, /kamoteng kahoy peel/, /tapioca peel/],
+      patterns: [
+        /cassava peels?/,
+        /kamoteng kahoy peels?/,
+        /tapioca peels?/,
+        /balat ng cassava/,
+        /cassava skin/,
+      ],
     },
   ]
 

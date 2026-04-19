@@ -29,13 +29,10 @@ import { useBuyerFeedStore } from '../../hooks/useBuyerFeedState'
 import { useConnectivity } from '../../hooks/useConnectivity'
 import { useProfile } from '../../hooks/useProfile'
 import { useRecentlyViewedStore } from '../../hooks/useRecentlyViewed'
-import { getBuyerSearchAssist } from '../../services/aiService'
 import { getListingPreviewsByIds } from '../../services/listingService'
 import { requestCurrentCoordinates } from '../../services/locationService'
-import type { BuyerSearchAssistResult } from '../../types/app'
 import { formatDistanceAway, getDistanceKm } from '../../utils/location'
 import { palette, radii } from '../../utils/theme'
-import { WASTE_TYPES } from '../../utils/wasteTypes'
 
 function getInitials(name?: string | null, fallback = 'B') {
   if (!name) {
@@ -48,37 +45,6 @@ function getInitials(name?: string | null, fallback = 'B') {
     .slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase())
     .join('')
-}
-
-function formatAiSearchLabels(result: BuyerSearchAssistResult | null) {
-  if (!result) {
-    return []
-  }
-
-  const labels: string[] = []
-  const wasteTypeLabel = WASTE_TYPES.find(
-    (item) => item.value === result.result.wasteType,
-  )?.label
-
-  if (wasteTypeLabel) {
-    labels.push(wasteTypeLabel)
-  }
-
-  if (result.result.fulfillmentType) {
-    labels.push(result.result.fulfillmentType)
-  }
-
-  if (result.result.minPrice != null || result.result.maxPrice != null) {
-    labels.push(
-      `PHP ${result.result.minPrice ?? 0} - ${result.result.maxPrice ?? 'up'}`,
-    )
-  }
-
-  if (result.result.search) {
-    labels.push(result.result.search)
-  }
-
-  return labels
 }
 
 function RecentListingChip({
@@ -128,12 +94,8 @@ export default function FeedScreen() {
   const filters = useBuyerFeedStore((state) => state.filters)
   const setFilters = useBuyerFeedStore((state) => state.setFilters)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
-  const [isAiSearchLoading, setIsAiSearchLoading] = useState(false)
   const [isLocationLoading, setIsLocationLoading] = useState(false)
   const [isRecentExpanded, setIsRecentExpanded] = useState(false)
-  const [aiSearchResult, setAiSearchResult] =
-    useState<BuyerSearchAssistResult | null>(null)
-  const [aiSearchSourceQuery, setAiSearchSourceQuery] = useState<string | null>(null)
   const [recentListings, setRecentListings] = useState<
     {
       id: string
@@ -157,10 +119,6 @@ export default function FeedScreen() {
     filters.minPrice,
     filters.maxPrice,
   ].filter((value) => value != null && value !== '').length
-  const interpretedLabels = useMemo(
-    () => formatAiSearchLabels(aiSearchResult),
-    [aiSearchResult],
-  )
   const listingsWithDistance = useMemo(
     () =>
       data
@@ -201,11 +159,6 @@ export default function FeedScreen() {
 
   const handleQueryChange = (value: string) => {
     setQuery(value)
-
-    if (aiSearchSourceQuery && value.trim() !== aiSearchSourceQuery.trim()) {
-      setAiSearchResult(null)
-      setAiSearchSourceQuery(null)
-    }
   }
 
   const loadRecentListings = useCallback(async () => {
@@ -243,63 +196,6 @@ export default function FeedScreen() {
       void loadRecentListings()
     }, [loadRecentListings]),
   )
-
-  const handleAiSearch = async () => {
-    if (isOffline) {
-      showToast(
-        'Reconnect to use AI search. You can still browse listings that were already loaded.',
-        'info',
-      )
-      return
-    }
-
-    const trimmedQuery = query.trim()
-
-    if (trimmedQuery.length < 3) {
-      showToast('Enter a more specific search request first.', 'error')
-      return
-    }
-
-    setIsAiSearchLoading(true)
-
-    try {
-      const result = await getBuyerSearchAssist({
-        query: trimmedQuery,
-      })
-
-      if (result.error || !result.data) {
-        showToast(
-          result.error?.message ??
-            'AI search is unavailable right now. You can continue with normal search.',
-          'error',
-        )
-        return
-      }
-
-      setAiSearchResult(result.data)
-      setAiSearchSourceQuery(trimmedQuery)
-      showToast('AI filters are ready to review.', 'success')
-    } finally {
-      setIsAiSearchLoading(false)
-    }
-  }
-
-  const applyAiSearch = () => {
-    if (!aiSearchResult) {
-      return
-    }
-
-    setFilters({
-      wasteType: aiSearchResult.result.wasteType ?? undefined,
-      fulfillmentType: aiSearchResult.result.fulfillmentType ?? undefined,
-      minPrice: aiSearchResult.result.minPrice ?? undefined,
-      maxPrice: aiSearchResult.result.maxPrice ?? undefined,
-    })
-    setQuery(aiSearchResult.result.search ?? '')
-    setAiSearchResult(null)
-    setAiSearchSourceQuery(null)
-    showToast('AI filters applied. You can still adjust them manually.', 'success')
-  }
 
   const handleUseMyLocation = async () => {
     setIsLocationLoading(true)
@@ -372,14 +268,11 @@ export default function FeedScreen() {
             </Pressable>
             {(query.trim().length > 0 ||
               activeFilterCount > 0 ||
-              aiSearchResult != null ||
               buyerCoordinates != null) ? (
               <Pressable
                 onPress={() => {
                   setQuery('')
                   setFilters({})
-                  setAiSearchResult(null)
-                  setAiSearchSourceQuery(null)
                   clearBuyerCoordinates()
                 }}
                 style={styles.searchClearButton}
@@ -401,20 +294,6 @@ export default function FeedScreen() {
               <Feather name="clock" size={14} color={palette.clay} />
               <Text style={styles.activityShortcutText}>
                 View your recent activity
-              </Text>
-            </Pressable>
-            <Pressable
-              disabled={isOffline}
-              onPress={() => void handleAiSearch()}
-              style={[styles.aiSearchButton, isOffline ? styles.disabledButton : null, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
-            >
-              <Feather name="zap" size={14} color={palette.sageDark} />
-              <Text style={styles.aiSearchButtonText}>
-                {isOffline
-                  ? 'AI search offline'
-                  : isAiSearchLoading
-                    ? 'Reading search...'
-                    : 'Search with AI'}
               </Text>
             </Pressable>
             <Pressable
@@ -442,7 +321,7 @@ export default function FeedScreen() {
           </ScrollView>
 
           <Text style={styles.searchHint}>
-            Ask AI with a full request like rice straw for delivery in Surigao under PHP 500.
+            Search by waste type, city, or keyword, then refine results with filters.
           </Text>
 
           <Text style={styles.locationHint}>
@@ -452,54 +331,6 @@ export default function FeedScreen() {
                 }.`
               : 'Turn on location to see how far listings are from you.'}
           </Text>
-
-          {aiSearchResult ? (
-            <View style={styles.aiReviewCard}>
-              <Text style={styles.aiReviewTitle}>AI interpreted your search</Text>
-              {aiSearchSourceQuery ? (
-                <Text style={styles.aiReviewSource}>For: {aiSearchSourceQuery}</Text>
-              ) : null}
-              <Text style={styles.aiReviewMeta}>
-                Provider:{' '}
-                {aiSearchResult.provider === 'local_gemma'
-                  ? 'Local Gemma'
-                  : 'Gemini'}
-                {aiSearchResult.fallbackUsed ? ' | fallback used' : ''}
-              </Text>
-              {interpretedLabels.length > 0 ? (
-                <View style={styles.aiReviewChipWrap}>
-                  {interpretedLabels.map((label) => (
-                    <View key={label} style={styles.aiReviewChip}>
-                      <Text style={styles.aiReviewChipText}>{label}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
-              {aiSearchResult.result.notes.length > 0 ? (
-                <View style={styles.aiReviewNotes}>
-                  {aiSearchResult.result.notes.map((note) => (
-                    <Text key={note} style={styles.aiReviewNote}>
-                      - {note}
-                    </Text>
-                  ))}
-                </View>
-              ) : null}
-              <View style={styles.aiReviewActions}>
-                <Pressable onPress={applyAiSearch} style={styles.aiApplyButton}>
-                  <Text style={styles.aiApplyButtonText}>Apply AI filters</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => {
-                    setAiSearchResult(null)
-                    setAiSearchSourceQuery(null)
-                  }}
-                  style={styles.aiDismissButton}
-                >
-                  <Text style={styles.aiDismissButtonText}>Dismiss</Text>
-                </Pressable>
-              </View>
-            </View>
-          ) : null}
 
           {recentListings.length > 0 ? (
             <View style={styles.recentSection}>
@@ -596,8 +427,6 @@ export default function FeedScreen() {
             onAction={() => {
               setFilters({})
               setQuery('')
-              setAiSearchResult(null)
-              setAiSearchSourceQuery(null)
             }}
           />
         )}
@@ -732,20 +561,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
   },
-  aiSearchButton: {
-    backgroundColor: '#e4efe6',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  aiSearchButtonText: {
-    color: palette.sageDark,
-    fontWeight: '800',
-    fontSize: 12,
-  },
-  disabledButton: {
-    opacity: 0.55,
-  },
   searchFilterButton: {
     backgroundColor: palette.parchment,
     borderRadius: 999,
@@ -778,84 +593,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 14,
     fontWeight: '700',
-  },
-  aiReviewCard: {
-    gap: 10,
-    backgroundColor: '#eef6ed',
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: 'rgba(58, 102, 72, 0.12)',
-    padding: 14,
-  },
-  aiReviewTitle: {
-    color: palette.sageDark,
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  aiReviewMeta: {
-    color: palette.muted,
-    fontSize: 12,
-  },
-  aiReviewSource: {
-    color: palette.clay,
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  aiReviewChipWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  aiReviewChip: {
-    backgroundColor: palette.surface,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(58, 102, 72, 0.12)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  aiReviewChipText: {
-    color: palette.clay,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  aiReviewNotes: {
-    gap: 4,
-  },
-  aiReviewNote: {
-    color: palette.muted,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  aiReviewActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  aiApplyButton: {
-    flex: 1,
-    backgroundColor: palette.sage,
-    borderRadius: 999,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  aiApplyButtonText: {
-    color: palette.cream,
-    fontWeight: '800',
-    fontSize: 13,
-  },
-  aiDismissButton: {
-    flex: 1,
-    backgroundColor: palette.surface,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: palette.border,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  aiDismissButtonText: {
-    color: palette.clay,
-    fontWeight: '800',
-    fontSize: 13,
   },
   recentSection: {
     gap: 12,

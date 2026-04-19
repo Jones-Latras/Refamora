@@ -1,8 +1,9 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import { BrandedLoadingScreen } from '../../../components/BrandedLoadingScreen'
 import { EmptyState } from '../../../components/EmptyState'
 import { ListingEditor } from '../../../components/ListingEditor'
 import { useToast } from '../../../components/Toast'
@@ -136,10 +137,7 @@ export default function EditListingScreen() {
   if (isLoading) {
     return (
       <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
-        <View style={styles.center}>
-          <ActivityIndicator color={palette.sage} size="small" />
-          <Text style={styles.helper}>Loading listing...</Text>
-        </View>
+        <BrandedLoadingScreen message="Loading listing..." />
       </SafeAreaView>
     )
   }
@@ -175,15 +173,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: palette.cream,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  helper: {
-    color: palette.muted,
   },
   wrapper: {
     flex: 1,
