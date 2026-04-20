@@ -41,16 +41,33 @@ import {
   wasteValueAdviceResultSchema,
 } from '../utils/schemas'
 
+import { getSession } from './authService'
 import { getSupabaseClient, hasSupabaseEnv } from './supabase'
 
 type AIEventRow = Tables<'ai_events'>
+
+function normalizeAIErrorMessage(message: string) {
+  const normalized = message.trim().toLowerCase()
+
+  if (
+    normalized === 'unauthorized request.' ||
+    normalized.includes('invalid jwt') ||
+    normalized.includes('jwt expired') ||
+    normalized.includes('refresh token') ||
+    normalized.includes('auth session missing')
+  ) {
+    return 'Your session expired. Please sign in again to use AI features.'
+  }
+
+  return message
+}
 
 async function normalizeFunctionError(error: unknown, data: unknown) {
   if (data && typeof data === 'object' && 'error' in data) {
     const message = (data as { error?: unknown }).error
 
     if (typeof message === 'string' && message.trim()) {
-      return new Error(message)
+      return new Error(normalizeAIErrorMessage(message))
     }
   }
 
@@ -71,14 +88,16 @@ async function normalizeFunctionError(error: unknown, data: unknown) {
         'error' in payload &&
         typeof (payload as { error?: unknown }).error === 'string'
       ) {
-        return new Error((payload as { error: string }).error)
+        return new Error(
+          normalizeAIErrorMessage((payload as { error: string }).error),
+        )
       }
     } catch {
       try {
         const text = await response.clone().text()
 
         if (text.trim()) {
-          return new Error(text.trim())
+          return new Error(normalizeAIErrorMessage(text.trim()))
         }
       } catch {
         // ignore secondary parsing failures
@@ -87,10 +106,57 @@ async function normalizeFunctionError(error: unknown, data: unknown) {
   }
 
   if (error instanceof Error) {
-    return error
+    return new Error(normalizeAIErrorMessage(error.message))
   }
 
   return new Error('AI request failed.')
+}
+
+async function invokeAIFunction(functionName: string, body: unknown) {
+  if (!hasSupabaseEnv) {
+    return {
+      data: null,
+      error: new Error('Supabase is not configured yet.'),
+    }
+  }
+
+  let accessToken: string | null = null
+
+  try {
+    const session = await getSession()
+    accessToken = session?.access_token ?? null
+  } catch (error) {
+    return {
+      data: null,
+      error:
+        error instanceof Error
+          ? error
+          : new Error('Unable to verify your session.'),
+    }
+  }
+
+  if (!accessToken) {
+    return {
+      data: null,
+      error: new Error('Your session expired. Please sign in again to use AI features.'),
+    }
+  }
+
+  const { data, error } = await getSupabaseClient().functions.invoke(functionName, {
+    body,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  })
+
+  if (error) {
+    return {
+      data: null,
+      error: await normalizeFunctionError(error, data),
+    }
+  }
+
+  return { data, error: null as Error | null }
 }
 
 export async function assistListing(
@@ -105,22 +171,10 @@ export async function assistListing(
     }
   }
 
-  if (!hasSupabaseEnv) {
-    return {
-      data: null,
-      error: new Error('Supabase is not configured yet.'),
-    }
-  }
-
-  const { data, error } = await getSupabaseClient().functions.invoke(
-    'ai-listing-assist',
-    {
-      body: parsedInput.data,
-    },
-  )
+  const { data, error } = await invokeAIFunction('ai-listing-assist', parsedInput.data)
 
   if (error) {
-    return { data: null, error: await normalizeFunctionError(error, data) }
+    return { data: null, error }
   }
 
   const parsedResult = listingAssistResultSchema.safeParse(data)
@@ -136,19 +190,10 @@ export async function assistListing(
 }
 
 export async function getAIHealth(): Promise<ServiceResult<AIHealthResult>> {
-  if (!hasSupabaseEnv) {
-    return {
-      data: null,
-      error: new Error('Supabase is not configured yet.'),
-    }
-  }
-
-  const { data, error } = await getSupabaseClient().functions.invoke('ai-health', {
-    body: {},
-  })
+  const { data, error } = await invokeAIFunction('ai-health', {})
 
   if (error) {
-    return { data: null, error: await normalizeFunctionError(error, data) }
+    return { data: null, error }
   }
 
   const parsedResult = aiHealthResultSchema.safeParse(data)
@@ -177,22 +222,10 @@ export async function getWasteValueAdvice(
     }
   }
 
-  if (!hasSupabaseEnv) {
-    return {
-      data: null,
-      error: new Error('Supabase is not configured yet.'),
-    }
-  }
-
-  const { data, error } = await getSupabaseClient().functions.invoke(
-    'ai-waste-advice',
-    {
-      body: parsedInput.data,
-    },
-  )
+  const { data, error } = await invokeAIFunction('ai-waste-advice', parsedInput.data)
 
   if (error) {
-    return { data: null, error: await normalizeFunctionError(error, data) }
+    return { data: null, error }
   }
 
   const parsedResult = wasteValueAdviceResultSchema.safeParse(data)
@@ -222,22 +255,10 @@ export async function getBuyerSearchAssist(
     }
   }
 
-  if (!hasSupabaseEnv) {
-    return {
-      data: null,
-      error: new Error('Supabase is not configured yet.'),
-    }
-  }
-
-  const { data, error } = await getSupabaseClient().functions.invoke(
-    'ai-search-assist',
-    {
-      body: parsedInput.data,
-    },
-  )
+  const { data, error } = await invokeAIFunction('ai-search-assist', parsedInput.data)
 
   if (error) {
-    return { data: null, error: await normalizeFunctionError(error, data) }
+    return { data: null, error }
   }
 
   const parsedResult = buyerSearchAssistResultSchema.safeParse(data)
@@ -266,22 +287,10 @@ export async function getPhotoCheck(
     }
   }
 
-  if (!hasSupabaseEnv) {
-    return {
-      data: null,
-      error: new Error('Supabase is not configured yet.'),
-    }
-  }
-
-  const { data, error } = await getSupabaseClient().functions.invoke(
-    'ai-photo-check',
-    {
-      body: parsedInput.data,
-    },
-  )
+  const { data, error } = await invokeAIFunction('ai-photo-check', parsedInput.data)
 
   if (error) {
-    return { data: null, error: await normalizeFunctionError(error, data) }
+    return { data: null, error }
   }
 
   const parsedResult = photoCheckResultSchema.safeParse(data)
@@ -311,22 +320,13 @@ export async function moderateListing(
     }
   }
 
-  if (!hasSupabaseEnv) {
-    return {
-      data: null,
-      error: new Error('Supabase is not configured yet.'),
-    }
-  }
-
-  const { data, error } = await getSupabaseClient().functions.invoke(
+  const { data, error } = await invokeAIFunction(
     'ai-listing-moderation',
-    {
-      body: parsedInput.data,
-    },
+    parsedInput.data,
   )
 
   if (error) {
-    return { data: null, error: await normalizeFunctionError(error, data) }
+    return { data: null, error }
   }
 
   const parsedResult = listingModerationResultSchema.safeParse(data)
@@ -357,25 +357,13 @@ export async function getInquirySummary(
     }
   }
 
-  if (!hasSupabaseEnv) {
-    return {
-      data: null,
-      error: new Error('Supabase is not configured yet.'),
-    }
-  }
-
-  const { data, error } = await getSupabaseClient().functions.invoke(
-    'ai-inquiry-assist',
-    {
-      body: {
-        action: 'summary',
-        ...parsedInput.data,
-      },
-    },
-  )
+  const { data, error } = await invokeAIFunction('ai-inquiry-assist', {
+    action: 'summary',
+    ...parsedInput.data,
+  })
 
   if (error) {
-    return { data: null, error: await normalizeFunctionError(error, data) }
+    return { data: null, error }
   }
 
   const parsedResult = inquirySummaryResultSchema.safeParse(data)
@@ -404,25 +392,13 @@ export async function getReplyDraft(
     }
   }
 
-  if (!hasSupabaseEnv) {
-    return {
-      data: null,
-      error: new Error('Supabase is not configured yet.'),
-    }
-  }
-
-  const { data, error } = await getSupabaseClient().functions.invoke(
-    'ai-inquiry-assist',
-    {
-      body: {
-        action: 'reply',
-        ...parsedInput.data,
-      },
-    },
-  )
+  const { data, error } = await invokeAIFunction('ai-inquiry-assist', {
+    action: 'reply',
+    ...parsedInput.data,
+  })
 
   if (error) {
-    return { data: null, error: await normalizeFunctionError(error, data) }
+    return { data: null, error }
   }
 
   const parsedResult = replyDraftResultSchema.safeParse(data)
@@ -451,19 +427,7 @@ export async function submitAIFeedback(
     }
   }
 
-  if (!hasSupabaseEnv) {
-    return {
-      data: null,
-      error: new Error('Supabase is not configured yet.'),
-    }
-  }
-
-  const { data, error } = await getSupabaseClient().functions.invoke(
-    'ai-feedback',
-    {
-      body: parsedInput.data,
-    },
-  )
+  const { data, error } = await invokeAIFunction('ai-feedback', parsedInput.data)
 
   if (error) {
     return { data: null, error }

@@ -53,6 +53,10 @@ function getProviderOrder(): AIProvider[] {
   return providers
 }
 
+function getPhotoProviderOrder(): AIProvider[] {
+  return isProviderEnabled('gemini') ? ['gemini'] : []
+}
+
 export function isProviderEnabled(provider: AIProvider) {
   if (provider === 'local_gemma') {
     return isEnabled(Deno.env.get('LOCAL_GEMMA_ENABLED'), true)
@@ -480,10 +484,10 @@ export async function moderateListing(
 export async function checkListingPhoto(
   input: PhotoCheckInput,
 ): Promise<PhotoCheckResult> {
-  const order = getProviderOrder()
+  const order = getPhotoProviderOrder()
 
   if (order.length === 0) {
-    throw new Error('No AI providers are enabled.')
+    throw new Error('Gemini is required for photo analysis and is not enabled.')
   }
 
   const errors: string[] = []

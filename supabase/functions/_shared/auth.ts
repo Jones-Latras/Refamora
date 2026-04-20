@@ -4,32 +4,56 @@ type AuthenticatedUser = {
   id: string
 }
 
-export function getRequestClient(req: Request) {
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim()
-  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')?.trim()
-  const authHeader = req.headers.get('Authorization')
+function getRequestConfig(req: Request) {
+  return {
+    supabaseUrl: Deno.env.get('SUPABASE_URL')?.trim() ?? '',
+    supabaseAnonKey: Deno.env.get('SUPABASE_ANON_KEY')?.trim() ?? '',
+    authHeader: req.headers.get('Authorization')?.trim() ?? '',
+  }
+}
 
-  if (!supabaseUrl || !supabaseAnonKey || !authHeader) {
-    return null
+export function getRequestClient(req: Request) {
+  const { supabaseUrl, supabaseAnonKey, authHeader } = getRequestConfig(req)
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return {
+      client: null,
+      error: new Error(
+        'Function auth is not configured. Add SUPABASE_URL and SUPABASE_ANON_KEY to the function runtime.',
+      ),
+    }
   }
 
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    global: {
-      headers: {
-        Authorization: authHeader,
+  if (!authHeader) {
+    return {
+      client: null,
+      error: new Error('Unauthorized request.'),
+    }
+  }
+
+  return {
+    client: createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: authHeader,
+        },
       },
-    },
-  })
+    }),
+    error: null,
+  }
 }
 
 export async function getAuthenticatedUser(req: Request): Promise<{
   user: AuthenticatedUser | null
   error: Error | null
 }> {
-  const supabase = getRequestClient(req)
+  const { client: supabase, error: requestClientError } = getRequestClient(req)
 
   if (!supabase) {
-    return { user: null, error: new Error('Unauthorized request.') }
+    return {
+      user: null,
+      error: requestClientError ?? new Error('Unauthorized request.'),
+    }
   }
 
   const {
@@ -51,10 +75,13 @@ export async function getAuthenticatedFarmer(req: Request): Promise<{
   user: AuthenticatedUser | null
   error: Error | null
 }> {
-  const supabase = getRequestClient(req)
+  const { client: supabase, error: requestClientError } = getRequestClient(req)
 
   if (!supabase) {
-    return { user: null, error: new Error('Unauthorized request.') }
+    return {
+      user: null,
+      error: requestClientError ?? new Error('Unauthorized request.'),
+    }
   }
 
   const {

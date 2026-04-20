@@ -21,7 +21,7 @@ export async function queueModerationReview({
   moderation,
   listing,
 }: QueueModerationReviewInput): Promise<string | null> {
-  const supabase = getRequestClient(req)
+  const { client: supabase } = getRequestClient(req)
 
   if (!supabase) {
     return null

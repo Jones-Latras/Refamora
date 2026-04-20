@@ -34,7 +34,7 @@ export async function logAIEvent({
   latencyMs = null,
   metadata = {},
 }: LogAIEventInput): Promise<string | null> {
-  const supabase = getRequestClient(req)
+  const { client: supabase } = getRequestClient(req)
 
   if (!supabase) {
     return null
@@ -105,7 +105,7 @@ export async function getAIRateLimitStatus({
     }
   }
 
-  const supabase = getRequestClient(req)
+  const { client: supabase } = getRequestClient(req)
 
   if (!supabase) {
     return {
@@ -167,7 +167,7 @@ export async function submitAIEventFeedback({
   feature,
   helpful,
 }: SubmitAIEventFeedbackInput): Promise<AIFeedbackResult | null> {
-  const supabase = getRequestClient(req)
+  const { client: supabase } = getRequestClient(req)
 
   if (!supabase) {
     return null
