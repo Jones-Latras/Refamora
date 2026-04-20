@@ -36,7 +36,7 @@ export function LocationPicker({
   const [region, setRegion] = useState<Region>(DEFAULT_REGION)
   const [resolvedLabel, setResolvedLabel] = useState('Tap the map to place a pin.')
   const [isResolving, setIsResolving] = useState(false)
-  const [permissionError, setPermissionError] = useState<string | null>(null)
+  const [locationError, setLocationError] = useState<string | null>(null)
 
   useEffect(() => {
     if (value.latitude == null || value.longitude == null) {
@@ -51,6 +51,7 @@ export function LocationPicker({
   }, [value.latitude, value.longitude])
 
   const resolveAddress = async (latitude: number, longitude: number) => {
+    setLocationError(null)
     setIsResolving(true)
 
     try {
@@ -58,7 +59,7 @@ export function LocationPicker({
       const place = places[0]
 
       if (!place) {
-        setResolvedLabel('Pinned location selected.')
+        setResolvedLabel('Pinned location selected. Enter the address manually if needed.')
         return
       }
 
@@ -77,6 +78,12 @@ export function LocationPicker({
         address: address || city,
         city,
       })
+    } catch (error) {
+      console.warn('Reverse geocoding is unavailable for the selected coordinates.', error)
+      setResolvedLabel('Coordinates selected. Enter the pickup address manually.')
+      setLocationError(
+        'Address lookup is unavailable right now. You can keep the map pin and type the address manually.',
+      )
     } finally {
       setIsResolving(false)
     }
@@ -93,25 +100,32 @@ export function LocationPicker({
   }
 
   const handleUseCurrentLocation = async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync()
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync()
 
-    if (status !== 'granted') {
-      setPermissionError('Location permission is required to use your current position.')
-      return
+      if (status !== 'granted') {
+        setLocationError('Location permission is required to use your current position.')
+        return
+      }
+
+      setLocationError(null)
+
+      const position = await Location.getCurrentPositionAsync({})
+
+      const nextRegion = {
+        ...region,
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      }
+
+      setRegion(nextRegion)
+      await applyCoordinates(position.coords.latitude, position.coords.longitude)
+    } catch (error) {
+      console.warn('Unable to read the current device location.', error)
+      setLocationError(
+        'Unable to get your current location right now. You can place the pin manually on the map.',
+      )
     }
-
-    setPermissionError(null)
-
-    const position = await Location.getCurrentPositionAsync({})
-
-    const nextRegion = {
-      ...region,
-      latitude: position.coords.latitude,
-      longitude: position.coords.longitude,
-    }
-
-    setRegion(nextRegion)
-    await applyCoordinates(position.coords.latitude, position.coords.longitude)
   }
 
   return (
@@ -156,8 +170,8 @@ export function LocationPicker({
         <Text style={styles.detailText}>
           {isResolving ? 'Resolving address...' : resolvedLabel}
         </Text>
-        {permissionError ? (
-          <Text style={styles.errorText}>{permissionError}</Text>
+        {locationError ? (
+          <Text style={styles.errorText}>{locationError}</Text>
         ) : null}
       </View>
     </View>
