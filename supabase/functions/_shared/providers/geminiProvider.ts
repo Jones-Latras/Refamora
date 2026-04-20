@@ -252,7 +252,7 @@ function buildBuyerSearchPrompt(input: BuyerSearchAssistInput) {
   ].join('\n')
 }
 
-function buildPhotoCheckPrompt(input: PhotoCheckInput) {
+export function buildPhotoCheckPrompt(input: PhotoCheckInput) {
   const wasteVisualGuide = [
     '',
     'VISUAL IDENTIFICATION GUIDE FOR PHILIPPINE AGRICULTURAL WASTE:',
@@ -298,7 +298,7 @@ function buildPhotoCheckPrompt(input: PhotoCheckInput) {
   ].join('\n')
 }
 
-function buildListingModerationPrompt(input: ListingModerationInput) {
+export function buildListingModerationPrompt(input: ListingModerationInput) {
   return [
     'You are Refamora listing moderation assistant.',
     'Review this agriwaste marketplace listing for unsafe, abusive, illegal, clearly off-topic, misleading, or suspicious content.',

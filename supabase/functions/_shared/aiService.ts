@@ -24,6 +24,9 @@ import {
   geminiProvider,
 } from './providers/geminiProvider.ts'
 import {
+  groqVisionProvider,
+} from './providers/groqVisionProvider.ts'
+import {
   checkLocalGemmaHealth,
   localGemmaProvider,
 } from './providers/localGemmaProvider.ts'
@@ -54,14 +57,14 @@ function getProviderOrder(): AIProvider[] {
 }
 
 function getPhotoProviderOrder(): AIProvider[] {
-  return isProviderEnabled('gemini') ? ['gemini'] : []
+  return isProviderEnabled('groq_vision') ? ['groq_vision'] : []
 }
 
 function getListingModerationProviderOrder(
   input: ListingModerationInput,
 ): AIProvider[] {
   if (input.imageBase64) {
-    return isProviderEnabled('gemini') ? ['gemini'] : []
+    return isProviderEnabled('groq_vision') ? ['groq_vision'] : []
   }
 
   return getProviderOrder()
@@ -70,6 +73,10 @@ function getListingModerationProviderOrder(
 export function isProviderEnabled(provider: AIProvider) {
   if (provider === 'local_gemma') {
     return isEnabled(Deno.env.get('LOCAL_GEMMA_ENABLED'), true)
+  }
+
+  if (provider === 'groq_vision') {
+    return isEnabled(Deno.env.get('GROQ_VISION_ENABLED'), false)
   }
 
   return isEnabled(Deno.env.get('GEMINI_ENABLED'), false)
@@ -117,10 +124,10 @@ function buildBuyerSearchFallback(
   const query = input.query.trim()
   const normalizedQuery = query.toLowerCase()
 
-  const wasteTypeMatchers: Array<{
+  const wasteTypeMatchers: {
     wasteType: BuyerSearchAssistOutput['wasteType']
     patterns: RegExp[]
-  }> = [
+  }[] = [
     {
       wasteType: 'coconut_husk',
       patterns: [
@@ -462,7 +469,7 @@ export async function moderateListing(
   if (order.length === 0) {
     throw new Error(
       input.imageBase64
-        ? 'Gemini is required for photo moderation and is not enabled.'
+        ? 'Groq Vision is required for photo moderation and is not enabled.'
         : 'No AI providers are enabled.',
     )
   }
@@ -476,6 +483,8 @@ export async function moderateListing(
       const result =
         provider === 'local_gemma'
           ? await localGemmaProvider.moderateListing(input)
+          : provider === 'groq_vision'
+            ? await groqVisionProvider.moderateListing(input)
           : await geminiProvider.moderateListing(input)
 
       return {
@@ -501,7 +510,7 @@ export async function checkListingPhoto(
   const order = getPhotoProviderOrder()
 
   if (order.length === 0) {
-    throw new Error('Gemini is required for photo analysis and is not enabled.')
+    throw new Error('Groq Vision is required for photo analysis and is not enabled.')
   }
 
   const errors: string[] = []
@@ -513,6 +522,8 @@ export async function checkListingPhoto(
       const result =
         provider === 'local_gemma'
           ? await localGemmaProvider.checkListingPhoto(input)
+          : provider === 'groq_vision'
+            ? await groqVisionProvider.checkListingPhoto(input)
           : await geminiProvider.checkListingPhoto(input)
 
       return {

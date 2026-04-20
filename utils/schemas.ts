@@ -70,6 +70,8 @@ const wasteTypeValues = WASTE_TYPES.map((item) => item.value) as [
   string,
   ...string[],
 ]
+const aiProviderValues = ['local_gemma', 'gemini', 'groq_vision'] as const
+const aiProviderSchema = z.enum(aiProviderValues)
 
 export const listingSchema = z.object({
   title: z.string().trim().min(3, 'Listing title is required.'),
@@ -181,7 +183,7 @@ export const listingAssistOutputSchema = z.object({
 export const listingAssistResultSchema = z.object({
   eventId: z.string().uuid().nullable(),
   latencyMs: z.number().int().nonnegative().nullable(),
-  provider: z.enum(['local_gemma', 'gemini']),
+  provider: aiProviderSchema,
   fallbackUsed: z.boolean(),
   result: listingAssistOutputSchema,
 })
@@ -196,7 +198,7 @@ export const wasteValueAdviceOutputSchema = z.object({
 export const wasteValueAdviceResultSchema = z.object({
   eventId: z.string().uuid().nullable(),
   latencyMs: z.number().int().nonnegative().nullable(),
-  provider: z.enum(['local_gemma', 'gemini']),
+  provider: aiProviderSchema,
   fallbackUsed: z.boolean(),
   result: wasteValueAdviceOutputSchema,
 })
@@ -213,7 +215,7 @@ export const buyerSearchAssistOutputSchema = z.object({
 export const buyerSearchAssistResultSchema = z.object({
   eventId: z.string().uuid().nullable(),
   latencyMs: z.number().int().nonnegative().nullable(),
-  provider: z.enum(['local_gemma', 'gemini']),
+  provider: aiProviderSchema,
   fallbackUsed: z.boolean(),
   result: buyerSearchAssistOutputSchema,
 })
@@ -232,7 +234,7 @@ export const photoCheckOutputSchema = z.object({
 export const photoCheckResultSchema = z.object({
   eventId: z.string().uuid().nullable(),
   latencyMs: z.number().int().nonnegative().nullable(),
-  provider: z.enum(['local_gemma', 'gemini']),
+  provider: aiProviderSchema,
   fallbackUsed: z.boolean(),
   result: photoCheckOutputSchema,
 })
@@ -248,7 +250,7 @@ export const listingModerationOutputSchema = z.object({
 export const listingModerationResultSchema = z.object({
   eventId: z.string().uuid().nullable(),
   latencyMs: z.number().int().nonnegative().nullable(),
-  provider: z.enum(['local_gemma', 'gemini']),
+  provider: aiProviderSchema,
   fallbackUsed: z.boolean(),
   queuedForReview: z.boolean(),
   reviewQueueId: z.string().uuid().nullable(),
@@ -265,7 +267,7 @@ export const inquirySummaryOutputSchema = z.object({
 export const inquirySummaryResultSchema = z.object({
   eventId: z.string().uuid().nullable(),
   latencyMs: z.number().int().nonnegative().nullable(),
-  provider: z.enum(['local_gemma', 'gemini']),
+  provider: aiProviderSchema,
   fallbackUsed: z.boolean(),
   result: inquirySummaryOutputSchema,
 })
@@ -280,7 +282,7 @@ export const replyDraftOutputSchema = z.object({
 export const replyDraftResultSchema = z.object({
   eventId: z.string().uuid().nullable(),
   latencyMs: z.number().int().nonnegative().nullable(),
-  provider: z.enum(['local_gemma', 'gemini']),
+  provider: aiProviderSchema,
   fallbackUsed: z.boolean(),
   result: replyDraftOutputSchema,
 })
@@ -313,10 +315,10 @@ export const aiFeedbackResultSchema = z.object({
 
 export const aiHealthResultSchema = z.object({
   available: z.boolean(),
-  primaryProvider: z.enum(['local_gemma', 'gemini']).nullable(),
+  primaryProvider: aiProviderSchema.nullable(),
   providers: z.array(
     z.object({
-      provider: z.enum(['local_gemma', 'gemini']),
+      provider: aiProviderSchema,
       enabled: z.boolean(),
       available: z.boolean(),
       message: z.string().nullable(),

@@ -61,17 +61,29 @@ function normalizeAIErrorMessage(message: string) {
 
   if (
     normalized.includes('request failed with 503') ||
-    normalized.includes('temporarily overloaded')
+    normalized.includes('temporarily overloaded') ||
+    normalized.includes('temporarily busy')
   ) {
-    return 'Gemini is temporarily busy right now. Photo analysis could not finish. Try again in a few seconds.'
+    return 'The AI provider is temporarily busy right now. Try again in a few seconds.'
   }
 
-  if (normalized.includes('request failed with 429')) {
-    return 'Gemini is rate-limited right now. Try again in a moment.'
+  if (
+    normalized.includes('request failed with 429') ||
+    normalized.includes('rate-limited')
+  ) {
+    return 'The AI provider is rate-limited right now. Try again in a moment.'
+  }
+
+  if (
+    normalized.includes('request is too large') ||
+    normalized.includes('too large') ||
+    normalized.includes('413')
+  ) {
+    return 'The image is too large for vision analysis. Use a smaller or more compressed photo.'
   }
 
   if (normalized.includes('timed out') || normalized.includes('timeout')) {
-    return 'Gemini took too long to respond. Try again in a moment.'
+    return 'The AI provider took too long to respond. Try again in a moment.'
   }
 
   return message

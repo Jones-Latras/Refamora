@@ -25,6 +25,7 @@ import { Feather } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import type {
+  AIProvider,
   AIHealthResult,
   ListingAssistResult,
   ListingModerationResult,
@@ -92,7 +93,7 @@ type PhotoWasteTypeSuggestion = {
   value: WasteTypeValue
   label: string
   confidence: 'high' | 'medium'
-  provider: 'local_gemma' | 'gemini'
+  provider: AIProvider
 }
 
 type ListingSectionKey = 'basics' | 'pricing' | 'checks' | 'ai'
@@ -181,6 +182,22 @@ function hasNonFarmWasteSignal(values: (string | null | undefined)[]) {
 
 function getNonFarmWasteMessage() {
   return 'AI says this image is not farm waste. Replace it before publishing.'
+}
+
+function getAIProviderLabel(provider: AIProvider | null | undefined) {
+  if (provider === 'local_gemma') {
+    return 'Local Gemma'
+  }
+
+  if (provider === 'gemini') {
+    return 'Gemini'
+  }
+
+  if (provider === 'groq_vision') {
+    return 'Groq Vision'
+  }
+
+  return 'AI'
 }
 
 function CollapsibleSection({
@@ -372,11 +389,9 @@ export function ListingEditor({
   const priceValue = watch('price')
   const quantityValue = watch('quantity')
   const primaryAiProviderLabel =
-    aiHealth?.primaryProvider === 'local_gemma'
-      ? 'Local Gemma'
-      : aiHealth?.primaryProvider === 'gemini'
-        ? 'Gemini'
-        : null
+    aiHealth?.primaryProvider != null
+      ? getAIProviderLabel(aiHealth.primaryProvider)
+      : null
   const hasGeminiFallback =
     aiHealth?.providers.some(
       (provider) => provider.provider === 'gemini' && provider.enabled,
@@ -685,7 +700,7 @@ export function ListingEditor({
   ].join(' | ')
   const checksSummary = `${passedQualityItems.length} passed | ${warningQualityItems.length} review | ${blockingQualityItems.length} fix`
   const aiSummary = aiAssistResult
-    ? `Draft improved with ${aiAssistResult.provider === 'local_gemma' ? 'Local Gemma' : 'Gemini'}`
+    ? `Draft improved with ${getAIProviderLabel(aiAssistResult.provider)}`
     : wasteAdviceResult
       ? 'Value advice ready'
       : aiHealth?.available
@@ -831,9 +846,7 @@ export function ListingEditor({
         setIsPhotoRejectedByAI(true)
         setPhotoWasteTypeMessage(photoRejectionMessage)
         onError(
-          `Photo analyzed with ${
-            result.data.provider === 'gemini' ? 'Gemini' : 'AI'
-          }. ${photoRejectionMessage}`,
+          `Photo analyzed with ${getAIProviderLabel(result.data.provider)}. ${photoRejectionMessage}`,
         )
         return
       }
@@ -852,9 +865,7 @@ export function ListingEditor({
           'Photo analyzed, but there was no clear waste-type suggestion.',
         )
         onInfo(
-          `Photo analyzed with ${
-            result.data.provider === 'gemini' ? 'Gemini' : 'AI'
-          }. No clear waste type match was found.`,
+          `Photo analyzed with ${getAIProviderLabel(result.data.provider)}. No clear waste type match was found.`,
         )
         return
       }
@@ -866,9 +877,7 @@ export function ListingEditor({
         provider: result.data.provider,
       })
       onInfo(
-        `Photo analyzed with ${
-          result.data.provider === 'gemini' ? 'Gemini' : 'AI'
-        }. Review the suggested waste type before applying it.`,
+        `Photo analyzed with ${getAIProviderLabel(result.data.provider)}. Review the suggested waste type before applying it.`,
       )
     } catch {
       setPhotoWasteTypeMessage('Photo analysis is unavailable right now.')
@@ -925,15 +934,7 @@ export function ListingEditor({
       return false
     }
 
-    if (!aiHealth?.available) {
-      if (requiresPhotoModeration) {
-        onError(
-          'AI photo moderation is unavailable right now. Publishing is blocked until the image can be verified.',
-        )
-        scrollToPosition(productPhotoPosition.current)
-        return false
-      }
-
+    if (!aiHealth?.available && !requiresPhotoModeration) {
       onInfo('AI moderation is unavailable right now. Continuing without it.')
       return true
     }
@@ -1245,9 +1246,7 @@ export function ListingEditor({
                     ? 'High confidence from the uploaded photo.'
                     : 'Medium confidence from the uploaded photo.'}{' '}
                   Provider:{' '}
-                  {pendingWasteTypeSuggestion.provider === 'gemini'
-                    ? 'Gemini'
-                    : 'Local Gemma'}
+                  {getAIProviderLabel(pendingWasteTypeSuggestion.provider)}
                   .
                 </Text>
               </View>
@@ -1321,9 +1320,7 @@ export function ListingEditor({
                           ? 'High confidence from the uploaded photo.'
                           : 'Medium confidence from the uploaded photo.'}{' '}
                         Provider:{' '}
-                        {pendingWasteTypeSuggestion.provider === 'gemini'
-                          ? 'Gemini'
-                          : 'Local Gemma'}
+                        {getAIProviderLabel(pendingWasteTypeSuggestion.provider)}
                         .
                       </Text>
                     </View>
@@ -1699,9 +1696,7 @@ export function ListingEditor({
                     </View>
                     <Text style={styles.aiProviderMeta}>
                       Provider:{' '}
-                      {aiAssistResult.provider === 'local_gemma'
-                        ? 'Local Gemma'
-                        : 'Gemini'}
+                      {getAIProviderLabel(aiAssistResult.provider)}
                       {aiAssistResult.fallbackUsed ? ' | fallback used' : ''}
                     </Text>
                     {aiAssistResult.result.notes.length > 0 ? (
@@ -1811,9 +1806,7 @@ export function ListingEditor({
                     <View style={styles.valueAdvisorContent}>
                       <Text style={styles.valueAdvisorMeta}>
                         Provider:{' '}
-                        {wasteAdviceResult.provider === 'local_gemma'
-                          ? 'Local Gemma'
-                          : 'Gemini'}
+                        {getAIProviderLabel(wasteAdviceResult.provider)}
                         {wasteAdviceResult.fallbackUsed ? ' | fallback used' : ''}
                       </Text>
                       {wasteAdviceResult.result.marketTip ? (
@@ -1980,9 +1973,7 @@ export function ListingEditor({
                   <View style={styles.moderationResultCard}>
                     <Text style={styles.moderationMeta}>
                       Provider:{' '}
-                      {moderationResult.provider === 'local_gemma'
-                        ? 'Local Gemma'
-                        : 'Gemini'}
+                      {getAIProviderLabel(moderationResult.provider)}
                       {moderationResult.fallbackUsed ? ' | fallback used' : ''}
                     </Text>
 

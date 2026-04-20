@@ -136,7 +136,7 @@ export type InquiryAssistItem = {
   createdAt: string
 }
 
-export type AIProvider = 'local_gemma' | 'gemini'
+export type AIProvider = 'local_gemma' | 'gemini' | 'groq_vision'
 export type AIFeature =
   | 'listing_copilot'
   | 'waste_value_advisor'
