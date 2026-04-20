@@ -36,7 +36,6 @@ import type { WasteTypeValue } from '../utils/wasteTypes'
 import {
   assistListing,
   getAIHealth,
-  getPhotoCheck,
   moderateListing,
   getWasteValueAdvice,
   submitAIFeedback,
@@ -88,12 +87,6 @@ type PublishQualityItem = {
   status: PublishQualityStatus
 }
 
-type PhotoWasteTypeSuggestion = {
-  value: WasteTypeValue
-  label: string
-  confidence: 'high' | 'medium'
-}
-
 type ListingSectionKey = 'basics' | 'pricing' | 'checks' | 'ai'
 
 type CollapsibleSectionProps = {
@@ -109,47 +102,6 @@ type CollapsibleSectionProps = {
 
 function hasText(value?: string | null) {
   return Boolean(value?.trim())
-}
-
-function normalizeDetectedWasteType(value: string | null | undefined): WasteTypeValue | null {
-  if (!value) {
-    return null
-  }
-
-  const normalized = value
-    .trim()
-    .toLowerCase()
-    .replace(/[\s-]+/g, '_')
-    .replace(/[^\w]/g, '')
-
-  const directMatch = WASTE_TYPES.find((item) => item.value === normalized)
-
-  if (directMatch) {
-    return directMatch.value
-  }
-
-  const aliases: Record<string, WasteTypeValue> = {
-    coconut: 'coconut_husk',
-    coconut_husks: 'coconut_husk',
-    coco_husk: 'coconut_husk',
-    coco_husks: 'coconut_husk',
-    rice: 'rice_straw',
-    rice_straws: 'rice_straw',
-    straw: 'rice_straw',
-    corn: 'corn_stalks',
-    corn_stalk: 'corn_stalks',
-    maize_stalks: 'corn_stalks',
-    banana: 'banana_trunk',
-    banana_stem: 'banana_trunk',
-    sugarcane: 'sugarcane_bagasse',
-    bagasse: 'sugarcane_bagasse',
-    pineapple: 'pineapple_leaves',
-    pineapple_leaf: 'pineapple_leaves',
-    cassava: 'cassava_peel',
-    cassava_peels: 'cassava_peel',
-  }
-
-  return aliases[normalized] ?? null
 }
 
 function CollapsibleSection({
@@ -202,7 +154,6 @@ export function ListingEditor({
   const qualityPanelPosition = useRef(0)
   const pricingSectionPosition = useRef(0)
   const mapSectionPosition = useRef(0)
-  const autoDetectImageUriRef = useRef<string | null>(null)
   const publishInFlightRef = useRef(false)
   const titleRef = useRef<TextInput>(null)
   const descriptionRef = useRef<TextInput>(null)
@@ -215,10 +166,6 @@ export function ListingEditor({
   const [aiHealthError, setAiHealthError] = useState<string | null>(null)
   const [isCheckingAIHealth, setIsCheckingAIHealth] =
     useState(aiListingAssistEnabled)
-  const [isAutoDetectingWasteType, setIsAutoDetectingWasteType] = useState(false)
-  const [photoWasteTypeSuggestion, setPhotoWasteTypeSuggestion] =
-    useState<PhotoWasteTypeSuggestion | null>(null)
-  const [photoWasteTypeMessage, setPhotoWasteTypeMessage] = useState<string | null>(null)
   const [isAiApplying, setIsAiApplying] = useState(false)
   const [isWasteAdviceLoading, setIsWasteAdviceLoading] = useState(false)
   const [isModerationLoading, setIsModerationLoading] = useState(false)
@@ -256,9 +203,6 @@ export function ListingEditor({
   })
 
   const resetEditorState = useCallback(() => {
-    autoDetectImageUriRef.current = null
-    setPhotoWasteTypeSuggestion(null)
-    setPhotoWasteTypeMessage(null)
     setAiAssistResult(null)
     setWasteAdviceResult(null)
     setModerationResult(null)
@@ -353,11 +297,6 @@ export function ListingEditor({
     ) ?? false
   const selectedWasteTypeLabel =
     WASTE_TYPES.find((item) => item.value === selectedWasteType)?.label ?? null
-  const pendingWasteTypeSuggestion =
-    photoWasteTypeSuggestion &&
-    photoWasteTypeSuggestion.value !== selectedWasteType
-      ? photoWasteTypeSuggestion
-      : null
   const fieldOrder = useMemo<(keyof ListingFormValues)[]>(
     () => [
       'waste_type',
@@ -752,65 +691,6 @@ export function ListingEditor({
     }
   }
 
-  const handleAutoDetectWasteType = async (imageUri: string) => {
-    if (!aiListingAssistEnabled || imageUri.startsWith('http')) {
-      return
-    }
-
-    autoDetectImageUriRef.current = imageUri
-    setPhotoWasteTypeSuggestion(null)
-    setPhotoWasteTypeMessage(null)
-    setIsAutoDetectingWasteType(true)
-
-    try {
-      const aiReady = aiHealth?.available ? true : await checkAiHealth()
-
-      if (!aiReady) {
-        setPhotoWasteTypeMessage('AI could not analyze this photo right now.')
-        return
-      }
-
-      const imageBase64 = await readImageAsBase64(imageUri)
-      const result = await getPhotoCheck({
-        imageBase64,
-        imageMimeType: 'image/jpeg',
-        wasteType: null,
-      })
-
-      if (getValues().image_url !== imageUri || result.error || !result.data) {
-        return
-      }
-
-      const detectedWasteType = normalizeDetectedWasteType(
-        result.data.result.likelyWasteType,
-      )
-      const detectedConfidence = result.data.result.likelyWasteTypeConfidence
-      const detectedWaste = WASTE_TYPES.find((item) => item.value === detectedWasteType)
-
-      if (
-        !detectedWaste ||
-        (detectedConfidence !== 'high' && detectedConfidence !== 'medium')
-      ) {
-        setPhotoWasteTypeMessage('No clear waste-type suggestion came from this photo.')
-        return
-      }
-
-      setPhotoWasteTypeSuggestion({
-        value: detectedWaste.value as WasteTypeValue,
-        label: detectedWaste.label,
-        confidence: detectedConfidence,
-      })
-      onInfo(`Photo suggests ${detectedWaste.label}. Review it before applying.`)
-    } catch {
-      setPhotoWasteTypeMessage('Photo analysis is unavailable right now.')
-    } finally {
-      if (autoDetectImageUriRef.current === imageUri) {
-        autoDetectImageUriRef.current = null
-        setIsAutoDetectingWasteType(false)
-      }
-    }
-  }
-
   const handlePickImage = async () => {
     const imageUri = await pickAndCompressImage()
 
@@ -819,23 +699,7 @@ export function ListingEditor({
     }
 
     setValue('image_url', imageUri, { shouldValidate: true })
-    setPhotoWasteTypeSuggestion(null)
-    setPhotoWasteTypeMessage(null)
     onInfo('Image ready for upload.')
-    void handleAutoDetectWasteType(imageUri)
-  }
-
-  const handleApplyPhotoSuggestion = () => {
-    if (!pendingWasteTypeSuggestion) {
-      return
-    }
-
-    setValue('waste_type', pendingWasteTypeSuggestion.value as WasteTypeValue, {
-      shouldValidate: true,
-    })
-    setPhotoWasteTypeSuggestion(null)
-    setPhotoWasteTypeMessage(null)
-    onInfo(`Waste type set to ${pendingWasteTypeSuggestion.label}.`)
   }
 
   const runListingModeration = async (values: ListingFormValues) => {
@@ -1105,9 +969,7 @@ export function ListingEditor({
               <>
                 <Image source={{ uri: selectedImage }} style={styles.productPhotoImage} />
                 <View style={styles.productPhotoOverlay}>
-                  <Text style={styles.productPhotoActionText}>
-                    {isAutoDetectingWasteType ? 'Analyzing photo...' : 'Replace photo'}
-                  </Text>
+                  <Text style={styles.productPhotoActionText}>Replace photo</Text>
                 </View>
               </>
             ) : (
@@ -1123,35 +985,6 @@ export function ListingEditor({
               </View>
             )}
           </Pressable>
-          {pendingWasteTypeSuggestion ? (
-            <View style={styles.photoSuggestionCard}>
-              <View style={styles.photoSuggestionTextBlock}>
-                <Text style={styles.photoSuggestionTitle}>
-                  Photo suggests {pendingWasteTypeSuggestion.label}
-                </Text>
-                <Text style={styles.photoSuggestionText}>
-                  {pendingWasteTypeSuggestion.confidence === 'high'
-                    ? 'High confidence from the uploaded photo.'
-                    : 'Medium confidence from the uploaded photo.'}
-                </Text>
-              </View>
-              <Pressable
-                onPress={handleApplyPhotoSuggestion}
-                style={styles.photoSuggestionButton}
-              >
-                <Text style={styles.photoSuggestionButtonText}>
-                  Use suggestion
-                </Text>
-              </Pressable>
-            </View>
-          ) : photoWasteTypeMessage ? (
-            <View style={styles.photoSuggestionMessageCard}>
-              <Text style={styles.photoSuggestionMessageText}>
-                {photoWasteTypeMessage}
-              </Text>
-            </View>
-          ) : null}
-
           <View style={styles.form}>
           <CollapsibleSection
             title="Basics"
@@ -1196,28 +1029,6 @@ export function ListingEditor({
                 </View>
                 {errors.waste_type?.message ? (
                   <Text style={styles.errorText}>{errors.waste_type.message}</Text>
-                ) : null}
-                {pendingWasteTypeSuggestion ? (
-                  <View style={styles.photoSuggestionCard}>
-                    <View style={styles.photoSuggestionTextBlock}>
-                      <Text style={styles.photoSuggestionTitle}>
-                        Photo suggests {pendingWasteTypeSuggestion.label}
-                      </Text>
-                      <Text style={styles.photoSuggestionText}>
-                        {pendingWasteTypeSuggestion.confidence === 'high'
-                          ? 'High confidence from the uploaded photo.'
-                          : 'Medium confidence from the uploaded photo.'}
-                      </Text>
-                    </View>
-                    <Pressable
-                      onPress={handleApplyPhotoSuggestion}
-                      style={styles.photoSuggestionButton}
-                    >
-                      <Text style={styles.photoSuggestionButtonText}>
-                        Use suggestion
-                      </Text>
-                    </Pressable>
-                  </View>
                 ) : null}
               </View>
             </View>
@@ -2306,52 +2117,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-  },
-  photoSuggestionCard: {
-    marginTop: 10,
-    gap: 10,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(58, 102, 72, 0.14)',
-    backgroundColor: '#f3f7f2',
-    padding: 12,
-  },
-  photoSuggestionTextBlock: {
-    gap: 4,
-  },
-  photoSuggestionTitle: {
-    color: palette.sageDark,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  photoSuggestionText: {
-    color: palette.muted,
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  photoSuggestionButton: {
-    alignSelf: 'flex-start',
-    borderRadius: 999,
-    backgroundColor: palette.sageDark,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  photoSuggestionButtonText: {
-    color: palette.cream,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  photoSuggestionMessageCard: {
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(28, 16, 10, 0.08)',
-    backgroundColor: palette.surface,
-    padding: 12,
-  },
-  photoSuggestionMessageText: {
-    color: palette.muted,
-    fontSize: 12,
-    lineHeight: 18,
   },
   selectorChip: {
     backgroundColor: palette.surface,
