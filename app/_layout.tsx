@@ -1,3 +1,5 @@
+import 'react-native-gesture-handler'
+
 import { Stack, usePathname, useRouter, useSegments } from 'expo-router'
 import { useEffect } from 'react'
 import { StyleSheet } from 'react-native'
