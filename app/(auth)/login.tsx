@@ -144,7 +144,7 @@ export default function LoginScreen() {
                         label="Email"
                         value={value}
                         onChangeText={onChange}
-                        placeholder="farmer@example.com"
+                        placeholder="seller@example.com"
                         keyboardType="email-address"
                         returnKeyType="next"
                         onSubmitEditing={() => passwordRef.current?.focus()}

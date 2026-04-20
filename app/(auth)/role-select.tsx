@@ -16,7 +16,7 @@ const roles: {
 }[] = [
   {
     id: 'farmer',
-    title: 'I am a farmer',
+    title: 'I am a seller',
     description: 'Post agricultural waste, manage listings, and respond to buyers.',
   },
   {
@@ -72,7 +72,7 @@ export default function RoleSelectScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.content}>
-        <Text style={styles.title}>Choose your role</Text>
+        <Text style={styles.title}>Choose your account type</Text>
 
         {roles.map((role) => (
           <Pressable

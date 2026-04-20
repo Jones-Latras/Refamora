@@ -147,7 +147,7 @@ export default function ProfileScreen() {
     !passwordErrors.confirmPassword
 
   const normalizedRole = role === 'farmer' ? 'farmer' : 'buyer'
-  const roleLabel = normalizedRole === 'farmer' ? 'Farmer seller' : 'Buyer account'
+  const roleLabel = normalizedRole === 'farmer' ? 'Seller account' : 'Buyer account'
   const profileCompletion = useMemo(
     () => getProfileCompletion(profile, normalizedRole),
     [normalizedRole, profile],
