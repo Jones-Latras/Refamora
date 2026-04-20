@@ -57,6 +57,16 @@ function getPhotoProviderOrder(): AIProvider[] {
   return isProviderEnabled('gemini') ? ['gemini'] : []
 }
 
+function getListingModerationProviderOrder(
+  input: ListingModerationInput,
+): AIProvider[] {
+  if (input.imageBase64) {
+    return isProviderEnabled('gemini') ? ['gemini'] : []
+  }
+
+  return getProviderOrder()
+}
+
 export function isProviderEnabled(provider: AIProvider) {
   if (provider === 'local_gemma') {
     return isEnabled(Deno.env.get('LOCAL_GEMMA_ENABLED'), true)
@@ -447,10 +457,14 @@ export async function parseBuyerSearch(
 export async function moderateListing(
   input: ListingModerationInput,
 ): Promise<ListingModerationResult> {
-  const order = getProviderOrder()
+  const order = getListingModerationProviderOrder(input)
 
   if (order.length === 0) {
-    throw new Error('No AI providers are enabled.')
+    throw new Error(
+      input.imageBase64
+        ? 'Gemini is required for photo moderation and is not enabled.'
+        : 'No AI providers are enabled.',
+    )
   }
 
   const errors: string[] = []

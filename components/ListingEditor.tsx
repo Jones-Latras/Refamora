@@ -153,6 +153,36 @@ function normalizeDetectedWasteType(value: string | null | undefined): WasteType
   return aliases[normalized] ?? null
 }
 
+function hasNonFarmWasteSignal(values: (string | null | undefined)[]) {
+  const combined = values
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .join(' ')
+    .toLowerCase()
+
+  if (!combined) {
+    return false
+  }
+
+  return (
+    combined.includes('image is not farm waste') ||
+    combined.includes('not farm waste') ||
+    combined.includes('not agricultural waste') ||
+    combined.includes('unrelated to agriculture') ||
+    combined.includes('unrelated to agricultural waste') ||
+    combined.includes('document') ||
+    combined.includes('paper') ||
+    combined.includes('waiver') ||
+    combined.includes('pet') ||
+    combined.includes('dog') ||
+    combined.includes('cat') ||
+    combined.includes('animal')
+  )
+}
+
+function getNonFarmWasteMessage() {
+  return 'AI says this image is not farm waste. Replace it before publishing.'
+}
+
 function CollapsibleSection({
   title,
   icon,
@@ -220,6 +250,7 @@ export function ListingEditor({
   const [photoWasteTypeSuggestion, setPhotoWasteTypeSuggestion] =
     useState<PhotoWasteTypeSuggestion | null>(null)
   const [photoWasteTypeMessage, setPhotoWasteTypeMessage] = useState<string | null>(null)
+  const [isPhotoRejectedByAI, setIsPhotoRejectedByAI] = useState(false)
   const [isAiApplying, setIsAiApplying] = useState(false)
   const [isWasteAdviceLoading, setIsWasteAdviceLoading] = useState(false)
   const [isModerationLoading, setIsModerationLoading] = useState(false)
@@ -261,6 +292,7 @@ export function ListingEditor({
     setIsAutoDetectingWasteType(false)
     setPhotoWasteTypeSuggestion(null)
     setPhotoWasteTypeMessage(null)
+    setIsPhotoRejectedByAI(false)
     setAiAssistResult(null)
     setWasteAdviceResult(null)
     setModerationResult(null)
@@ -356,6 +388,12 @@ export function ListingEditor({
     photoWasteTypeSuggestion.value !== selectedWasteType
       ? photoWasteTypeSuggestion
       : null
+  const moderationSignalsNonFarmWaste = hasNonFarmWasteSignal([
+    ...(moderationResult?.result.reasons ?? []),
+    ...(moderationResult?.result.imageWarnings ?? []),
+  ])
+  const isSubmitBlockedByPhotoAI =
+    isPhotoRejectedByAI || moderationSignalsNonFarmWaste
 
   useEffect(() => {
     setWasteAdviceResult(null)
@@ -763,6 +801,7 @@ export function ListingEditor({
     autoDetectImageUriRef.current = imageUri
     setPhotoWasteTypeSuggestion(null)
     setPhotoWasteTypeMessage(null)
+    setIsPhotoRejectedByAI(false)
     setIsAutoDetectingWasteType(true)
 
     try {
@@ -780,6 +819,21 @@ export function ListingEditor({
       if (result.error || !result.data) {
         setPhotoWasteTypeMessage(
           result.error?.message ?? 'Photo analysis is unavailable right now.',
+        )
+        return
+      }
+
+      if (result.data.result.moderationStatus === 'review') {
+        const photoRejectionMessage = hasNonFarmWasteSignal(result.data.result.notes)
+          ? getNonFarmWasteMessage()
+          : 'This photo does not look like valid farm waste. Replace it before publishing.'
+
+        setIsPhotoRejectedByAI(true)
+        setPhotoWasteTypeMessage(photoRejectionMessage)
+        onError(
+          `Photo analyzed with ${
+            result.data.provider === 'gemini' ? 'Gemini' : 'AI'
+          }. ${photoRejectionMessage}`,
         )
         return
       }
@@ -836,6 +890,7 @@ export function ListingEditor({
     setValue('image_url', imageUri, { shouldValidate: true })
     setPhotoWasteTypeSuggestion(null)
     setPhotoWasteTypeMessage(null)
+    setIsPhotoRejectedByAI(false)
     onInfo('Image ready for upload.')
     void handleAutoDetectWasteType(imageUri)
   }
@@ -854,6 +909,8 @@ export function ListingEditor({
   }
 
   const runListingModeration = async (values: ListingFormValues) => {
+    const requiresPhotoModeration = Boolean(values.image_url)
+
     if (moderationResult?.result.safeToPublish) {
       return true
     }
@@ -862,7 +919,21 @@ export function ListingEditor({
       return false
     }
 
+    if (isPhotoRejectedByAI) {
+      onError(getNonFarmWasteMessage())
+      scrollToPosition(productPhotoPosition.current)
+      return false
+    }
+
     if (!aiHealth?.available) {
+      if (requiresPhotoModeration) {
+        onError(
+          'AI photo moderation is unavailable right now. Publishing is blocked until the image can be verified.',
+        )
+        scrollToPosition(productPhotoPosition.current)
+        return false
+      }
+
       onInfo('AI moderation is unavailable right now. Continuing without it.')
       return true
     }
@@ -890,6 +961,15 @@ export function ListingEditor({
       })
 
       if (result.error || !result.data) {
+        if (requiresPhotoModeration) {
+          onError(
+            result.error?.message ??
+              'AI photo moderation could not verify the image. Publishing was blocked.',
+          )
+          scrollToPosition(productPhotoPosition.current)
+          return false
+        }
+
         onInfo('AI moderation is unavailable right now. Continuing without it.')
         return true
       }
@@ -901,19 +981,35 @@ export function ListingEditor({
         return true
       }
 
-      const primaryReason = result.data.queuedForReview
-        ? result.data.result.decision === 'block'
-          ? 'This listing was blocked and added to the admin review queue.'
-          : 'This listing was flagged and added to the admin review queue.'
-        : result.data.result.reasons[0] ??
-          (result.data.result.decision === 'block'
-            ? 'This listing was blocked by the safety check.'
-            : 'Please review the flagged listing details before publishing.')
+      const moderationTexts = [
+        ...result.data.result.reasons,
+        ...result.data.result.imageWarnings,
+      ]
+      const hasExplicitNonFarmWasteMessage = hasNonFarmWasteSignal(moderationTexts)
+
+      const primaryReason = hasExplicitNonFarmWasteMessage
+        ? getNonFarmWasteMessage()
+        : result.data.queuedForReview
+          ? result.data.result.decision === 'block'
+            ? 'This listing was blocked and added to the admin review queue.'
+            : 'This listing was flagged and added to the admin review queue.'
+          : result.data.result.reasons[0] ??
+            (result.data.result.decision === 'block'
+              ? 'This listing was blocked by the safety check.'
+              : 'Please review the flagged listing details before publishing.')
 
       onError(primaryReason)
       scrollViewRef.current?.scrollToEnd({ animated: true })
       return false
     } catch {
+      if (requiresPhotoModeration) {
+        onError(
+          'AI photo moderation could not verify the image. Publishing was blocked.',
+        )
+        scrollToPosition(productPhotoPosition.current)
+        return false
+      }
+
       onInfo('AI moderation is unavailable right now. Continuing without it.')
       return true
     } finally {
@@ -1955,9 +2051,24 @@ export function ListingEditor({
               </Pressable>
             ) : null}
             <Pressable
-              disabled={isSubmitting || isModerationLoading || isSavingDraft || isPublishLocked}
+              disabled={
+                isSubmitting ||
+                isModerationLoading ||
+                isSavingDraft ||
+                isPublishLocked ||
+                isSubmitBlockedByPhotoAI
+              }
               onPress={onSubmit}
-              style={[styles.primaryButton, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
+              style={[
+                styles.primaryButton,
+                isSubmitBlockedByPhotoAI ? styles.primaryButtonDisabled : null,
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                },
+              ]}
             >
               <Feather name="upload-cloud" size={16} color={palette.cream} />
               <Text style={styles.primaryButtonText}>
@@ -1965,6 +2076,8 @@ export function ListingEditor({
                   ? submittingLabel
                   : isModerationLoading
                     ? 'Running safety check...'
+                    : isSubmitBlockedByPhotoAI
+                      ? 'Replace invalid photo first'
                     : blockingQualityItems.length > 0
                       ? 'Fix quality issues first'
                       : submitLabel}
@@ -2533,6 +2646,10 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingVertical: 14,
     alignItems: 'center',
+  },
+  primaryButtonDisabled: {
+    backgroundColor: '#a7b5a8',
+    opacity: 0.72,
   },
   primaryButtonText: {
     color: palette.cream,

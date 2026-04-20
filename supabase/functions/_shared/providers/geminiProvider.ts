@@ -35,6 +35,150 @@ function getGeminiConfig() {
   }
 }
 
+type GeminiPart =
+  | { text: string }
+  | { inlineData: { mimeType: string; data: string } }
+
+const retryableGeminiStatuses = new Set([429, 500, 502, 503, 504])
+const geminiRetryDelaysMs = [0, 900, 2000]
+
+function isRetryableGeminiError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false
+  }
+
+  const message = error.message.trim().toLowerCase()
+
+  return (
+    message.includes('request failed with 429') ||
+    message.includes('request failed with 500') ||
+    message.includes('request failed with 502') ||
+    message.includes('request failed with 503') ||
+    message.includes('request failed with 504') ||
+    message.includes('temporarily overloaded') ||
+    message.includes('timed out') ||
+    message.includes('timeout')
+  )
+}
+
+async function sleep(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function getGeminiFailureMessage(response: Response) {
+  let details = ''
+
+  try {
+    const payload = await response.clone().json()
+    const candidateMessage =
+      typeof payload?.error?.message === 'string'
+        ? payload.error.message.trim()
+        : ''
+
+    if (candidateMessage) {
+      details = candidateMessage
+    }
+  } catch {
+    try {
+      const text = await response.clone().text()
+
+      if (text.trim()) {
+        details = text.trim()
+      }
+    } catch {
+      // ignore response parsing failures
+    }
+  }
+
+  if (response.status === 503) {
+    return details
+      ? `Gemini is temporarily overloaded. ${details}`
+      : 'Gemini is temporarily overloaded. Please try again in a few seconds.'
+  }
+
+  return details
+    ? `Gemini request failed with ${response.status}. ${details}`
+    : `Gemini request failed with ${response.status}.`
+}
+
+async function generateGeminiJson(
+  config: ReturnType<typeof getGeminiConfig>,
+  parts: GeminiPart[],
+  responseJsonSchema: unknown,
+) {
+  let lastError: Error | null = null
+
+  for (let attempt = 0; attempt < geminiRetryDelaysMs.length; attempt += 1) {
+    const delayMs = geminiRetryDelaysMs[attempt]
+
+    if (delayMs > 0) {
+      await sleep(delayMs)
+    }
+
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          signal: AbortSignal.timeout(config.timeoutMs),
+          body: JSON.stringify({
+            contents: [
+              {
+                parts,
+              },
+            ],
+            generationConfig: {
+              responseMimeType: 'application/json',
+              responseJsonSchema,
+            },
+          }),
+        },
+      )
+
+      if (!response.ok) {
+        const error = new Error(await getGeminiFailureMessage(response))
+
+        if (
+          attempt < geminiRetryDelaysMs.length - 1 &&
+          retryableGeminiStatuses.has(response.status)
+        ) {
+          lastError = error
+          continue
+        }
+
+        throw error
+      }
+
+      const payload = await response.json()
+      const text = payload?.candidates?.[0]?.content?.parts?.[0]?.text
+
+      if (typeof text !== 'string' || !text.trim()) {
+        throw new Error('Gemini returned an empty response.')
+      }
+
+      return JSON.parse(text)
+    } catch (error) {
+      const normalizedError =
+        error instanceof Error ? error : new Error('Gemini request failed.')
+
+      if (
+        attempt < geminiRetryDelaysMs.length - 1 &&
+        isRetryableGeminiError(normalizedError)
+      ) {
+        lastError = normalizedError
+        continue
+      }
+
+      throw normalizedError
+    }
+  }
+
+  throw lastError ?? new Error('Gemini request failed.')
+}
+
 function buildListingAssistPrompt(input: ListingAssistInput) {
   return [
     'You are Refamora listing assistant.',
@@ -146,6 +290,8 @@ function buildPhotoCheckPrompt(input: PhotoCheckInput) {
     wasteVisualGuide,
     'MODERATION:',
     'Use moderationStatus=review only if the image appears unrelated to agriculture, unsafe, or suspicious for a marketplace listing.',
+    'If the image is clearly not farm waste or not related to agricultural waste, include a note with the exact phrase: "image is not farm waste".',
+    'Examples of non-farm-waste photos: pets, dogs, cats, documents, waivers, forms, screenshots, selfies, vehicles, household items, and random street scenes.',
     'Return only JSON that matches the schema.',
     '',
     `Expected waste type from seller: ${input.wasteType ?? 'unknown (identify from image)'}`,
@@ -161,6 +307,8 @@ function buildListingModerationPrompt(input: ListingModerationInput) {
     'Use decision=review only when something looks genuinely suspicious, clearly inconsistent, likely misrepresented, or possibly unrelated to agricultural waste.',
     'Use decision=block only for clearly unsafe, abusive, sexual, violent, illegal, scammy, or completely unrelated content.',
     'Do not add imageWarnings just because an image is attached. Only warn about the image if it looks unrelated, suspicious, unsafe, or clearly inconsistent with the listing.',
+    'If the attached image is clearly not farm waste or not related to agricultural waste, include the exact phrase "image is not farm waste" in reasons or imageWarnings.',
+    'Examples of invalid listing photos: pets, dogs, cats, documents, waivers, forms, screenshots, selfies, vehicles, household items, and random non-agricultural scenes.',
     'safeToPublish must be true only when decision=allow.',
     'Return only JSON that matches the schema.',
     '',
@@ -371,48 +519,21 @@ export const geminiProvider: AIService = {
       throw new Error('Missing GEMINI_API_KEY.')
     }
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: AbortSignal.timeout(config.timeoutMs),
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: buildPhotoCheckPrompt(input) },
-                {
-                  inlineData: {
-                    mimeType: input.imageMimeType ?? 'image/jpeg',
-                    data: input.imageBase64,
-                  },
-                },
-              ],
-            },
-          ],
-          generationConfig: {
-            responseMimeType: 'application/json',
-            responseJsonSchema: photoCheckOutputJsonSchema,
+    const payload = await generateGeminiJson(
+      config,
+      [
+        { text: buildPhotoCheckPrompt(input) },
+        {
+          inlineData: {
+            mimeType: input.imageMimeType ?? 'image/jpeg',
+            data: input.imageBase64,
           },
-        }),
-      },
+        },
+      ],
+      photoCheckOutputJsonSchema,
     )
 
-    if (!response.ok) {
-      throw new Error(`Gemini request failed with ${response.status}.`)
-    }
-
-    const payload = await response.json()
-    const text = payload?.candidates?.[0]?.content?.parts?.[0]?.text
-
-    if (typeof text !== 'string' || !text.trim()) {
-      throw new Error('Gemini returned an empty response.')
-    }
-
-    return normalizePhotoCheckOutput(JSON.parse(text))
+    return normalizePhotoCheckOutput(payload)
   },
   async moderateListing(input) {
     const config = getGeminiConfig()
@@ -421,10 +542,7 @@ export const geminiProvider: AIService = {
       throw new Error('Missing GEMINI_API_KEY.')
     }
 
-    const parts: Array<
-      | { text: string }
-      | { inlineData: { mimeType: string; data: string } }
-    > = [{ text: buildListingModerationPrompt(input) }]
+    const parts: GeminiPart[] = [{ text: buildListingModerationPrompt(input) }]
 
     if (input.imageBase64) {
       parts.push({
@@ -435,40 +553,13 @@ export const geminiProvider: AIService = {
       })
     }
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: AbortSignal.timeout(config.timeoutMs),
-        body: JSON.stringify({
-          contents: [
-            {
-              parts,
-            },
-          ],
-          generationConfig: {
-            responseMimeType: 'application/json',
-            responseJsonSchema: listingModerationOutputJsonSchema,
-          },
-        }),
-      },
+    const payload = await generateGeminiJson(
+      config,
+      parts,
+      listingModerationOutputJsonSchema,
     )
 
-    if (!response.ok) {
-      throw new Error(`Gemini request failed with ${response.status}.`)
-    }
-
-    const payload = await response.json()
-    const text = payload?.candidates?.[0]?.content?.parts?.[0]?.text
-
-    if (typeof text !== 'string' || !text.trim()) {
-      throw new Error('Gemini returned an empty response.')
-    }
-
-    return normalizeListingModerationOutput(JSON.parse(text))
+    return normalizeListingModerationOutput(payload)
   },
   async summarizeInquiries(input) {
     const config = getGeminiConfig()

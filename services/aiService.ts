@@ -59,6 +59,21 @@ function normalizeAIErrorMessage(message: string) {
     return 'Your session expired. Please sign in again to use AI features.'
   }
 
+  if (
+    normalized.includes('request failed with 503') ||
+    normalized.includes('temporarily overloaded')
+  ) {
+    return 'Gemini is temporarily busy right now. Photo analysis could not finish. Try again in a few seconds.'
+  }
+
+  if (normalized.includes('request failed with 429')) {
+    return 'Gemini is rate-limited right now. Try again in a moment.'
+  }
+
+  if (normalized.includes('timed out') || normalized.includes('timeout')) {
+    return 'Gemini took too long to respond. Try again in a moment.'
+  }
+
   return message
 }
 
