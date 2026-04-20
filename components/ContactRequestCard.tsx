@@ -1,7 +1,8 @@
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import type { ContactRequestSummary } from '../types/app'
 
+import { AppImage } from './AppImage'
 import { formatRelativeTime } from '../utils/formatters'
 import { palette, radii } from '../utils/theme'
 
@@ -71,9 +72,9 @@ export function ContactRequestCard({
   return (
     <Pressable onPress={onPress} style={styles.row}>
       {request.listingImageUrl ? (
-        <Image source={{ uri: request.listingImageUrl }} style={styles.thumbnail} />
+        <AppImage uri={request.listingImageUrl} style={styles.thumbnail} />
       ) : request.counterpartAvatarUrl ? (
-        <Image source={{ uri: request.counterpartAvatarUrl }} style={styles.thumbnail} />
+        <AppImage uri={request.counterpartAvatarUrl} style={styles.thumbnail} />
       ) : (
         <View style={styles.fallbackThumb}>
           <Text style={styles.fallbackThumbText}>{getFallbackLabel(request)}</Text>

@@ -1,7 +1,8 @@
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import type { ListingPreview } from '../types/app'
 
+import { AppImage } from './AppImage'
 import { FulfillmentLabel } from './FulfillmentLabel'
 import { ListingStatusBadge } from './ListingStatusBadge'
 import { formatDate, formatPrice } from '../utils/formatters'
@@ -21,7 +22,7 @@ export function ListingCard({
   return (
     <Pressable onPress={onPress} style={styles.card}>
       {listing.imageUrl ? (
-        <Image source={{ uri: listing.imageUrl }} style={styles.image} />
+        <AppImage uri={listing.imageUrl} style={styles.image} />
       ) : (
         <View style={styles.imagePlaceholder}>
           <Text style={styles.imageLabel}>{listing.wasteType}</Text>

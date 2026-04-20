@@ -4,7 +4,6 @@ import { router } from 'expo-router'
 import { Controller, useForm } from 'react-hook-form'
 import {
   Dimensions,
-  Image,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -22,6 +21,7 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { EmptyState } from '../../components/EmptyState'
 import { ErrorState } from '../../components/ErrorState'
 import { FormField } from '../../components/FormField'
+import { AppImage } from '../../components/AppImage'
 import { ProfileScreenSkeleton } from '../../components/ScreenSkeleton'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
@@ -532,7 +532,7 @@ export default function ProfileScreen() {
                 style={styles.avatarPressable}
               >
                 {profile.avatar_url ? (
-                  <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
+                  <AppImage uri={profile.avatar_url} style={styles.avatarImage} />
                 ) : (
                   <View style={styles.avatarFallback}>
                     <Text style={styles.avatarText}>

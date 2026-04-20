@@ -1,7 +1,8 @@
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import type { ListingDetail } from '../types/app'
 
+import { AppImage } from './AppImage'
 import { FulfillmentLabel } from './FulfillmentLabel'
 import { formatPrice, titleCase } from '../utils/formatters'
 import { palette, radii, shadow } from '../utils/theme'
@@ -24,7 +25,7 @@ export function PinPopup({
       <View style={styles.handle} />
       <View style={styles.row}>
         {listing.imageUrl ? (
-          <Image source={{ uri: listing.imageUrl }} style={styles.image} />
+          <AppImage uri={listing.imageUrl} style={styles.image} />
         ) : (
           <View style={styles.imageFallback}>
             <Text style={styles.imageFallbackText}>

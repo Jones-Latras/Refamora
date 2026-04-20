@@ -4,6 +4,46 @@ import { getSupabaseClient, hasSupabaseEnv } from './supabase'
 
 type AuthResult = { user: User | null; error: AuthError | Error | null }
 let suppressNextSignedOutNotice = false
+let recoveredInvalidSession = false
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message.toLowerCase()
+  }
+
+  if (typeof error === 'string') {
+    return error.toLowerCase()
+  }
+
+  return ''
+}
+
+function isInvalidRefreshTokenError(error: unknown) {
+  const message = getErrorMessage(error)
+
+  if (!message.includes('refresh token')) {
+    return false
+  }
+
+  return (
+    message.includes('invalid') ||
+    message.includes('not found') ||
+    message.includes('expired') ||
+    message.includes('revoked')
+  )
+}
+
+async function clearLocalAuthSession() {
+  if (!hasSupabaseEnv) {
+    return
+  }
+
+  try {
+    await getSupabaseClient().auth.signOut({ scope: 'local' })
+  } catch {
+    // Ignore cleanup failures. The caller is already recovering from stale local auth state.
+  }
+}
 
 export async function signUp(
   email: string,
@@ -77,13 +117,35 @@ export async function getSession(): Promise<Session | null> {
     return null
   }
 
-  const { data } = await getSupabaseClient().auth.getSession()
+  try {
+    const { data, error } = await getSupabaseClient().auth.getSession()
 
-  return data.session
+    if (error) {
+      throw error
+    }
+
+    return data.session
+  } catch (error) {
+    if (isInvalidRefreshTokenError(error)) {
+      recoveredInvalidSession = true
+      await clearLocalAuthSession()
+      return null
+    }
+
+    throw error instanceof Error
+      ? error
+      : new Error('Unable to restore your session.')
+  }
 }
 
 export function consumeSignedOutNoticeSuppression() {
   const shouldSuppress = suppressNextSignedOutNotice
   suppressNextSignedOutNotice = false
   return shouldSuppress
+}
+
+export function consumeInvalidSessionRecovery() {
+  const shouldNotify = recoveredInvalidSession
+  recoveredInvalidSession = false
+  return shouldNotify
 }

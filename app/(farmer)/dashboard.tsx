@@ -1,10 +1,11 @@
 import { useFocusEffect } from '@react-navigation/native'
 import { router } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import { AppImage } from '../../components/AppImage'
 import { ContactRequestCard } from '../../components/ContactRequestCard'
 import { EmptyState } from '../../components/EmptyState'
 import { ErrorState } from '../../components/ErrorState'
@@ -112,7 +113,7 @@ function ListingPreviewCard({
   return (
     <View style={styles.listingCard}>
       {listing.imageUrl ? (
-        <Image source={{ uri: listing.imageUrl }} style={styles.listingImage} />
+        <AppImage uri={listing.imageUrl} style={styles.listingImage} />
       ) : (
         <View style={styles.listingImageFallback}>
           <Text style={styles.listingImageFallbackText}>{listing.wasteType}</Text>
@@ -443,7 +444,7 @@ export default function FarmerDashboardScreen() {
               style={styles.avatarPressable}
             >
               {profile?.avatar_url ? (
-                <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
+                <AppImage uri={profile.avatar_url} style={styles.avatarImage} />
               ) : (
                 <View style={styles.avatarFallback}>
                   <Text style={styles.avatarText}>

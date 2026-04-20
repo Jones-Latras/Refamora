@@ -5,7 +5,6 @@ import { useCallback, useMemo, useState } from 'react'
 import {
   Alert,
   FlatList,
-  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -17,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { EmptyState } from '../../components/EmptyState'
 import { ErrorState } from '../../components/ErrorState'
 import { FulfillmentLabel } from '../../components/FulfillmentLabel'
+import { AppImage } from '../../components/AppImage'
 import { ListingStatusBadge } from '../../components/ListingStatusBadge'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
@@ -568,7 +568,7 @@ export default function MyListingsScreen() {
                   style={styles.compactCard}
                 >
                   {item.imageUrl ? (
-                    <Image source={{ uri: item.imageUrl }} style={styles.compactImage} />
+                    <AppImage uri={item.imageUrl} style={styles.compactImage} />
                   ) : (
                     <View style={styles.compactImagePlaceholder}>
                       <Text style={styles.compactImageLabel}>

@@ -4,7 +4,6 @@ import { useCallback, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -18,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { EmptyState } from '../../components/EmptyState'
 import { ErrorState } from '../../components/ErrorState'
 import { FeedFilterSheet } from '../../components/FeedFilterSheet'
+import { AppImage } from '../../components/AppImage'
 import { ListingCard } from '../../components/ListingCard'
 import { SkeletonCard } from '../../components/SkeletonCard'
 import { useToast } from '../../components/Toast'
@@ -61,7 +61,7 @@ function RecentListingChip({
   return (
     <Pressable onPress={onPress} style={styles.recentCard}>
       {imageUrl ? (
-        <Image source={{ uri: imageUrl }} style={styles.recentImage} />
+        <AppImage uri={imageUrl} style={styles.recentImage} />
       ) : (
         <View style={styles.recentImageFallback}>
           <Text style={styles.recentImageFallbackText}>Viewed</Text>
@@ -223,7 +223,7 @@ export default function FeedScreen() {
           <View style={styles.identityRow}>
             {profile?.avatar_url ? (
               <Pressable onPress={() => router.push('/(buyer)/profile')}>
-                <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
+                <AppImage uri={profile.avatar_url} style={styles.avatarImage} />
               </Pressable>
             ) : (
               <Pressable

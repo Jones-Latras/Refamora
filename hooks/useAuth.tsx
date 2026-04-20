@@ -11,6 +11,7 @@ import {
 import type { UserRole } from '../types/app'
 
 import {
+  consumeInvalidSessionRecovery,
   consumeSignedOutNoticeSuppression,
   getSession,
 } from '../services/authService'
@@ -58,13 +59,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      const currentSession = await getSession()
+      setIsLoading(true)
+
+      let currentSession: Session | null = null
+
+      try {
+        currentSession = await getSession()
+      } catch {
+        currentSession = null
+      }
 
       if (!isMounted) {
         return
       }
 
-      setIsLoading(true)
+      const recoveredSession = consumeInvalidSessionRecovery()
+
       setSession(currentSession)
       sessionRef.current = currentSession
       setUser(currentSession?.user ?? null)
@@ -73,6 +83,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await loadRole(currentSession.user.id)
       } else {
         setRole(null)
+      }
+
+      if (recoveredSession && !currentSession) {
+        setNotice({
+          type: 'session_expired',
+          message: 'Your saved session is no longer valid. Please sign in again.',
+        })
       }
 
       if (isMounted) {

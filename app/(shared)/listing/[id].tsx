@@ -3,7 +3,6 @@ import * as ExpoLinking from 'expo-linking'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import MapView, { Marker } from 'react-native-maps'
 import {
-  Image,
   Linking,
   Pressable,
   Share,
@@ -19,6 +18,7 @@ import { ContactSellerModal } from '../../../components/ContactSellerModal'
 import { EmptyState } from '../../../components/EmptyState'
 import { ErrorState } from '../../../components/ErrorState'
 import { FulfillmentLabel } from '../../../components/FulfillmentLabel'
+import { AppImage } from '../../../components/AppImage'
 import { ListingCard } from '../../../components/ListingCard'
 import { ListingReportModal } from '../../../components/ListingReportModal'
 import { ListingStatusBadge } from '../../../components/ListingStatusBadge'
@@ -542,7 +542,7 @@ export default function ListingDetailScreen() {
         </View>
 
         {listing.imageUrl ? (
-          <Image source={{ uri: listing.imageUrl }} style={styles.heroImage} />
+          <AppImage uri={listing.imageUrl} style={styles.heroImage} />
         ) : (
           <View style={styles.heroPlaceholder}>
             <Text style={styles.heroPlaceholderLabel}>{readableWasteType}</Text>
@@ -687,10 +687,7 @@ export default function ListingDetailScreen() {
             <>
               <View style={styles.sellerRow}>
                 {listing.seller.avatarUrl ? (
-                  <Image
-                    source={{ uri: listing.seller.avatarUrl }}
-                    style={styles.avatarImage}
-                  />
+                  <AppImage uri={listing.seller.avatarUrl} style={styles.avatarImage} />
                 ) : (
                   <View style={styles.avatarFallback}>
                     <Text style={styles.avatarText}>

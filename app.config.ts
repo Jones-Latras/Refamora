@@ -1,5 +1,18 @@
 import type { ExpoConfig } from 'expo/config'
 
+const androidConfig: ExpoConfig['android'] & {
+  usesCleartextTraffic?: boolean
+} = {
+  adaptiveIcon: {
+    foregroundImage: './assets/adaptive-icon.png',
+    backgroundColor: '#f5f1e8',
+  },
+  usesCleartextTraffic: true,
+  edgeToEdgeEnabled: true,
+  softwareKeyboardLayoutMode: 'resize',
+  predictiveBackGestureEnabled: false,
+}
+
 const config: ExpoConfig = {
   name: 'Refamora',
   slug: 'refamora',
@@ -17,15 +30,7 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
   },
-  android: {
-    adaptiveIcon: {
-      foregroundImage: './assets/adaptive-icon.png',
-      backgroundColor: '#f5f1e8',
-    },
-    edgeToEdgeEnabled: true,
-    softwareKeyboardLayoutMode: 'resize',
-    predictiveBackGestureEnabled: false,
-  },
+  android: androidConfig,
   web: {
     favicon: './assets/favicon.png',
   },
