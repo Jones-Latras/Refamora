@@ -70,6 +70,26 @@ export const passwordChangeSchema = z
     path: ['confirmPassword'],
   })
 
+export const sellerVerificationSchema = z.object({
+  documentType: z.enum([
+    'government_id',
+    'farm_id',
+    'business_permit',
+    'cooperative_certificate',
+    'other',
+  ]),
+  documentNumber: z
+    .string()
+    .trim()
+    .min(2, 'Add the reference or ID number shown on the document.'),
+  notes: z
+    .string()
+    .trim()
+    .max(240, 'Keep the verification note under 240 characters.')
+    .optional()
+    .or(z.literal('')),
+})
+
 const wasteTypeValues = WASTE_TYPES.map((item) => item.value) as [
   string,
   ...string[],
@@ -335,6 +355,7 @@ export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>
 export type SignUpFormValues = z.infer<typeof signUpSchema>
 export type ProfileFormValues = z.input<typeof profileSchema>
 export type PasswordChangeFormValues = z.infer<typeof passwordChangeSchema>
+export type SellerVerificationFormValues = z.infer<typeof sellerVerificationSchema>
 export type ListingFormValues = z.input<typeof listingSchema>
 export type ListingAssistFormValues = z.infer<typeof listingAssistInputSchema>
 export type AIFeedbackFormValues = z.infer<typeof aiFeedbackInputSchema>

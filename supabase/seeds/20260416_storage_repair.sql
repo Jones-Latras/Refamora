@@ -4,7 +4,8 @@
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values
   ('listing-images', 'listing-images', true, 5242880, array['image/jpeg', 'image/png', 'image/webp']),
-  ('avatars', 'avatars', true, 5242880, array['image/jpeg', 'image/png', 'image/webp'])
+  ('avatars', 'avatars', true, 5242880, array['image/jpeg', 'image/png', 'image/webp']),
+  ('verification-documents', 'verification-documents', false, 5242880, array['image/jpeg', 'image/png', 'image/webp'])
 on conflict (id) do update
 set
   public = excluded.public,
@@ -66,3 +67,44 @@ create policy "Owners delete avatars"
   for delete
   to authenticated
   using (bucket_id = 'avatars' and owner = auth.uid());
+
+drop policy if exists "Owners and admins can read verification documents" on storage.objects;
+create policy "Owners and admins can read verification documents"
+  on storage.objects
+  for select
+  to authenticated
+  using (
+    bucket_id = 'verification-documents'
+    and (owner = auth.uid() or public.is_admin())
+  );
+
+drop policy if exists "Authenticated upload verification documents" on storage.objects;
+create policy "Authenticated upload verification documents"
+  on storage.objects
+  for insert
+  to authenticated
+  with check (bucket_id = 'verification-documents');
+
+drop policy if exists "Owners update verification documents" on storage.objects;
+create policy "Owners update verification documents"
+  on storage.objects
+  for update
+  to authenticated
+  using (
+    bucket_id = 'verification-documents'
+    and (owner = auth.uid() or public.is_admin())
+  )
+  with check (
+    bucket_id = 'verification-documents'
+    and (owner = auth.uid() or public.is_admin())
+  );
+
+drop policy if exists "Owners delete verification documents" on storage.objects;
+create policy "Owners delete verification documents"
+  on storage.objects
+  for delete
+  to authenticated
+  using (
+    bucket_id = 'verification-documents'
+    and (owner = auth.uid() or public.is_admin())
+  );

@@ -5,6 +5,7 @@ import type { ListingPreview } from '../types/app'
 import { AppImage } from './AppImage'
 import { FulfillmentLabel } from './FulfillmentLabel'
 import { ListingStatusBadge } from './ListingStatusBadge'
+import { VerifiedBadge } from './VerifiedBadge'
 import { formatDate, formatPrice } from '../utils/formatters'
 import { palette, radii, shadow } from '../utils/theme'
 
@@ -33,8 +34,9 @@ export function ListingCard({
           <Text style={styles.title}>{listing.title}</Text>
           <ListingStatusBadge status={listing.status} />
         </View>
+        {listing.sellerVerified ? <VerifiedBadge /> : null}
         <Text style={styles.meta}>
-          {listing.city} • {listing.quantity} {listing.unit}
+          {listing.city} | {listing.quantity} {listing.unit}
         </Text>
         {distanceLabel ? <Text style={styles.distance}>{distanceLabel}</Text> : null}
         <Text style={styles.price}>{formatPrice(listing.price, listing.unit)}</Text>

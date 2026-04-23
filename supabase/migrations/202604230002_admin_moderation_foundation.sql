@@ -4,6 +4,48 @@ alter table public.users
   add constraint users_role_check
   check (role in ('farmer', 'buyer', 'admin'));
 
+create or replace function public.handle_auth_user_created()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.users (
+    id,
+    email,
+    full_name,
+    phone,
+    role,
+    city,
+    avatar_url
+  )
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data->>'full_name', 'New User'),
+    new.raw_user_meta_data->>'phone',
+    case
+      when new.raw_user_meta_data->>'role' in ('farmer', 'buyer', 'admin')
+        then new.raw_user_meta_data->>'role'
+      else null
+    end,
+    new.raw_user_meta_data->>'city',
+    new.raw_user_meta_data->>'avatar_url'
+  )
+  on conflict (id) do update
+  set
+    email = excluded.email,
+    full_name = coalesce(excluded.full_name, public.users.full_name),
+    phone = coalesce(excluded.phone, public.users.phone),
+    role = coalesce(excluded.role, public.users.role),
+    city = coalesce(excluded.city, public.users.city),
+    avatar_url = coalesce(excluded.avatar_url, public.users.avatar_url);
+
+  return new;
+end;
+$$;
+
 create or replace function public.is_admin(p_user_id uuid default auth.uid())
 returns boolean
 language sql

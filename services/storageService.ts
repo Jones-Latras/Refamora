@@ -5,7 +5,7 @@ import type { ServiceResult } from '../types/app'
 
 import { getSupabaseClient, hasSupabaseEnv } from './supabase'
 
-type StorageBucket = 'avatars' | 'listing-images'
+type StorageBucket = 'avatars' | 'listing-images' | 'verification-documents'
 const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024
 const SUPPORTED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
 
@@ -201,6 +201,45 @@ export async function uploadAvatarImage(
     .getPublicUrl(uploadResult.data)
 
   return { data: data.publicUrl, error: null }
+}
+
+export async function uploadVerificationDocument(
+  uri: string,
+  userId: string,
+): Promise<ServiceResult<string>> {
+  const filePath = `${userId}/verification-${Date.now()}.jpg`
+  const uploadResult = await uploadImage('verification-documents', filePath, uri)
+
+  if (uploadResult.error || !uploadResult.data) {
+    return {
+      data: null,
+      error: uploadResult.error ?? new Error('Failed to upload verification document.'),
+    }
+  }
+
+  return { data: uploadResult.data, error: null }
+}
+
+export async function getVerificationDocumentSignedUrl(
+  filePath: string,
+): Promise<ServiceResult<string>> {
+  if (!hasSupabaseEnv) {
+    return { data: null, error: new Error('Supabase is not configured yet.') }
+  }
+
+  const { data, error } = await getSupabaseClient()
+    .storage
+    .from('verification-documents')
+    .createSignedUrl(filePath, 60 * 30)
+
+  if (error) {
+    return {
+      data: null,
+      error: toStorageError(error, 'verification-documents', 'Failed to open verification document.'),
+    }
+  }
+
+  return { data: data.signedUrl, error: null }
 }
 
 export async function deleteImage(

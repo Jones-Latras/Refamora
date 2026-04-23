@@ -448,6 +448,66 @@ export type Database = {
           },
         ]
       }
+      seller_verification_requests: {
+        Row: {
+          admin_note: string | null
+          created_at: string
+          document_number: string
+          document_path: string
+          document_type: string
+          id: string
+          notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          seller_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string
+          document_number: string
+          document_path: string
+          document_type: string
+          id?: string
+          notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          seller_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string
+          document_number?: string
+          document_path?: string
+          document_type?: string
+          id?: string
+          notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          seller_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_verification_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seller_verification_requests_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           avatar_url: string | null
@@ -456,6 +516,7 @@ export type Database = {
           email: string | null
           full_name: string
           id: string
+          is_verified: boolean
           phone: string | null
           role: string | null
         }
@@ -466,6 +527,7 @@ export type Database = {
           email?: string | null
           full_name: string
           id: string
+          is_verified?: boolean
           phone?: string | null
           role?: string | null
         }
@@ -476,6 +538,7 @@ export type Database = {
           email?: string | null
           full_name?: string
           id?: string
+          is_verified?: boolean
           phone?: string | null
           role?: string | null
         }

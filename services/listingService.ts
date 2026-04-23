@@ -1,4 +1,5 @@
 import type {
+  FulfillmentType,
   ListingActivityItem,
   ListingDetail,
   ListingFilters,
@@ -16,6 +17,13 @@ import { getSupabaseClient, hasSupabaseEnv } from './supabase'
 
 type ListingRow = Tables<'listings'>
 type SellerRow = Tables<'users'>
+type SellerSummaryRow = Pick<
+  SellerRow,
+  'id' | 'full_name' | 'city' | 'avatar_url' | 'phone' | 'is_verified'
+>
+type ListingRowWithSeller = ListingRow & {
+  seller?: Pick<SellerRow, 'full_name' | 'is_verified'> | null
+}
 const PAGE_SIZE = 12
 const SEARCH_PAGE_MULTIPLIER = 4
 const SEARCH_RESULT_LIMIT_CAP = 96
@@ -125,6 +133,14 @@ function hasText(value?: string | null) {
 
 function normalizeListingText(value?: string | null) {
   return value?.trim().replace(/\s+/g, ' ').toLowerCase() ?? ''
+}
+
+function normalizeListingStatus(value?: string | null): ListingStatus {
+  return value === 'sold' || value === 'unavailable' ? value : 'active'
+}
+
+function normalizeFulfillmentType(value?: string | null): FulfillmentType {
+  return value === 'delivery' || value === 'both' ? value : 'pickup'
 }
 
 function normalizeSearchTerm(value?: string | null) {
@@ -367,7 +383,19 @@ function mapDeleteListingError(error: unknown) {
   return new Error('We could not delete this listing from the database right now.')
 }
 
-function mapListing(row: ListingRow): ListingPreview {
+function getJoinedSeller(row: ListingRow | ListingRowWithSeller) {
+  if ('seller' in row && row.seller && typeof row.seller === 'object') {
+    return row.seller
+  }
+
+  return null
+}
+
+function mapListing(row: ListingRow | ListingRowWithSeller): ListingPreview {
+  const seller = getJoinedSeller(row)
+  const normalizedStatus = normalizeListingStatus(row.status)
+  const normalizedFulfillmentType = normalizeFulfillmentType(row.fulfillment_type)
+
   return {
     id: row.id,
     title: row.title,
@@ -379,15 +407,16 @@ function mapListing(row: ListingRow): ListingPreview {
     latitude: row.latitude,
     longitude: row.longitude,
     imageUrl: row.image_url,
-    status: row.status,
-    sellerName: null,
-    fulfillmentType: row.fulfillment_type,
+    status: normalizedStatus,
+    sellerName: typeof seller?.full_name === 'string' ? seller.full_name : null,
+    sellerVerified: seller?.is_verified === true,
+    fulfillmentType: normalizedFulfillmentType,
     createdAt: row.created_at ?? new Date().toISOString(),
   }
 }
 
 function mapSeller(
-  row: SellerRow | null,
+  row: SellerSummaryRow | null,
   stats?: {
     listingCount?: number | null
     respondedInquiryCount?: number | null
@@ -403,6 +432,7 @@ function mapSeller(
     city: row.city,
     avatarUrl: row.avatar_url,
     phone: row.phone,
+    isVerified: row.is_verified ?? false,
     profileCompletionPercent: Math.round(
       ([hasText(row.full_name), hasText(row.avatar_url), hasText(row.phone), hasText(row.city)]
         .filter(Boolean).length /
@@ -421,6 +451,9 @@ function mapListingDetail(
   row: ListingRow,
   seller: SellerProfile | null,
 ): ListingDetail {
+  const normalizedStatus = normalizeListingStatus(row.status)
+  const normalizedFulfillmentType = normalizeFulfillmentType(row.fulfillment_type)
+
   return {
     id: row.id,
     sellerId: row.seller_id,
@@ -436,8 +469,8 @@ function mapListingDetail(
     city: row.city ?? seller?.city ?? 'Unknown location',
     latitude: row.latitude,
     longitude: row.longitude,
-    fulfillmentType: row.fulfillment_type,
-    status: row.status,
+    fulfillmentType: normalizedFulfillmentType,
+    status: normalizedStatus,
     createdAt: row.created_at ?? new Date().toISOString(),
     seller,
   }
@@ -453,7 +486,7 @@ export async function getListings(
 
   let query = getSupabaseClient()
     .from('listings')
-    .select('*')
+    .select('*, seller:users!listings_seller_id_fkey(full_name, is_verified)')
     .eq('status', 'active')
 
   if (filters.wasteType) {
@@ -533,7 +566,7 @@ export async function getFarmerListings(
 
   const { data, error } = await getSupabaseClient()
     .from('listings')
-    .select('*')
+    .select('*, seller:users!listings_seller_id_fkey(full_name, is_verified)')
     .eq('seller_id', sellerId)
     .order('created_at', { ascending: false })
 
@@ -549,7 +582,7 @@ export async function getListingPreviewsByIds(
 
   const { data, error } = await getSupabaseClient()
     .from('listings')
-    .select('*')
+    .select('*, seller:users!listings_seller_id_fkey(full_name, is_verified)')
     .in('id', listingIds)
 
   if (error) {
@@ -579,7 +612,7 @@ export async function getRelatedListings(input: {
 
   let query = getSupabaseClient()
     .from('listings')
-    .select('*')
+    .select('*, seller:users!listings_seller_id_fkey(full_name, is_verified)')
     .eq('status', 'active')
     .eq('waste_type', input.wasteType)
     .neq('id', input.listingId)
@@ -602,7 +635,7 @@ export async function getRelatedListings(input: {
 
   const fallback = await getSupabaseClient()
     .from('listings')
-    .select('*')
+    .select('*, seller:users!listings_seller_id_fkey(full_name, is_verified)')
     .eq('status', 'active')
     .eq('waste_type', input.wasteType)
     .neq('id', input.listingId)
@@ -634,7 +667,7 @@ export async function getListingById(
 
   const { data: seller } = await getSupabaseClient()
     .from('users')
-    .select('id, full_name, city, avatar_url, phone')
+    .select('id, full_name, city, avatar_url, phone, is_verified')
     .eq('id', data.seller_id)
     .maybeSingle()
 

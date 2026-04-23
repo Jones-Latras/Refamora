@@ -1,3 +1,4 @@
+import { router } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
 import {
   Pressable,
@@ -317,6 +318,16 @@ export default function AdminDashboardScreen() {
             <Text style={styles.metricLabel}>Unavailable listings</Text>
           </View>
         </View>
+
+        <Pressable
+          onPress={() => router.push('/(admin)/verifications')}
+          style={styles.verificationNavCard}
+        >
+          <Text style={styles.verificationNavTitle}>Seller verification reviews</Text>
+          <Text style={styles.verificationNavText}>
+            Open the verification queue to approve or reject seller document submissions.
+          </Text>
+        </Pressable>
 
         <View style={styles.segmentRow}>
           <Pressable
@@ -663,6 +674,25 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontSize: 12,
     lineHeight: 18,
+  },
+  verificationNavCard: {
+    backgroundColor: '#eef5ef',
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(58, 102, 72, 0.12)',
+    padding: 16,
+    gap: 4,
+  },
+  verificationNavTitle: {
+    color: palette.soil,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  verificationNavText: {
+    color: palette.sageDark,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '700',
   },
   segmentRow: {
     flexDirection: 'row',

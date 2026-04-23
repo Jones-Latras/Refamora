@@ -19,6 +19,12 @@ export default function AdminLayout() {
           title: 'Admin moderation',
         }}
       />
+      <Stack.Screen
+        name="verifications"
+        options={{
+          title: 'Seller verifications',
+        }}
+      />
     </Stack>
   )
 }

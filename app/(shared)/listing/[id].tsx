@@ -23,6 +23,7 @@ import { ListingCard } from '../../../components/ListingCard'
 import { ListingReportModal } from '../../../components/ListingReportModal'
 import { ListingStatusBadge } from '../../../components/ListingStatusBadge'
 import { ListingDetailScreenSkeleton } from '../../../components/ScreenSkeleton'
+import { VerifiedBadge } from '../../../components/VerifiedBadge'
 import { useToast } from '../../../components/Toast'
 import { useAuth } from '../../../hooks/useAuth'
 import { useBuyerLocationStore } from '../../../hooks/useBuyerLocation'
@@ -288,6 +289,14 @@ export default function ListingDetailScreen() {
   const sellerTrustSummary = useMemo(() => {
     if (!listing?.seller) {
       return null
+    }
+
+    if (listing.seller.isVerified) {
+      return {
+        title: 'Verified seller',
+        description:
+          'This seller passed manual Refamora review and has a verified trust badge visible to buyers.',
+      }
     }
 
     return listing.seller.isProfileComplete
@@ -700,6 +709,7 @@ export default function ListingDetailScreen() {
                   <Text style={styles.sellerLocation}>
                     {listing.seller.city ?? 'Location not provided'}
                   </Text>
+                  {listing.seller.isVerified ? <VerifiedBadge /> : null}
                   <View style={styles.sellerBadgeRow}>
                     <View
                       style={[
@@ -712,12 +722,16 @@ export default function ListingDetailScreen() {
                       <Text
                         style={[
                           styles.sellerBadgeText,
-                          listing.seller.isProfileComplete
+                          listing.seller.isVerified || listing.seller.isProfileComplete
                             ? styles.sellerBadgeTextPositive
                             : null,
                         ]}
                       >
-                        {listing.seller.isProfileComplete ? 'Profile ready' : 'Profile improving'}
+                        {listing.seller.isVerified
+                          ? 'Verification approved'
+                          : listing.seller.isProfileComplete
+                            ? 'Profile ready'
+                            : 'Profile improving'}
                       </Text>
                     </View>
                     <View
@@ -756,10 +770,12 @@ export default function ListingDetailScreen() {
                   <Text style={styles.sellerTrustSummaryText}>
                     {sellerTrustSummary.description}
                   </Text>
-                  <Text style={styles.sellerVerificationHint}>
-                    Optional seller verification is coming in a later update after manual admin
-                    review is added.
-                  </Text>
+                  {!listing.seller.isVerified ? (
+                    <Text style={styles.sellerVerificationHint}>
+                      This seller has not been verified yet, but you can still review their profile
+                      details and message history.
+                    </Text>
+                  ) : null}
                 </View>
               ) : null}
 

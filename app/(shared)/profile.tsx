@@ -23,12 +23,14 @@ import { ErrorState } from '../../components/ErrorState'
 import { FormField } from '../../components/FormField'
 import { AppImage } from '../../components/AppImage'
 import { ProfileScreenSkeleton } from '../../components/ScreenSkeleton'
+import { VerifiedBadge } from '../../components/VerifiedBadge'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
 import { useConnectivity } from '../../hooks/useConnectivity'
 import { useProfile } from '../../hooks/useProfile'
 import { signOut, updatePassword } from '../../services/authService'
 import { updateUserProfile } from '../../services/profileService'
+import { getLatestSellerVerificationRequest } from '../../services/sellerVerificationService'
 import { uploadAvatarImage } from '../../services/storageService'
 import type {
   PasswordChangeFormValues,
@@ -73,6 +75,9 @@ export default function ProfileScreen() {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [verificationStatus, setVerificationStatus] = useState<
+    'pending' | 'approved' | 'rejected' | null
+  >(null)
   const keyboardVerticalOffset = Platform.OS === 'ios' ? headerHeight : 0
 
   const {
@@ -123,6 +128,33 @@ export default function ProfileScreen() {
       avatar_url: profile.avatar_url ?? null,
     })
   }, [profile, reset])
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadVerificationStatus = async () => {
+      if (!user || role !== 'farmer') {
+        if (isMounted) {
+          setVerificationStatus(null)
+        }
+        return
+      }
+
+      const result = await getLatestSellerVerificationRequest(user.id)
+
+      if (!isMounted) {
+        return
+      }
+
+      setVerificationStatus(result.data?.status ?? null)
+    }
+
+    void loadVerificationStatus()
+
+    return () => {
+      isMounted = false
+    }
+  }, [role, user])
 
   const watchedProfile = watch()
   const watchedPassword = watchPassword()
@@ -445,18 +477,7 @@ export default function ProfileScreen() {
       return
     }
 
-    if (!profileCompletion.isComplete) {
-      showToast(
-        'Complete your seller profile first. Verification requests will open after that flow is ready.',
-        'info',
-      )
-      return
-    }
-
-    showToast(
-      'Seller verification requests are coming soon. Your profile is ready for future admin review.',
-      'info',
-    )
+    router.push('/(shared)/seller-verification')
   }
 
   if (isLoading) {
@@ -565,6 +586,7 @@ export default function ProfileScreen() {
                     <Text style={styles.identityChipText}>{profile.city}</Text>
                   </View>
                 ) : null}
+                {profile?.is_verified ? <VerifiedBadge label="Verified seller" /> : null}
                 <View
                   style={[
                     styles.identityChip,
@@ -731,37 +753,68 @@ export default function ProfileScreen() {
               <View
                 style={[
                   styles.verificationBadge,
-                  profileCompletion.isComplete
+                  profile?.is_verified || verificationStatus === 'approved'
                     ? styles.verificationBadgeReady
+                    : verificationStatus === 'pending'
+                      ? styles.verificationBadgePending
                     : styles.verificationBadgeLocked,
                 ]}
               >
                 <Text style={styles.verificationBadgeText}>
-                  {profileCompletion.isComplete ? 'Coming soon' : 'Finish profile first'}
+                  {profile?.is_verified || verificationStatus === 'approved'
+                    ? 'Verified'
+                    : verificationStatus === 'pending'
+                      ? 'Pending review'
+                      : verificationStatus === 'rejected'
+                        ? 'Needs resubmission'
+                        : profileCompletion.isComplete
+                          ? 'Ready to submit'
+                          : 'Finish profile first'}
                 </Text>
               </View>
               <Text style={styles.verificationMeta}>
-                Future admin review placeholder
+                {profile?.is_verified || verificationStatus === 'approved'
+                  ? 'Approved by Refamora admin review'
+                  : verificationStatus === 'pending'
+                    ? 'Your request is waiting for admin review'
+                    : verificationStatus === 'rejected'
+                      ? 'Update your details and resubmit'
+                      : 'Manual admin review'}
               </Text>
             </View>
             <Text style={styles.verificationText}>
-              Refamora will later support optional seller verification so buyers can see which
-              accounts passed a manual review.
+              {profile?.is_verified || verificationStatus === 'approved'
+                ? 'Buyers can now see a verified badge on your seller profile and listings.'
+                : 'Submit a proof document so buyers can see that your seller account passed manual review.'}
             </Text>
             <View style={styles.verificationChecklist}>
               <Text style={styles.verificationChecklistItem}>
                 {profileCompletion.isComplete ? 'Done' : 'Pending'} Complete seller profile
               </Text>
               <Text style={styles.verificationChecklistItem}>
-                Coming next: submit your account for manual review
+                {verificationStatus === 'pending'
+                  ? 'Current request: waiting for admin review'
+                  : verificationStatus === 'rejected'
+                    ? 'Next step: resubmit with updated proof'
+                    : profile?.is_verified
+                      ? 'Current status: approved and visible to buyers'
+                      : 'Next step: submit your account for manual review'}
               </Text>
               <Text style={styles.verificationChecklistItem}>
-                Future badge: visible on listing trust cards after approval
+                Buyer trust badge: visible on listing trust cards after approval
               </Text>
             </View>
             <Pressable onPress={handleVerificationPress} style={styles.verificationAction}>
               <Text style={styles.verificationActionText}>
-                {profileCompletion.isComplete ? 'Ready for future review' : 'See requirements'}
+                {profile?.is_verified
+                  ? 'Review verification'
+                  : verificationStatus === 'pending'
+                    ? 'Open request'
+                    : verificationStatus === 'rejected'
+                      ? 'Resubmit documents'
+                      : profileCompletion.isComplete
+                        ? 'Start verification'
+                        : 'See requirements'}
               </Text>
             </Pressable>
             </View>
@@ -1086,6 +1139,9 @@ const styles = StyleSheet.create({
   },
   verificationBadgeReady: {
     backgroundColor: '#eef6ed',
+  },
+  verificationBadgePending: {
+    backgroundColor: '#f5ecd6',
   },
   verificationBadgeLocked: {
     backgroundColor: '#f5f0e3',

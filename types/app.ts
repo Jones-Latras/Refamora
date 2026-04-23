@@ -30,6 +30,7 @@ export type ListingPreview = {
   imageUrl: string | null
   status: ListingStatus
   sellerName: string | null
+  sellerVerified: boolean
   fulfillmentType: FulfillmentType
   createdAt: string
 }
@@ -40,6 +41,7 @@ export type SellerProfile = {
   city: string | null
   avatarUrl: string | null
   phone: string | null
+  isVerified: boolean
   profileCompletionPercent: number
   isProfileComplete: boolean
   listingCount: number | null
@@ -333,6 +335,29 @@ export type AIHealthResult = {
   providers: AIProviderHealth[]
 }
 
+export type SellerVerificationDocumentType =
+  | 'government_id'
+  | 'farm_id'
+  | 'business_permit'
+  | 'cooperative_certificate'
+  | 'other'
+
+export type SellerVerificationRequestStatus = 'pending' | 'approved' | 'rejected'
+
+export type SellerVerificationRequest = {
+  id: string
+  sellerId: string
+  documentType: SellerVerificationDocumentType
+  documentNumber: string
+  notes: string | null
+  documentPath: string
+  status: SellerVerificationRequestStatus
+  adminNote: string | null
+  reviewedAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export type AIAnalyticsSummary = {
   feature: AIFeature
   periodDays: number
@@ -397,5 +422,20 @@ export type AdminModerationQueueItem = {
   fieldWarnings: string[]
   imageWarnings: string[]
   listing: AdminListingSummary | null
+  seller: AdminUserSummary | null
+}
+
+export type AdminSellerVerificationItem = {
+  id: string
+  sellerId: string
+  documentType: SellerVerificationDocumentType
+  documentNumber: string
+  notes: string | null
+  documentPath: string
+  status: SellerVerificationRequestStatus
+  adminNote: string | null
+  reviewedAt: string | null
+  createdAt: string
+  updatedAt: string
   seller: AdminUserSummary | null
 }

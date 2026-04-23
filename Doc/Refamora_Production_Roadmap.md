@@ -46,7 +46,7 @@ Any AI agent updating this file should:
 ### Partially Implemented
 
 - Listing lifecycle exists, but only as `active`, `sold`, and `unavailable`
-- Seller trust signals exist in UI copy, but real seller verification is still a placeholder
+- Seller verification now has a first real workflow: seller submission, admin review states, document storage, and verified badge display, but production hardening and notification flow are still incomplete
 - Moderation data exists in Supabase and a first admin moderation dashboard now exists, but the admin toolset is still limited to reports and AI review queue handling
 - Product analytics exist mainly for AI usage, not full marketplace analytics
 - EAS build profiles and environment-aware app config now exist, but release automation and full secret separation are not finished
@@ -55,7 +55,6 @@ Any AI agent updating this file should:
 
 - No push notifications or fallback email or SMS notifications
 - No complete admin suite for verification workflows, broader operations, or audit history
-- No actual seller verification submission and approval workflow
 - No end-to-end reservation, handoff, or completion workflow
 - No automated unit, integration, or smoke test suite yet
 - No crash reporting or production monitoring integration yet
@@ -86,7 +85,7 @@ These are higher priority than cosmetic feature work and should be treated as ro
 - [ ] Admin moderation foundation
   Status: Partial
 - [ ] Seller verification phase 1
-  Status: Not Started
+  Status: Partial
 - [ ] Notifications
   Status: Not Started
 - [ ] Testing and quality gates
@@ -232,19 +231,21 @@ Definition of done:
 
 ### Workstream 4: Seller Verification Phase 1
 
-Status: Not Started
+Status: Partial
 
 Current repo note:
 
-- seller verification is explicitly a placeholder in profile and listing trust UI
+- `seller_verification_requests` migration and storage bucket design now exist
+- sellers can submit a verification request with a document upload
+- admins can review requests in a dedicated verification screen with `pending`, `approved`, and `rejected` states
+- approved sellers now display a verified badge in profile and buyer-facing listing UI
 
 Required scope:
 
-- verification request table and storage design
-- seller submission form for identity or proof documents
-- admin review states: `pending`, `approved`, `rejected`
-- verified badge display on profile and listing cards
-- seller-facing status visibility
+- apply and validate the new verification migration and storage policies in the real Supabase project
+- add stronger document review guidance, audit visibility, and operational safeguards for admin actions
+- notify sellers when verification status changes
+- harden document requirements, rejection handling, and resubmission policy for production use
 
 Definition of done:
 
