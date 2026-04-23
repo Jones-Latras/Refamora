@@ -6,6 +6,7 @@ import { StyleSheet } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import { AppErrorBoundary } from '../components/AppErrorBoundary'
+import { AppVersionGate } from '../components/AppVersionGate'
 import { BrandedLoadingScreen } from '../components/BrandedLoadingScreen'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { ToastProvider, useToast } from '../components/Toast'
@@ -117,10 +118,12 @@ function AppChrome() {
   const pathname = usePathname()
 
   return (
-    <AppErrorBoundary resetKey={pathname}>
-      <SplashGate />
-      <OfflineBanner />
-    </AppErrorBoundary>
+    <AppVersionGate>
+      <AppErrorBoundary resetKey={pathname}>
+        <SplashGate />
+        <OfflineBanner />
+      </AppErrorBoundary>
+    </AppVersionGate>
   )
 }
 

@@ -99,7 +99,7 @@ These are higher priority than cosmetic feature work and should be treated as ro
 - [ ] Basic product analytics
   Status: Partial
 - [ ] App version policy
-  Status: Not Started
+  Status: Partial
 - [ ] Better offline UX
   Status: Partial
 - [ ] Admin audit log
@@ -336,12 +336,13 @@ Already present:
 - AI event logging
 - basic offline detection and banners
 - admin audit log migration, automatic database-backed audit entries, and a first admin audit log screen
+- app runtime policy migration, environment-scoped minimum supported version reads, and a blocking version gate component now exist in the app shell
 
 Still required:
 
 - crash reporting integration
 - marketplace analytics beyond AI usage
-- minimum supported app version policy
+- operational seeding and validation of minimum supported versions per environment
 - broader offline behavior review for last-known feed and request states
 
 Definition of done:

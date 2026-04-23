@@ -119,6 +119,42 @@ export type Database = {
           },
         ]
       }
+      app_runtime_policies: {
+        Row: {
+          android_store_url: string | null
+          created_at: string
+          environment: string
+          id: string
+          ios_store_url: string | null
+          is_enforced: boolean
+          minimum_supported_version: string
+          update_message: string | null
+          updated_at: string
+        }
+        Insert: {
+          android_store_url?: string | null
+          created_at?: string
+          environment: string
+          id?: string
+          ios_store_url?: string | null
+          is_enforced?: boolean
+          minimum_supported_version: string
+          update_message?: string | null
+          updated_at?: string
+        }
+        Update: {
+          android_store_url?: string | null
+          created_at?: string
+          environment?: string
+          id?: string
+          ios_store_url?: string | null
+          is_enforced?: boolean
+          minimum_supported_version?: string
+          update_message?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       contact_request_messages: {
         Row: {
           created_at: string

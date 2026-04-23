@@ -1,4 +1,5 @@
 export type UserRole = 'farmer' | 'buyer' | 'admin'
+export type AppEnvironment = 'development' | 'staging' | 'production'
 
 export type ListingStatus = 'active' | 'sold' | 'unavailable'
 
@@ -149,6 +150,17 @@ export type UserNotification = {
   isRead: boolean
   readAt: string | null
   createdAt: string
+}
+
+export type AppRuntimePolicy = {
+  id: string
+  environment: AppEnvironment
+  minimumSupportedVersion: string
+  isEnforced: boolean
+  updateMessage: string | null
+  iosStoreUrl: string | null
+  androidStoreUrl: string | null
+  updatedAt: string
 }
 
 export type InquiryAssistItem = {
