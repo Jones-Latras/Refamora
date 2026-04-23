@@ -17,6 +17,8 @@ function main() {
     '.env.production.example',
     'Doc/Refamora_Release_Runbook.md',
     'Doc/Refamora_Rollback_Runbook.md',
+    'supabase/functions/.env.staging.example',
+    'supabase/functions/.env.production.example',
   ]
 
   for (const relativePath of requiredFiles) {
@@ -32,9 +34,21 @@ function main() {
     '## Production Checklist',
     '## Supabase Deployment Order',
     '## Seed Policy',
+    'Function secret templates:',
     'npm run quality:beta',
   ]) {
     assert(runbook.includes(marker), `Release runbook is missing section: ${marker}`)
+  }
+
+  for (const functionTemplate of [
+    'supabase/functions/.env.local.example',
+    'supabase/functions/.env.staging.example',
+    'supabase/functions/.env.production.example',
+  ]) {
+    assert(
+      runbook.includes(functionTemplate),
+      `Release runbook must reference ${functionTemplate}.`,
+    )
   }
 
   for (const marker of [

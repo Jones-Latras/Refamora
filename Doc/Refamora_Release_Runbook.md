@@ -18,12 +18,19 @@ App env templates:
 - [.env.production.example](../.env.production.example)
 - rollback procedure: [Refamora_Rollback_Runbook.md](./Refamora_Rollback_Runbook.md)
 
+Function secret templates:
+
+- [supabase/functions/.env.local.example](../supabase/functions/.env.local.example)
+- [supabase/functions/.env.staging.example](../supabase/functions/.env.staging.example)
+- [supabase/functions/.env.production.example](../supabase/functions/.env.production.example)
+
 Rules:
 
 - keep `APP_ENV` aligned with the EAS profile name
 - keep `SUPABASE_URL` and `SUPABASE_ANON_KEY` environment-specific
 - never place `GROQ_*` or other Edge Function secrets in Expo app env files
 - keep staging and production on hosted `https` Supabase URLs
+- keep staging and production Edge Function secrets separate from local values
 
 ## Required Repo Checks
 
@@ -41,7 +48,7 @@ npx expo config --json
 - Expo config output for development, staging, and production app environments
 - EAS profiles for `development`, `staging`, and `production`
 - required admin, seller verification, and notification migrations
-- release and rollback documentation plus environment templates
+- release and rollback documentation plus app and function environment templates
 
 ## Supabase Deployment Order
 
@@ -109,7 +116,11 @@ Minimum current set:
 - `AI_RATE_LIMIT_WINDOW_MINUTES`
 - `AI_RATE_LIMIT_MAX_REQUESTS`
 
-Use [supabase/functions/.env.local.example](../supabase/functions/.env.local.example) as the template source.
+Use these templates as the source of truth:
+
+- [supabase/functions/.env.local.example](../supabase/functions/.env.local.example)
+- [supabase/functions/.env.staging.example](../supabase/functions/.env.staging.example)
+- [supabase/functions/.env.production.example](../supabase/functions/.env.production.example)
 
 ## Internal Build Checklist
 
@@ -126,12 +137,13 @@ Use for advisor or internal device testing.
 Use before any production candidate build.
 
 1. Copy staging values from [.env.staging.example](../.env.staging.example) into the active app env file.
-2. Link the staging Supabase project and run pending migrations.
-3. Confirm staging Edge Function secrets are set.
-4. Deploy updated Edge Functions.
-5. Run `npm run quality:beta`.
-6. Build with `staging` profile.
-7. Validate core smoke flows:
+2. Copy staging function secrets from [supabase/functions/.env.staging.example](../supabase/functions/.env.staging.example) into the staging Supabase project secret store.
+3. Link the staging Supabase project and run pending migrations.
+4. Confirm staging Edge Function secrets are set.
+5. Deploy updated Edge Functions.
+6. Run `npm run quality:beta`.
+7. Build with `staging` profile.
+8. Validate core smoke flows:
    - sign-up and sign-in
    - password reset
    - create listing
@@ -146,13 +158,14 @@ Use before any production candidate build.
 Use only after staging passes.
 
 1. Copy production values from [.env.production.example](../.env.production.example) into the active app env file.
-2. Link the production Supabase project and apply only reviewed migrations.
-3. Confirm production Edge Function secrets are set.
-4. Deploy Edge Functions.
-5. Run `npm run quality:beta`.
-6. Build with `production` profile.
-7. Re-check the same staging smoke flows against production.
-8. Record the app version, EAS build id, migration state, and release date in release notes.
+2. Copy production function secrets from [supabase/functions/.env.production.example](../supabase/functions/.env.production.example) into the production Supabase project secret store.
+3. Link the production Supabase project and apply only reviewed migrations.
+4. Confirm production Edge Function secrets are set.
+5. Deploy Edge Functions.
+6. Run `npm run quality:beta`.
+7. Build with `production` profile.
+8. Re-check the same staging smoke flows against production.
+9. Record the app version, EAS build id, migration state, and release date in release notes.
 
 ## Current Remaining Gaps
 
