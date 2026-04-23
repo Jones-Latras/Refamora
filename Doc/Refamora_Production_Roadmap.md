@@ -1,4 +1,4 @@
-# Refamora Production Roadmap
+ # Refamora Production Roadmap
 
 ## Purpose
 
@@ -50,6 +50,7 @@ Any AI agent updating this file should:
 - In-app notifications now exist for inquiry messages, seller replies, and verification decisions, but there is still no push provider, device token registration, or fallback delivery channel
 - Moderation data exists in Supabase and a first admin moderation dashboard now exists, but the admin toolset is still limited to reports and AI review queue handling
 - Product analytics exist mainly for AI usage, not full marketplace analytics
+- Zero-dependency unit tests and Beta config checks now exist, but there is still no integration suite or user-flow smoke coverage
 - EAS build profiles and environment-aware app config now exist, but release automation and full secret separation are not finished
 
 ### Confirmed Production Gaps
@@ -57,7 +58,7 @@ Any AI agent updating this file should:
 - No push notifications or fallback email or SMS notifications
 - No complete admin suite for verification workflows, broader operations, or audit history
 - No end-to-end reservation, handoff, or completion workflow
-- No automated unit, integration, or smoke test suite yet
+- No integration test suite or real user-flow smoke coverage yet
 - No crash reporting or production monitoring integration yet
 
 ## Immediate Production Risks Found In Repo
@@ -90,7 +91,7 @@ These are higher priority than cosmetic feature work and should be treated as ro
 - [ ] Notifications
   Status: Partial
 - [ ] Testing and quality gates
-  Status: Not Started
+  Status: Partial
 - [ ] Release and environment setup
   Status: Partial
 - [ ] Crash reporting
@@ -278,14 +279,20 @@ Definition of done:
 
 ### Workstream 6: Testing and Quality Gates
 
-Status: Not Started
+Status: Partial
+
+Current repo note:
+
+- `npm run test:unit` now runs automated unit checks for schema validation and Supabase dev URL normalization
+- `npm run check:beta-config` now verifies key Beta production-hardening settings like `verify_jwt`, EAS profiles, and required migrations
+- `npm run quality:beta` now bundles the current automated Beta quality gate
 
 Required scope:
 
-- unit tests for service-layer logic
+- expand unit tests for more service-layer logic
 - integration tests for auth, listings, contact requests, and reports
 - smoke tests for sign-up, sign-in, create listing, send inquiry, and reply
-- lint included in release checklist
+- lint included in release checklist and resolved enough to be enforceable
 
 Definition of done:
 

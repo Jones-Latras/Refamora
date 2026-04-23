@@ -7,7 +7,10 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test:unit": "tsc -p tsconfig.tests.json && node scripts/run-unit-tests.cjs",
+    "check:beta-config": "node scripts/check-beta-config.cjs",
+    "quality:beta": "npm run test:unit && npm run check:beta-config"
   },
   "dependencies": {
     "@gorhom/bottom-sheet": "^5.2.9",
