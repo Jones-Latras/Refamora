@@ -51,7 +51,7 @@ Any AI agent updating this file should:
 - Moderation data exists in Supabase and a first admin moderation dashboard now exists, but the admin toolset is still limited to reports and AI review queue handling
 - Product analytics exist mainly for AI usage, not full marketplace analytics
 - Zero-dependency unit tests and Beta config checks now exist, but there is still no integration suite or user-flow smoke coverage
-- EAS build profiles and environment-aware app config now exist, but release automation and full secret separation are not finished
+- EAS build profiles, environment templates, and a release runbook now exist, but real staging or production validation and secret rollout are not finished
 
 ### Confirmed Production Gaps
 
@@ -308,15 +308,16 @@ Current repo note:
 - `app.config.ts` now uses `APP_ENV` to set display name, bundle identifiers, and cleartext behavior
 - cleartext traffic is now limited to development-only `http` Supabase usage
 - Supabase function JWT verification is now enabled in `supabase/config.toml`
-- env templates now include `APP_ENV`
+- environment templates now exist for development, staging, and production app builds
+- a release runbook now documents migration order, seed policy, and internal, staging, and production checklists
+- `npm run check:release-readiness` now verifies the runbook, env templates, and current migration references
 
 Required scope:
 
-- finish env separation for staging and production secrets
+- validate real staging and production secret rollout against separate Supabase projects
 - validate deployed AI functions with JWT enforcement enabled
 - verify development builds still work against local Supabase when `http` is used
-- document migration and seed process for staging and production
-- document release checklist for internal, staging, and production builds
+- add a rollback and recovery procedure for failed release or migration steps
 
 Definition of done:
 

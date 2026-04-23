@@ -1,6 +1,7 @@
 # Supabase Setup
 
 This folder is the source-controlled Phase 1 database setup for AgriWaste.
+For current Beta release and environment workflow, also see [../Doc/Refamora_Release_Runbook.md](../Doc/Refamora_Release_Runbook.md).
 
 ## Apply the schema
 
@@ -18,14 +19,21 @@ npx supabase link --project-ref <your-project-ref>
 npx supabase db push
 ```
 
-After the base schema is in place, also apply [migrations/202604170001_ai_events.sql](./migrations/202604170001_ai_events.sql) to enable AI event logging and feedback capture.
-Then apply [migrations/202604170002_ai_events_waste_value_advisor.sql](./migrations/202604170002_ai_events_waste_value_advisor.sql) to allow waste advisor events in the same analytics table.
-Then apply [migrations/202604170003_ai_events_buyer_search_assistant.sql](./migrations/202604170003_ai_events_buyer_search_assistant.sql) to allow buyer search assistant events in the same analytics table.
-Then apply [migrations/202604170004_ai_events_listing_moderation.sql](./migrations/202604170004_ai_events_listing_moderation.sql) to allow listing moderation events in the same analytics table.
-Then apply [migrations/202604170005_ai_events_photo_quality_checker.sql](./migrations/202604170005_ai_events_photo_quality_checker.sql) to allow photo checker events in the same analytics table.
-Then apply [migrations/202604170006_listing_review_queue.sql](./migrations/202604170006_listing_review_queue.sql) to create the moderation review queue table for flagged listings.
-Then apply [migrations/202604170007_ai_events_messaging_support.sql](./migrations/202604170007_ai_events_messaging_support.sql) to allow seller inquiry assistant events in the same analytics table.
-Then apply [migrations/202604170008_contact_requests_responded.sql](./migrations/202604170008_contact_requests_responded.sql) to allow seller inquiry updates to `responded`.
+Apply later migrations in repo order, including:
+
+- [migrations/202604170001_ai_events.sql](./migrations/202604170001_ai_events.sql)
+- [migrations/202604170002_ai_events_waste_value_advisor.sql](./migrations/202604170002_ai_events_waste_value_advisor.sql)
+- [migrations/202604170003_ai_events_buyer_search_assistant.sql](./migrations/202604170003_ai_events_buyer_search_assistant.sql)
+- [migrations/202604170004_ai_events_listing_moderation.sql](./migrations/202604170004_ai_events_listing_moderation.sql)
+- [migrations/202604170005_ai_events_photo_quality_checker.sql](./migrations/202604170005_ai_events_photo_quality_checker.sql)
+- [migrations/202604170006_listing_review_queue.sql](./migrations/202604170006_listing_review_queue.sql)
+- [migrations/202604170007_ai_events_messaging_support.sql](./migrations/202604170007_ai_events_messaging_support.sql)
+- [migrations/202604170008_contact_requests_responded.sql](./migrations/202604170008_contact_requests_responded.sql)
+- [migrations/202604190001_contact_request_messages.sql](./migrations/202604190001_contact_request_messages.sql)
+- [migrations/202604190002_buyer_conversation_read_state.sql](./migrations/202604190002_buyer_conversation_read_state.sql)
+- [migrations/202604230002_admin_moderation_foundation.sql](./migrations/202604230002_admin_moderation_foundation.sql)
+- [migrations/202604230003_seller_verification_phase1.sql](./migrations/202604230003_seller_verification_phase1.sql)
+- [migrations/202604230004_user_notifications_foundation.sql](./migrations/202604230004_user_notifications_foundation.sql)
 
 ## Regenerate TypeScript types
 
@@ -46,6 +54,11 @@ This repo now contains the SQL for:
 - waste suggestion seed data
 
 Those Phase 1 checklist items should remain partial until the SQL is applied to the real Supabase project and verified.
+
+## Seed guidance
+
+- `seeds/20260416_dev_accounts.sql` is for development only and should not be applied to staging or production.
+- `seeds/20260416_storage_repair.sql` is a repair script, not a default production seed step.
 
 ## AI functions
 
