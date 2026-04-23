@@ -22,7 +22,7 @@ Any AI agent updating this file should:
 ## Release Status
 
 - [ ] Beta phase completed
-  Status: Not Started
+  Status: In Progress
 - [ ] Pilot phase completed
   Status: Not Started
 - [ ] V1 phase completed
@@ -53,7 +53,6 @@ Any AI agent updating this file should:
 
 ### Confirmed Production Gaps
 
-- No forgot-password or reset-by-email flow yet
 - No push notifications or fallback email or SMS notifications
 - No admin UI for reports, moderation queue, or audit history
 - No actual seller verification submission and approval workflow
@@ -190,13 +189,13 @@ Already present:
 - sign-up
 - email confirmation step
 - sign-in
+- forgot-password request flow
+- reset-password flow from email link
 - password change from authenticated profile
 - invalid-session cleanup and recovery
 
 Still required:
 
-- forgot-password request flow
-- reset-password-from-email-link flow
 - stronger password policy than current minimum-length behavior
 - session-expired UX review across protected screens
 - final verification that role-selection and callback flows behave correctly after email confirmation

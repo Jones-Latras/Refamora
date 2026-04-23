@@ -26,6 +26,10 @@ function normalizeRedirectPath(pathname: string) {
   return pathname
 }
 
+function isAllowedAuthenticatedAuthPath(pathname: string) {
+  return pathname === '/(auth)/reset-password'
+}
+
 function SplashGate() {
   const { user, role, isLoading, notice, clearNotice } = useAuth()
   const { showToast } = useToast()
@@ -76,7 +80,7 @@ function SplashGate() {
       return
     }
 
-    if (inAuthGroup || onRoot) {
+    if ((inAuthGroup && !isAllowedAuthenticatedAuthPath(pathname)) || onRoot) {
       router.replace(
         role === 'farmer' ? '/(farmer)/dashboard' : '/(buyer)/feed',
       )

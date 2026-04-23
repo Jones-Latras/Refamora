@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router'
+import { router, useLocalSearchParams, type Href } from 'expo-router'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import type { User } from '@supabase/supabase-js'
@@ -65,7 +65,7 @@ export default function RoleSelectScreen() {
     await refreshRole()
     showToast('Role saved successfully.', 'success')
     router.replace(
-      redirect ?? (role === 'farmer' ? '/(farmer)/dashboard' : '/(buyer)/feed'),
+      (redirect ?? (role === 'farmer' ? '/(farmer)/dashboard' : '/(buyer)/feed')) as Href,
     )
   }
 

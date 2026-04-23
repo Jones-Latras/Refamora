@@ -16,6 +16,10 @@ export const loginSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters.'),
 })
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().email('Enter a valid email address.'),
+})
+
 export const signUpSchema = loginSchema
   .extend({
     fullName: z.string().trim().min(2, 'Full name is required.'),
@@ -327,6 +331,7 @@ export const aiHealthResultSchema = z.object({
 })
 
 export type LoginFormValues = z.infer<typeof loginSchema>
+export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>
 export type SignUpFormValues = z.infer<typeof signUpSchema>
 export type ProfileFormValues = z.input<typeof profileSchema>
 export type PasswordChangeFormValues = z.infer<typeof passwordChangeSchema>

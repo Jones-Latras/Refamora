@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link, router, useLocalSearchParams } from 'expo-router'
+import { Link, router, useLocalSearchParams, type Href } from 'expo-router'
 import { useRef, type RefObject } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import {
@@ -74,7 +74,7 @@ export default function LoginScreen() {
       }
 
       showToast('Signed in successfully.', 'success')
-      router.replace(redirect)
+      router.replace(redirect as Href)
     },
     (fieldErrors) => {
       const fieldOrder: (keyof LoginFormValues)[] = ['email', 'password']
@@ -171,6 +171,12 @@ export default function LoginScreen() {
                       />
                     )}
                   />
+                </View>
+
+                <View style={styles.recoveryRow}>
+                  <Link href="/(auth)/forgot-password" style={styles.recoveryLink}>
+                    Forgot password?
+                  </Link>
                 </View>
 
                 <Pressable
@@ -300,6 +306,15 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: 16,
+  },
+  recoveryRow: {
+    alignItems: 'flex-end',
+    marginTop: -4,
+  },
+  recoveryLink: {
+    color: palette.sageDark,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   primaryButton: {
     marginTop: 4,

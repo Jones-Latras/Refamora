@@ -11,6 +11,10 @@ function getEmailRedirectUrl() {
   return Linking.createURL('/callback')
 }
 
+function getPasswordResetRedirectUrl() {
+  return Linking.createURL('/reset-password')
+}
+
 function extractSessionTokensFromUrl(url: string) {
   const trimmed = url.trim()
 
@@ -116,6 +120,16 @@ export async function signIn(
   })
 
   return { user: data.user, error }
+}
+
+export async function requestPasswordReset(email: string) {
+  if (!hasSupabaseEnv) {
+    return { data: null, error: new Error('Supabase is not configured yet.') }
+  }
+
+  return getSupabaseClient().auth.resetPasswordForEmail(email, {
+    redirectTo: getPasswordResetRedirectUrl(),
+  })
 }
 
 export async function signOut() {
