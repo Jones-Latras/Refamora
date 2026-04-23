@@ -46,7 +46,8 @@ Any AI agent updating this file should:
 ### Partially Implemented
 
 - Listing lifecycle exists, but only as `active`, `sold`, and `unavailable`
-- Seller verification now has a first real workflow: seller submission, admin review states, document storage, and verified badge display, but production hardening and notification flow are still incomplete
+- Seller verification now has a first real workflow: seller submission, admin review states, document storage, and verified badge display, but production hardening and push delivery are still incomplete
+- In-app notifications now exist for inquiry messages, seller replies, and verification decisions, but there is still no push provider, device token registration, or fallback delivery channel
 - Moderation data exists in Supabase and a first admin moderation dashboard now exists, but the admin toolset is still limited to reports and AI review queue handling
 - Product analytics exist mainly for AI usage, not full marketplace analytics
 - EAS build profiles and environment-aware app config now exist, but release automation and full secret separation are not finished
@@ -87,7 +88,7 @@ These are higher priority than cosmetic feature work and should be treated as ro
 - [ ] Seller verification phase 1
   Status: Partial
 - [ ] Notifications
-  Status: Not Started
+  Status: Partial
 - [ ] Testing and quality gates
   Status: Not Started
 - [ ] Release and environment setup
@@ -255,18 +256,25 @@ Definition of done:
 
 ### Workstream 5: Notifications
 
-Status: Not Started
+Status: Partial
+
+Current repo note:
+
+- `user_notifications` migration and RLS-backed inbox now exist
+- automatic in-app notifications are created for new buyer inquiries, seller replies, and seller verification approval or rejection
+- unread notification badges now surface in app navigation and profile
+- a dedicated notifications screen now lets users review and mark alerts as read
 
 Required scope:
 
 - push notification provider setup
 - device token registration and storage
-- notifications for new inquiry, seller reply, moderation action, and verification result
+- add notification coverage for moderation actions and other production events
 - in-app notification preference rules if needed
 
 Definition of done:
 
-- new message and moderation events reliably notify the affected user
+- users reliably receive inquiry, reply, moderation, and verification updates without needing to open the app manually
 
 ### Workstream 6: Testing and Quality Gates
 

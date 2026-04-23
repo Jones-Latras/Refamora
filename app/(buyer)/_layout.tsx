@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router'
 import { Feather } from '@expo/vector-icons'
 import { StyleSheet, View } from 'react-native'
 
+import { useUnreadNotifications } from '../../hooks/useUnreadNotifications'
 import { useUnreadMessages } from '../../hooks/useUnreadMessages'
 import { palette } from '../../utils/theme'
 
@@ -43,6 +44,7 @@ function getBuyerTabIcon(
 
 export default function BuyerLayout() {
   const { hasUnreadMessages } = useUnreadMessages()
+  const { hasUnreadNotifications } = useUnreadNotifications()
 
   return (
     <Tabs
@@ -69,7 +71,8 @@ export default function BuyerLayout() {
             route.name,
             color,
             size,
-            route.name === 'requests' && hasUnreadMessages,
+            (route.name === 'requests' && hasUnreadMessages) ||
+              (route.name === 'profile' && hasUnreadNotifications),
           ),
         headerShadowVisible: false,
         headerTintColor: palette.soil,

@@ -11,6 +11,7 @@ import { OfflineBanner } from '../components/OfflineBanner'
 import { ToastProvider, useToast } from '../components/Toast'
 import { AuthProvider, useAuth } from '../hooks/useAuth'
 import { ConnectivityProvider } from '../hooks/useConnectivity'
+import { UnreadNotificationsProvider } from '../hooks/useUnreadNotifications'
 import { UnreadMessagesProvider } from '../hooks/useUnreadMessages'
 import { palette } from '../utils/theme'
 
@@ -129,9 +130,11 @@ export default function RootLayout() {
       <ToastProvider>
         <ConnectivityProvider>
           <AuthProvider>
-            <UnreadMessagesProvider>
-              <AppChrome />
-            </UnreadMessagesProvider>
+            <UnreadNotificationsProvider>
+              <UnreadMessagesProvider>
+                <AppChrome />
+              </UnreadMessagesProvider>
+            </UnreadNotificationsProvider>
           </AuthProvider>
         </ConnectivityProvider>
       </ToastProvider>

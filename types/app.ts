@@ -128,6 +128,29 @@ export type ContactConversation = {
   messages: ContactRequestMessage[]
 }
 
+export type UserNotificationKind =
+  | 'inquiry_received'
+  | 'reply_received'
+  | 'verification_approved'
+  | 'verification_rejected'
+
+export type UserNotificationEntityType =
+  | 'contact_request'
+  | 'seller_verification_request'
+
+export type UserNotification = {
+  id: string
+  userId: string
+  kind: UserNotificationKind
+  title: string
+  body: string
+  entityType: UserNotificationEntityType | null
+  entityId: string | null
+  isRead: boolean
+  readAt: string | null
+  createdAt: string
+}
+
 export type InquiryAssistItem = {
   id: string
   listingTitle: string

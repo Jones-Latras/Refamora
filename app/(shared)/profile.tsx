@@ -27,6 +27,7 @@ import { VerifiedBadge } from '../../components/VerifiedBadge'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
 import { useConnectivity } from '../../hooks/useConnectivity'
+import { useUnreadNotifications } from '../../hooks/useUnreadNotifications'
 import { useProfile } from '../../hooks/useProfile'
 import { signOut, updatePassword } from '../../services/authService'
 import { updateUserProfile } from '../../services/profileService'
@@ -62,6 +63,7 @@ export default function ProfileScreen() {
   const { user, role } = useAuth()
   const { isOffline } = useConnectivity()
   const { showToast } = useToast()
+  const { unreadCount } = useUnreadNotifications()
   const { profile, isLoading, error, refetch } = useProfile(user?.id)
   const scrollViewRef = useRef<ScrollView>(null)
   const fullNameRef = useRef<TextInput>(null)
@@ -480,6 +482,10 @@ export default function ProfileScreen() {
     router.push('/(shared)/seller-verification')
   }
 
+  const handleNotificationsPress = () => {
+    router.push('/(shared)/notifications')
+  }
+
   if (isLoading) {
     return (
       <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
@@ -651,6 +657,23 @@ export default function ProfileScreen() {
               </Text>
             </View>
           ) : null}
+
+          <View style={styles.card}>
+            <View style={styles.sectionHeaderLine}>
+              <Feather name="bell" size={18} color={palette.soil} style={styles.sectionIcon} />
+              <Text style={styles.sectionTitle}>Notifications</Text>
+            </View>
+            <Text style={styles.notificationText}>
+              {unreadCount > 0
+                ? `You have ${unreadCount} unread notification${unreadCount === 1 ? '' : 's'} for marketplace replies, new inquiries, or verification updates.`
+                : 'Recent inquiry, reply, and verification updates will appear in your notification center.'}
+            </Text>
+            <Pressable onPress={handleNotificationsPress} style={styles.notificationAction}>
+              <Text style={styles.notificationActionText}>
+                {unreadCount > 0 ? `Open notifications (${unreadCount})` : 'Open notifications'}
+              </Text>
+            </Pressable>
+          </View>
 
           <View style={styles.card}>
             <View style={styles.sectionHeaderLine}>
@@ -1178,6 +1201,24 @@ const styles = StyleSheet.create({
   },
   verificationActionText: {
     color: palette.clay,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  notificationText: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  notificationAction: {
+    alignSelf: 'flex-start',
+    marginTop: 2,
+    backgroundColor: '#edf4ee',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  notificationActionText: {
+    color: palette.sageDark,
     fontSize: 13,
     fontWeight: '800',
   },
