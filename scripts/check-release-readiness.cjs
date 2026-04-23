@@ -16,6 +16,7 @@ function main() {
     '.env.staging.example',
     '.env.production.example',
     'Doc/Refamora_Release_Runbook.md',
+    'Doc/Refamora_Rollback_Runbook.md',
   ]
 
   for (const relativePath of requiredFiles) {
@@ -23,6 +24,7 @@ function main() {
   }
 
   const runbook = readFile('Doc/Refamora_Release_Runbook.md')
+  const rollbackRunbook = readFile('Doc/Refamora_Rollback_Runbook.md')
   const supabaseReadme = readFile('supabase/README.md')
 
   for (const marker of [
@@ -33,6 +35,15 @@ function main() {
     'npm run quality:beta',
   ]) {
     assert(runbook.includes(marker), `Release runbook is missing section: ${marker}`)
+  }
+
+  for (const marker of [
+    '## App Build Rollback',
+    '## Edge Function Rollback',
+    '## Database Rollback Guidance',
+    '## Recovery Validation',
+  ]) {
+    assert(rollbackRunbook.includes(marker), `Rollback runbook is missing section: ${marker}`)
   }
 
   for (const migrationFile of [

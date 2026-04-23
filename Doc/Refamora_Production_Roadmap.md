@@ -51,7 +51,7 @@ Any AI agent updating this file should:
 - Moderation data exists in Supabase and a first admin moderation dashboard now exists, but the admin toolset is still limited to reports and AI review queue handling
 - Product analytics exist mainly for AI usage, not full marketplace analytics
 - Zero-dependency unit tests and Beta config checks now exist, but there is still no integration suite or user-flow smoke coverage
-- EAS build profiles, environment templates, and a release runbook now exist, but real staging or production validation and secret rollout are not finished
+- EAS build profiles, environment templates, release and rollback runbooks, and Expo config checks now exist, but real staging or production validation and secret rollout are not finished
 
 ### Confirmed Production Gaps
 
@@ -310,14 +310,15 @@ Current repo note:
 - Supabase function JWT verification is now enabled in `supabase/config.toml`
 - environment templates now exist for development, staging, and production app builds
 - a release runbook now documents migration order, seed policy, and internal, staging, and production checklists
+- a rollback runbook now documents app, function, and schema recovery steps for failed releases
+- `npm run check:expo-config` now validates Expo config output for development, staging, and production scenarios
 - `npm run check:release-readiness` now verifies the runbook, env templates, and current migration references
 
 Required scope:
 
 - validate real staging and production secret rollout against separate Supabase projects
 - validate deployed AI functions with JWT enforcement enabled
-- verify development builds still work against local Supabase when `http` is used
-- add a rollback and recovery procedure for failed release or migration steps
+- validate a real development build against local Supabase when `http` is used
 
 Definition of done:
 

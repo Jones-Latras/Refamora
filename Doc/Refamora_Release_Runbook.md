@@ -16,6 +16,7 @@ App env templates:
 - [.env.local.example](../.env.local.example)
 - [.env.staging.example](../.env.staging.example)
 - [.env.production.example](../.env.production.example)
+- rollback procedure: [Refamora_Rollback_Runbook.md](./Refamora_Rollback_Runbook.md)
 
 Rules:
 
@@ -37,9 +38,10 @@ npx expo config --json
 
 - unit checks for schema validation and Supabase dev URL normalization
 - Beta config checks for `verify_jwt`
+- Expo config output for development, staging, and production app environments
 - EAS profiles for `development`, `staging`, and `production`
 - required admin, seller verification, and notification migrations
-- release documentation and environment templates
+- release and rollback documentation plus environment templates
 
 ## Supabase Deployment Order
 
@@ -157,5 +159,5 @@ Use only after staging passes.
 This runbook improves repeatability, but Workstream 7 is still not fully complete because:
 
 - staging and production deployment have not been validated end to end from this repo alone
-- no automated rollback workflow exists yet
+- rollback still depends on operational discipline and environment backups, not one-click automation
 - release smoke coverage still depends on manual execution
