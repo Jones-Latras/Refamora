@@ -82,7 +82,11 @@ function SplashGate() {
 
     if ((inAuthGroup && !isAllowedAuthenticatedAuthPath(pathname)) || onRoot) {
       router.replace(
-        role === 'farmer' ? '/(farmer)/dashboard' : '/(buyer)/feed',
+        role === 'admin'
+          ? '/(admin)/dashboard'
+          : role === 'farmer'
+            ? '/(farmer)/dashboard'
+            : '/(buyer)/feed',
       )
     }
   }, [clearNotice, isLoading, notice, pathname, role, router, segments, showToast, user])
@@ -100,6 +104,7 @@ function SplashGate() {
     <Stack screenOptions={{ headerShown: false, contentStyle: styles.content }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(admin)" />
       <Stack.Screen name="(farmer)" />
       <Stack.Screen name="(buyer)" />
       <Stack.Screen name="(shared)" />

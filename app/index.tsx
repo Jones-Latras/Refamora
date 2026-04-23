@@ -19,7 +19,13 @@ export default function IndexScreen() {
 
   return (
     <Redirect
-      href={role === 'farmer' ? '/(farmer)/dashboard' : '/(buyer)/feed'}
+      href={
+        role === 'admin'
+          ? '/(admin)/dashboard'
+          : role === 'farmer'
+            ? '/(farmer)/dashboard'
+            : '/(buyer)/feed'
+      }
     />
   )
 }

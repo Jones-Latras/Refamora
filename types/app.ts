@@ -1,4 +1,4 @@
-export type UserRole = 'farmer' | 'buyer'
+export type UserRole = 'farmer' | 'buyer' | 'admin'
 
 export type ListingStatus = 'active' | 'sold' | 'unavailable'
 
@@ -344,4 +344,58 @@ export type AIAnalyticsSummary = {
   feedbackCount: number
   groqTextRequests: number
   lastUsedAt: string | null
+}
+
+export type AdminListingSummary = {
+  id: string
+  sellerId: string
+  title: string
+  wasteType: string
+  city: string | null
+  status: ListingStatus
+  imageUrl: string | null
+}
+
+export type AdminUserSummary = {
+  id: string
+  fullName: string
+  email: string | null
+  city: string | null
+}
+
+export type AdminListingReportStatus = 'pending' | 'reviewed' | 'dismissed'
+
+export type AdminReviewQueueStatus = 'pending' | 'resolved' | 'dismissed'
+
+export type AdminListingReportItem = {
+  id: string
+  listingId: string
+  reason: string
+  details: string | null
+  status: AdminListingReportStatus
+  createdAt: string
+  adminNote: string | null
+  reviewedAt: string | null
+  listing: AdminListingSummary | null
+  reporter: AdminUserSummary | null
+  seller: AdminUserSummary | null
+}
+
+export type AdminModerationQueueItem = {
+  id: string
+  listingId: string | null
+  decision: 'review' | 'block'
+  queueStatus: AdminReviewQueueStatus
+  title: string
+  wasteType: string | null
+  city: string | null
+  createdAt: string
+  updatedAt: string
+  adminNote: string | null
+  reviewedAt: string | null
+  reasons: string[]
+  fieldWarnings: string[]
+  imageWarnings: string[]
+  listing: AdminListingSummary | null
+  seller: AdminUserSummary | null
 }

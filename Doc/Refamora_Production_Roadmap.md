@@ -47,14 +47,14 @@ Any AI agent updating this file should:
 
 - Listing lifecycle exists, but only as `active`, `sold`, and `unavailable`
 - Seller trust signals exist in UI copy, but real seller verification is still a placeholder
-- Moderation data exists in Supabase, but there is no real admin dashboard yet
+- Moderation data exists in Supabase and a first admin moderation dashboard now exists, but the admin toolset is still limited to reports and AI review queue handling
 - Product analytics exist mainly for AI usage, not full marketplace analytics
 - EAS build profiles and environment-aware app config now exist, but release automation and full secret separation are not finished
 
 ### Confirmed Production Gaps
 
 - No push notifications or fallback email or SMS notifications
-- No admin UI for reports, moderation queue, or audit history
+- No complete admin suite for verification workflows, broader operations, or audit history
 - No actual seller verification submission and approval workflow
 - No end-to-end reservation, handoff, or completion workflow
 - No automated unit, integration, or smoke test suite yet
@@ -64,10 +64,9 @@ Any AI agent updating this file should:
 
 These are higher priority than cosmetic feature work and should be treated as roadmap blockers:
 
-1. There is no admin-only operational surface even though moderation data is already being created.
-2. There is no recovery path for users who forget their password.
-3. Release profiles exist now, but staging and production secrets, migrations, and rollout steps are not fully documented.
-4. JWT verification and safer Android network defaults were tightened in repo config, but they still need deployment validation in real environments.
+1. Admin moderation now has a basic in-app surface, but it still depends on the new admin role and RLS policies being applied in the real Supabase project.
+2. Release profiles exist now, but staging and production secrets, migrations, and rollout steps are not fully documented.
+3. JWT verification and safer Android network defaults were tightened in repo config, but they still need deployment validation in real environments.
 
 ## Delivery Principles
 
@@ -214,14 +213,17 @@ Already present:
 - `listing_reports` table and report submission flow
 - `listing_review_queue` table from AI moderation
 - AI moderation queue insertion for flagged or blocked listings
+- admin role support in app routing and type model
+- basic admin moderation dashboard for reports and AI review queue
+- admin actions to review, dismiss, suspend, restore, and save admin notes
+- migration for admin RLS access and moderation review metadata
 
 Still required:
 
-- admin-only dashboard for reports and moderation queue
-- queue filtering by `pending`, `reviewed`, and resolution status
-- admin actions to approve, reject, suspend, restore, and resolve reports
-- admin notes field for review decisions
-- role and policy review for admin-only access
+- apply and validate the new admin migration in the real Supabase project
+- expand the admin surface beyond moderation into verification and broader operations
+- add stronger role separation and access review for production hardening
+- add admin audit history for sensitive actions
 
 Definition of done:
 

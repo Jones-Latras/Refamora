@@ -219,32 +219,41 @@ export type Database = {
       }
       listing_reports: {
         Row: {
+          admin_note: string | null
           created_at: string
           details: string | null
           id: string
           listing_id: string
           reason: string
           reporter_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
           seller_id: string
           status: string
         }
         Insert: {
+          admin_note?: string | null
           created_at?: string
           details?: string | null
           id?: string
           listing_id: string
           reason: string
           reporter_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           seller_id: string
           status?: string
         }
         Update: {
+          admin_note?: string | null
           created_at?: string
           details?: string | null
           id?: string
           listing_id?: string
           reason?: string
           reporter_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           seller_id?: string
           status?: string
         }
@@ -264,6 +273,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "listing_reports_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "listing_reports_seller_id_fkey"
             columns: ["seller_id"]
             isOneToOne: false
@@ -275,6 +291,7 @@ export type Database = {
       listing_review_queue: {
         Row: {
           ai_event_id: string | null
+          admin_note: string | null
           city: string | null
           created_at: string
           decision: string
@@ -285,6 +302,8 @@ export type Database = {
           listing_snapshot: Json
           queue_status: string
           reasons: Json
+          reviewed_at: string | null
+          reviewed_by: string | null
           seller_id: string
           title: string
           updated_at: string
@@ -292,6 +311,7 @@ export type Database = {
         }
         Insert: {
           ai_event_id?: string | null
+          admin_note?: string | null
           city?: string | null
           created_at?: string
           decision: string
@@ -302,6 +322,8 @@ export type Database = {
           listing_snapshot?: Json
           queue_status?: string
           reasons?: Json
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           seller_id: string
           title: string
           updated_at?: string
@@ -309,6 +331,7 @@ export type Database = {
         }
         Update: {
           ai_event_id?: string | null
+          admin_note?: string | null
           city?: string | null
           created_at?: string
           decision?: string
@@ -319,6 +342,8 @@ export type Database = {
           listing_snapshot?: Json
           queue_status?: string
           reasons?: Json
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           seller_id?: string
           title?: string
           updated_at?: string
@@ -337,6 +362,13 @@ export type Database = {
             columns: ["listing_id"]
             isOneToOne: false
             referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_review_queue_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
