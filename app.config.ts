@@ -1,5 +1,46 @@
 import type { ExpoConfig } from 'expo/config'
 
+type AppEnv = 'development' | 'staging' | 'production'
+
+function normalizeAppEnv(rawValue: string | undefined): AppEnv {
+  if (rawValue === 'staging' || rawValue === 'production') {
+    return rawValue
+  }
+
+  return 'development'
+}
+
+function getDisplayName(appEnv: AppEnv) {
+  if (appEnv === 'production') {
+    return 'Refamora'
+  }
+
+  return appEnv === 'staging' ? 'Refamora Staging' : 'Refamora Dev'
+}
+
+function getBundleIdentifier(appEnv: AppEnv) {
+  if (appEnv === 'production') {
+    return 'com.refamora.app'
+  }
+
+  return `com.refamora.app.${appEnv}`
+}
+
+function shouldAllowCleartextTraffic(appEnv: AppEnv, rawSupabaseUrl: string) {
+  if (appEnv !== 'development') {
+    return false
+  }
+
+  try {
+    return new URL(rawSupabaseUrl).protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
+const appEnv = normalizeAppEnv(process.env.APP_ENV)
+const supabaseUrl = process.env.SUPABASE_URL?.trim() ?? ''
+
 const androidConfig: ExpoConfig['android'] & {
   usesCleartextTraffic?: boolean
 } = {
@@ -7,14 +48,15 @@ const androidConfig: ExpoConfig['android'] & {
     foregroundImage: './assets/adaptive-icon.png',
     backgroundColor: '#f5f1e8',
   },
-  usesCleartextTraffic: true,
+  package: getBundleIdentifier(appEnv),
+  usesCleartextTraffic: shouldAllowCleartextTraffic(appEnv, supabaseUrl),
   edgeToEdgeEnabled: true,
   softwareKeyboardLayoutMode: 'resize',
   predictiveBackGestureEnabled: false,
 }
 
 const config: ExpoConfig = {
-  name: 'Refamora',
+  name: getDisplayName(appEnv),
   slug: 'refamora',
   scheme: 'agriwaste',
   version: '1.0.0',
@@ -28,6 +70,7 @@ const config: ExpoConfig = {
     backgroundColor: '#f5f1e8',
   },
   ios: {
+    bundleIdentifier: getBundleIdentifier(appEnv),
     supportsTablet: true,
   },
   android: androidConfig,
@@ -39,8 +82,9 @@ const config: ExpoConfig = {
     typedRoutes: true,
   },
   extra: {
-    supabaseUrl: process.env.SUPABASE_URL ?? '',
-    supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? '',
+    appEnv,
+    supabaseUrl,
+    supabaseAnonKey: process.env.SUPABASE_ANON_KEY?.trim() ?? '',
     aiListingAssistEnabled:
       process.env.EXPO_PUBLIC_AI_LISTING_ASSIST_ENABLED === 'true',
   },

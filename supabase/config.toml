@@ -1,0 +1,23 @@
+[functions.ai-health]
+verify_jwt = true
+
+[functions.ai-feedback]
+verify_jwt = true
+
+[functions.ai-listing-assist]
+verify_jwt = true
+
+[functions.ai-waste-advice]
+verify_jwt = true
+
+[functions.ai-search-assist]
+verify_jwt = true
+
+[functions.ai-listing-moderation]
+verify_jwt = true
+
+[functions.ai-photo-check]
+verify_jwt = true
+
+[functions.ai-inquiry-assist]
+verify_jwt = true
