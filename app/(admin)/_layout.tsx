@@ -25,6 +25,12 @@ export default function AdminLayout() {
           title: 'Seller verifications',
         }}
       />
+      <Stack.Screen
+        name="audit-log"
+        options={{
+          title: 'Admin audit log',
+        }}
+      />
     </Stack>
   )
 }

@@ -103,7 +103,7 @@ These are higher priority than cosmetic feature work and should be treated as ro
 - [ ] Better offline UX
   Status: Partial
 - [ ] Admin audit log
-  Status: Not Started
+  Status: Partial
 
 ### Pilot Master Checklist
 
@@ -335,13 +335,13 @@ Already present:
 
 - AI event logging
 - basic offline detection and banners
+- admin audit log migration, automatic database-backed audit entries, and a first admin audit log screen
 
 Still required:
 
 - crash reporting integration
 - marketplace analytics beyond AI usage
 - minimum supported app version policy
-- admin audit log for sensitive actions
 - broader offline behavior review for last-known feed and request states
 
 Definition of done:

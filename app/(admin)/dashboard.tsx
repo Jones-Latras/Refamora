@@ -329,6 +329,16 @@ export default function AdminDashboardScreen() {
           </Text>
         </Pressable>
 
+        <Pressable
+          onPress={() => router.push('/(admin)/audit-log')}
+          style={styles.verificationNavCard}
+        >
+          <Text style={styles.verificationNavTitle}>Admin audit log</Text>
+          <Text style={styles.verificationNavText}>
+            Review the recorded history of admin moderation, listing, and verification actions.
+          </Text>
+        </Pressable>
+
         <View style={styles.segmentRow}>
           <Pressable
             onPress={() => setActiveTab('reports')}

@@ -81,6 +81,44 @@ export type Database = {
           },
         ]
       }
+      admin_action_logs: {
+        Row: {
+          action_type: string
+          admin_id: string
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          metadata: Json
+        }
+        Insert: {
+          action_type: string
+          admin_id: string
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          metadata?: Json
+        }
+        Update: {
+          action_type?: string
+          admin_id?: string
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_action_logs_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_request_messages: {
         Row: {
           created_at: string

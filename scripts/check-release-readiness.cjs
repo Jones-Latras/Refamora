@@ -64,6 +64,7 @@ function main() {
     '202604230002_admin_moderation_foundation.sql',
     '202604230003_seller_verification_phase1.sql',
     '202604230004_user_notifications_foundation.sql',
+    '202604230005_admin_audit_log.sql',
   ]) {
     assert(
       supabaseReadme.includes(migrationFile),

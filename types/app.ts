@@ -415,6 +415,18 @@ export type AdminListingReportStatus = 'pending' | 'reviewed' | 'dismissed'
 
 export type AdminReviewQueueStatus = 'pending' | 'resolved' | 'dismissed'
 
+export type AdminAuditActionType =
+  | 'listing_report_updated'
+  | 'review_queue_updated'
+  | 'listing_status_updated'
+  | 'seller_verification_updated'
+
+export type AdminAuditEntityType =
+  | 'listing_report'
+  | 'listing_review_queue'
+  | 'listing'
+  | 'seller_verification_request'
+
 export type AdminListingReportItem = {
   id: string
   listingId: string
@@ -461,4 +473,15 @@ export type AdminSellerVerificationItem = {
   createdAt: string
   updatedAt: string
   seller: AdminUserSummary | null
+}
+
+export type AdminAuditLogItem = {
+  id: string
+  adminId: string
+  actionType: AdminAuditActionType
+  entityType: AdminAuditEntityType
+  entityId: string
+  metadata: Record<string, unknown>
+  createdAt: string
+  admin: AdminUserSummary | null
 }

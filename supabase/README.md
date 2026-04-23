@@ -34,6 +34,7 @@ Apply later migrations in repo order, including:
 - [migrations/202604230002_admin_moderation_foundation.sql](./migrations/202604230002_admin_moderation_foundation.sql)
 - [migrations/202604230003_seller_verification_phase1.sql](./migrations/202604230003_seller_verification_phase1.sql)
 - [migrations/202604230004_user_notifications_foundation.sql](./migrations/202604230004_user_notifications_foundation.sql)
+- [migrations/202604230005_admin_audit_log.sql](./migrations/202604230005_admin_audit_log.sql)
 
 ## Regenerate TypeScript types
 
