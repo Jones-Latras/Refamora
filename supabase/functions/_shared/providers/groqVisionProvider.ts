@@ -13,7 +13,7 @@ import {
 import {
   buildListingModerationPrompt,
   buildPhotoCheckPrompt,
-} from './geminiProvider.ts'
+} from './prompts.ts'
 
 function getGroqVisionConfig() {
   return {

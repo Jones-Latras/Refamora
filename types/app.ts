@@ -136,7 +136,7 @@ export type InquiryAssistItem = {
   createdAt: string
 }
 
-export type AIProvider = 'local_gemma' | 'gemini' | 'groq_vision'
+export type AIProvider = 'groq_text' | 'groq_vision'
 export type AIFeature =
   | 'listing_copilot'
   | 'waste_value_advisor'
@@ -342,7 +342,6 @@ export type AIAnalyticsSummary = {
   averageLatencyMs: number | null
   helpfulRate: number | null
   feedbackCount: number
-  localGemmaRequests: number
-  geminiRequests: number
+  groqTextRequests: number
   lastUsedAt: string | null
 }

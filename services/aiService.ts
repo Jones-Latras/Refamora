@@ -487,8 +487,7 @@ export async function getListingCopilotAnalytics(
         averageLatencyMs: null,
         helpfulRate: null,
         feedbackCount: 0,
-        localGemmaRequests: 0,
-        geminiRequests: 0,
+        groqTextRequests: 0,
         lastUsedAt: null,
       },
       error: null,
@@ -545,10 +544,7 @@ export async function getListingCopilotAnalytics(
       averageLatencyMs,
       helpfulRate,
       feedbackCount: feedbackRows.length,
-      localGemmaRequests: successfulRows.filter(
-        (row) => row.provider === 'local_gemma',
-      ).length,
-      geminiRequests: successfulRows.filter((row) => row.provider === 'gemini')
+      groqTextRequests: successfulRows.filter((row) => row.provider === 'groq_text')
         .length,
       lastUsedAt: rows[0]?.created_at ?? null,
     },

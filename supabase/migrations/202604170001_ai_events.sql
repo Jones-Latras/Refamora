@@ -4,7 +4,7 @@ create table if not exists public.ai_events (
   feature text not null
     check (feature in ('listing_copilot')),
   provider text
-    check (provider in ('local_gemma', 'gemini')),
+    check (provider in ('groq_text', 'groq_vision')),
   fallback_used boolean not null default false,
   request_status text not null default 'success'
     check (request_status in ('success', 'error')),

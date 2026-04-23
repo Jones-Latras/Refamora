@@ -70,7 +70,7 @@ const wasteTypeValues = WASTE_TYPES.map((item) => item.value) as [
   string,
   ...string[],
 ]
-const aiProviderValues = ['local_gemma', 'gemini', 'groq_vision'] as const
+const aiProviderValues = ['groq_text', 'groq_vision'] as const
 const aiProviderSchema = z.enum(aiProviderValues)
 
 export const listingSchema = z.object({

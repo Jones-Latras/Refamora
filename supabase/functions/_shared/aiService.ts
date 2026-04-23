@@ -20,16 +20,12 @@ import type {
 } from './aiTypes.ts'
 
 import {
-  checkGeminiHealth,
-  geminiProvider,
-} from './providers/geminiProvider.ts'
-import {
   groqVisionProvider,
 } from './providers/groqVisionProvider.ts'
 import {
-  checkLocalGemmaHealth,
-  localGemmaProvider,
-} from './providers/localGemmaProvider.ts'
+  checkGroqTextHealth,
+  groqTextProvider,
+} from './providers/groqTextProvider.ts'
 
 function isEnabled(value: string | undefined, fallback: boolean) {
   if (value == null) {
@@ -40,20 +36,7 @@ function isEnabled(value: string | undefined, fallback: boolean) {
 }
 
 function getProviderOrder(): AIProvider[] {
-  const localEnabled = isEnabled(Deno.env.get('LOCAL_GEMMA_ENABLED'), true)
-  const geminiEnabled = isEnabled(Deno.env.get('GEMINI_ENABLED'), false)
-
-  const providers: AIProvider[] = []
-
-  if (localEnabled) {
-    providers.push('local_gemma')
-  }
-
-  if (geminiEnabled) {
-    providers.push('gemini')
-  }
-
-  return providers
+  return isProviderEnabled('groq_text') ? ['groq_text'] : []
 }
 
 function getPhotoProviderOrder(): AIProvider[] {
@@ -71,15 +54,11 @@ function getListingModerationProviderOrder(
 }
 
 export function isProviderEnabled(provider: AIProvider) {
-  if (provider === 'local_gemma') {
-    return isEnabled(Deno.env.get('LOCAL_GEMMA_ENABLED'), true)
+  if (provider === 'groq_text') {
+    return isEnabled(Deno.env.get('GROQ_TEXT_ENABLED'), true)
   }
 
-  if (provider === 'groq_vision') {
-    return isEnabled(Deno.env.get('GROQ_VISION_ENABLED'), false)
-  }
-
-  return isEnabled(Deno.env.get('GEMINI_ENABLED'), false)
+  return isEnabled(Deno.env.get('GROQ_VISION_ENABLED'), true)
 }
 
 function hasText(value: string | null | undefined) {
@@ -345,10 +324,7 @@ export async function assistListing(
     const provider = order[index]
 
     try {
-      const result =
-        provider === 'local_gemma'
-          ? await localGemmaProvider.assistListing(input)
-          : await geminiProvider.assistListing(input)
+      const result = await groqTextProvider.assistListing(input)
 
       return {
         provider,
@@ -380,10 +356,7 @@ export async function adviseWasteValue(
     const provider = order[index]
 
     try {
-      const result =
-        provider === 'local_gemma'
-          ? await localGemmaProvider.adviseWasteValue(input)
-          : await geminiProvider.adviseWasteValue(input)
+      const result = await groqTextProvider.adviseWasteValue(input)
 
       return {
         eventId: null,
@@ -413,7 +386,7 @@ export async function parseBuyerSearch(
     return {
       eventId: null,
       latencyMs: null,
-      provider: 'local_gemma',
+      provider: 'groq_text',
       fallbackUsed: true,
       result: buildBuyerSearchFallback(input),
     }
@@ -425,10 +398,7 @@ export async function parseBuyerSearch(
     const provider = order[index]
 
     try {
-      const result =
-        provider === 'local_gemma'
-          ? await localGemmaProvider.parseBuyerSearch(input)
-          : await geminiProvider.parseBuyerSearch(input)
+      const result = await groqTextProvider.parseBuyerSearch(input)
 
       return {
         eventId: null,
@@ -481,11 +451,9 @@ export async function moderateListing(
 
     try {
       const result =
-        provider === 'local_gemma'
-          ? await localGemmaProvider.moderateListing(input)
-          : provider === 'groq_vision'
-            ? await groqVisionProvider.moderateListing(input)
-          : await geminiProvider.moderateListing(input)
+        provider === 'groq_vision'
+          ? await groqVisionProvider.moderateListing(input)
+          : await groqTextProvider.moderateListing(input)
 
       return {
         eventId: null,
@@ -519,12 +487,7 @@ export async function checkListingPhoto(
     const provider = order[index]
 
     try {
-      const result =
-        provider === 'local_gemma'
-          ? await localGemmaProvider.checkListingPhoto(input)
-          : provider === 'groq_vision'
-            ? await groqVisionProvider.checkListingPhoto(input)
-          : await geminiProvider.checkListingPhoto(input)
+      const result = await groqVisionProvider.checkListingPhoto(input)
 
       return {
         eventId: null,
@@ -558,10 +521,7 @@ export async function summarizeInquiries(
     const provider = order[index]
 
     try {
-      const result =
-        provider === 'local_gemma'
-          ? await localGemmaProvider.summarizeInquiries(input)
-          : await geminiProvider.summarizeInquiries(input)
+      const result = await groqTextProvider.summarizeInquiries(input)
 
       return {
         eventId: null,
@@ -595,10 +555,7 @@ export async function draftInquiryReply(
     const provider = order[index]
 
     try {
-      const result =
-        provider === 'local_gemma'
-          ? await localGemmaProvider.draftInquiryReply(input)
-          : await geminiProvider.draftInquiryReply(input)
+      const result = await groqTextProvider.draftInquiryReply(input)
 
       return {
         eventId: null,
@@ -618,25 +575,16 @@ export async function draftInquiryReply(
 }
 
 export async function getAIHealth(): Promise<AIHealthResult> {
-  const localEnabled = isProviderEnabled('local_gemma')
-  const geminiEnabled = isProviderEnabled('gemini')
+  const groqTextEnabled = isProviderEnabled('groq_text')
 
   const providers = await Promise.all([
-    localEnabled
-      ? checkLocalGemmaHealth()
+    groqTextEnabled
+      ? checkGroqTextHealth()
       : Promise.resolve({
-          provider: 'local_gemma' as const,
+          provider: 'groq_text' as const,
           enabled: false,
           available: false,
-          message: 'Local Gemma is disabled.',
-        }),
-    geminiEnabled
-      ? checkGeminiHealth()
-      : Promise.resolve({
-          provider: 'gemini' as const,
-          enabled: false,
-          available: false,
-          message: 'Gemini fallback is disabled.',
+          message: 'Groq Text is disabled.',
         }),
   ])
 

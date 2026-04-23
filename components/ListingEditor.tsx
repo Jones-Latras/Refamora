@@ -185,16 +185,12 @@ function getNonFarmWasteMessage() {
 }
 
 function getAIProviderLabel(provider: AIProvider | null | undefined) {
-  if (provider === 'local_gemma') {
-    return 'Local Gemma'
-  }
-
-  if (provider === 'gemini') {
-    return 'Gemini'
+  if (provider === 'groq_text') {
+    return 'Groq Qwen 3 32B'
   }
 
   if (provider === 'groq_vision') {
-    return 'Groq Vision'
+    return 'Groq Llama Vision'
   }
 
   return 'AI'
@@ -392,10 +388,6 @@ export function ListingEditor({
     aiHealth?.primaryProvider != null
       ? getAIProviderLabel(aiHealth.primaryProvider)
       : null
-  const hasGeminiFallback =
-    aiHealth?.providers.some(
-      (provider) => provider.provider === 'gemini' && provider.enabled,
-    ) ?? false
   const selectedWasteTypeLabel =
     WASTE_TYPES.find((item) => item.value === selectedWasteType)?.label ?? null
   const pendingWasteTypeSuggestion =
@@ -1661,8 +1653,7 @@ export function ListingEditor({
                 </Pressable>
                 {aiHealth?.available ? (
                   <Text style={styles.aiMeta}>
-                    Refines your draft with {primaryAiProviderLabel ?? 'AI'}
-                    {hasGeminiFallback ? ' and Gemini fallback if needed.' : '.'}
+                    Refines your draft with {primaryAiProviderLabel ?? 'AI'}.
                   </Text>
                 ) : (
                   <View style={styles.aiUnavailableCard}>

@@ -280,7 +280,7 @@ erDiagram
 - Routing: **Expo Router**
 - Backend / Cloud: **Supabase Auth, Storage, Edge Functions**
 - Validation Tools: **Zod, React Hook Form**
-- AI Tools: **Local Gemma, Groq Vision, Gemini**
+- AI Tools: **Groq Qwen 3 32B, Groq Vision (Llama)**
 - Development Tools: **Node.js, npm, Git, VS Code**
 
 ## 12. Expected Results

@@ -60,10 +60,8 @@ The repo now also contains a first AI edge function scaffold:
 - `functions/ai-photo-check`
 - `functions/ai-inquiry-assist`
 - shared provider layer in `functions/_shared`
-- `localGemmaProvider` as the primary provider
-- `geminiProvider` as the optional fallback
-
-For a practical local AI walkthrough using Local Supabase + Gemma 3, see [../Doc/Refamora_Local_Supabase_Gemma3_Setup.md](../Doc/Refamora_Local_Supabase_Gemma3_Setup.md).
+- `groqTextProvider` for text features
+- `groqVisionProvider` for photo analysis and image-based moderation
 
 The AI event migration adds `public.ai_events`, which stores provider, latency, success/error state, and user feedback for the listing copilot.
 
@@ -71,23 +69,16 @@ The AI event migration adds `public.ai_events`, which stores provider, latency, 
 
 Set these in Supabase before deploying AI functions:
 
-- `LOCAL_GEMMA_ENABLED=true`
-- `LOCAL_GEMMA_BASE_URL=http://host.docker.internal:11434`
-- `LOCAL_GEMMA_MODEL=gemma`
-- `LOCAL_GEMMA_TIMEOUT_MS=60000`
-- `GEMINI_ENABLED=false`
-- `GEMINI_API_KEY=<your-key-if-used>`
-- `GEMINI_MODEL=gemini-2.5-flash`
-- `GEMINI_TIMEOUT_MS=20000`
+- `GROQ_API_KEY=<your-groq-key>`
+- `GROQ_TEXT_ENABLED=true`
+- `GROQ_TEXT_MODEL=qwen/qwen3-32b`
+- `GROQ_TEXT_TIMEOUT_MS=20000`
+- `GROQ_VISION_ENABLED=true`
+- `GROQ_VISION_MODEL=meta-llama/llama-4-scout-17b-16e-instruct`
+- `GROQ_VISION_TIMEOUT_MS=20000`
 - `AI_RATE_LIMIT_ENABLED=true`
 - `AI_RATE_LIMIT_WINDOW_MINUTES=10`
 - `AI_RATE_LIMIT_MAX_REQUESTS=8`
-
-If you deploy functions remotely, note that `LOCAL_GEMMA_BASE_URL` must point to a reachable host from the function runtime. For live hackathon demos on one machine, local or self-hosted execution is the safer path.
-If your Expo app points to a remote Supabase project, local values in the app `.env` will not make that remote runtime reach your laptop's Gemma server. For Local Gemma, either:
-
-- serve Supabase functions locally and point the app to that local Supabase stack, or
-- expose the local Gemma endpoint through a secure tunnel or reachable host and set `LOCAL_GEMMA_BASE_URL` in the function runtime to that reachable URL.
 
 For local Edge Function development, use [functions/.env.local.example](./functions/.env.local.example) as the template for AI provider secrets.
 
