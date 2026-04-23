@@ -83,10 +83,13 @@ export default function SignUpScreen() {
         return
       }
 
-      showToast('Account created. Pick your role next.', 'success')
+      showToast('Account created. Check your email to confirm first.', 'success')
       router.replace({
-        pathname: '/(auth)/role-select',
-        params: redirect !== '/' ? { redirect } : undefined,
+        pathname: '/(auth)/confirm-email',
+        params: {
+          ...(redirect !== '/' ? { redirect } : undefined),
+          email: values.email,
+        },
       })
     },
     (fieldErrors) => {

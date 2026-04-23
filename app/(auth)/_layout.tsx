@@ -16,6 +16,8 @@ export default function AuthLayout() {
     >
       <Stack.Screen name="login" options={{ title: 'Welcome back' }} />
       <Stack.Screen name="signup" options={{ title: 'Create account' }} />
+      <Stack.Screen name="callback" options={{ title: 'Signing in' }} />
+      <Stack.Screen name="confirm-email" options={{ title: 'Confirm email' }} />
       <Stack.Screen name="role-select" options={{ title: 'Choose your role' }} />
     </Stack>
   )

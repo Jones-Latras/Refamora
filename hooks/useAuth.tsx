@@ -1,4 +1,5 @@
 import type { Session, User } from '@supabase/supabase-js'
+import * as Linking from 'expo-linking'
 import {
   createContext,
   useContext,
@@ -13,6 +14,7 @@ import type { UserRole } from '../types/app'
 import {
   consumeInvalidSessionRecovery,
   consumeSignedOutNoticeSuppression,
+  createSessionFromUrl,
   getSession,
 } from '../services/authService'
 import { getUserRole } from '../services/profileService'
@@ -51,6 +53,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let isMounted = true
 
+    const hydrateSessionFromLink = async (url: string | null) => {
+      if (!url) {
+        return
+      }
+
+      try {
+        await createSessionFromUrl(url)
+      } catch {
+        // Ignore malformed or unrelated deep links.
+      }
+    }
+
     const bootstrap = async () => {
       if (!hasSupabaseEnv || !supabase) {
         if (isMounted) {
@@ -60,6 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setIsLoading(true)
+
+      await hydrateSessionFromLink(await Linking.getInitialURL())
 
       let currentSession: Session | null = null
 
@@ -144,9 +160,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     })
 
+    const linkingSubscription = Linking.addEventListener('url', (event) => {
+      void hydrateSessionFromLink(event.url)
+    })
+
     return () => {
       isMounted = false
       subscription.unsubscribe()
+      linkingSubscription.remove()
     }
   }, [])
 

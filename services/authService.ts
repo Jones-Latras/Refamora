@@ -1,10 +1,39 @@
 import type { AuthError, Session, User } from '@supabase/supabase-js'
+import * as Linking from 'expo-linking'
 
 import { getSupabaseClient, hasSupabaseEnv } from './supabase'
 
 type AuthResult = { user: User | null; error: AuthError | Error | null }
 let suppressNextSignedOutNotice = false
 let recoveredInvalidSession = false
+
+function getEmailRedirectUrl() {
+  return Linking.createURL('/callback')
+}
+
+function extractSessionTokensFromUrl(url: string) {
+  const trimmed = url.trim()
+
+  if (!trimmed) {
+    return { accessToken: '', refreshToken: '' }
+  }
+
+  const hashIndex = trimmed.indexOf('#')
+  const queryIndex = trimmed.indexOf('?')
+  const rawParams =
+    hashIndex >= 0
+      ? trimmed.slice(hashIndex + 1)
+      : queryIndex >= 0
+        ? trimmed.slice(queryIndex + 1)
+        : ''
+
+  const params = new URLSearchParams(rawParams)
+
+  return {
+    accessToken: params.get('access_token')?.trim() ?? '',
+    refreshToken: params.get('refresh_token')?.trim() ?? '',
+  }
+}
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) {
@@ -65,6 +94,7 @@ export async function signUp(
     password,
     options: {
       data: metadata,
+      emailRedirectTo: getEmailRedirectUrl(),
     },
   })
 
@@ -136,6 +166,25 @@ export async function getSession(): Promise<Session | null> {
       ? error
       : new Error('Unable to restore your session.')
   }
+}
+
+export async function createSessionFromUrl(url: string) {
+  if (!hasSupabaseEnv) {
+    return { session: null, error: new Error('Supabase is not configured yet.') }
+  }
+
+  const { accessToken, refreshToken } = extractSessionTokensFromUrl(url)
+
+  if (!accessToken || !refreshToken) {
+    return { session: null, error: null }
+  }
+
+  const { data, error } = await getSupabaseClient().auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  })
+
+  return { session: data.session, error }
 }
 
 export function consumeSignedOutNoticeSuppression() {
