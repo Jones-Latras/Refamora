@@ -410,6 +410,32 @@ export type AIAnalyticsSummary = {
   lastUsedAt: string | null
 }
 
+export type MarketplaceAnalyticsBreakdownItem = {
+  label: string
+  count: number
+}
+
+export type MarketplaceAnalyticsSummary = {
+  periodDays: number
+  totalUsers: number
+  totalFarmers: number
+  totalBuyers: number
+  verifiedSellerCount: number
+  activeListings: number
+  soldListings: number
+  unavailableListings: number
+  totalListingViews: number
+  totalInquiries: number
+  respondedInquiries: number
+  recentSignUps: number
+  recentListings: number
+  recentInquiries: number
+  inquiryConversionRate: number | null
+  sellerResponseRate: number | null
+  topWasteTypes: MarketplaceAnalyticsBreakdownItem[]
+  topCities: MarketplaceAnalyticsBreakdownItem[]
+}
+
 export type AdminListingSummary = {
   id: string
   sellerId: string

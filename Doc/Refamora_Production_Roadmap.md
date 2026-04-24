@@ -49,7 +49,7 @@ Any AI agent updating this file should:
 - Seller verification now has a first real workflow: seller submission, admin review states, document storage, and verified badge display, but production hardening and push delivery are still incomplete
 - In-app notifications now exist for inquiry messages, seller replies, and verification decisions, but there is still no push provider, device token registration, or fallback delivery channel
 - Moderation data exists in Supabase and a first admin moderation dashboard now exists, but the admin toolset is still limited to reports and AI review queue handling
-- Product analytics exist mainly for AI usage, not full marketplace analytics
+- Product analytics now include a first marketplace admin summary for users, listings, views, inquiries, and top listing breakdowns, but analytics are still not yet deep enough for full pilot operations
 - Zero-dependency unit tests and Beta config checks now exist, but there is still no integration suite or user-flow smoke coverage
 - EAS build profiles, app and function environment templates, release and rollback runbooks, and Expo config checks now exist, but real staging or production validation and secret rollout are not finished
 - Crash reporting now has a first in-app foundation through a global JS handler, render-error boundary reporting, and a Supabase-backed crash log, but there is still no third-party alerting or operational triage flow
@@ -339,11 +339,12 @@ Already present:
 - admin audit log migration, automatic database-backed audit entries, and a first admin audit log screen
 - app runtime policy migration, environment-scoped minimum supported version reads, and a blocking version gate component now exist in the app shell
 - client-side crash reporting foundation now exists through a global JS error handler, render crash capture, and a Supabase crash log table
+- marketplace analytics now have a first admin screen covering users, listing inventory, views, inquiries, response rate, and top active listing breakdowns
 
 Still required:
 
 - external crash alerting or triage workflow
-- marketplace analytics beyond AI usage
+- deeper funnel and operations analytics for pilot-scale reporting
 - operational seeding and validation of minimum supported versions per environment
 - broader offline behavior review for last-known feed and request states
 

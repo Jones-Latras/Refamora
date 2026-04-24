@@ -339,6 +339,16 @@ export default function AdminDashboardScreen() {
           </Text>
         </Pressable>
 
+        <Pressable
+          onPress={() => router.push('/(admin)/analytics' as never)}
+          style={styles.verificationNavCard}
+        >
+          <Text style={styles.verificationNavTitle}>Marketplace analytics</Text>
+          <Text style={styles.verificationNavText}>
+            Review user, listing, view, and inquiry trends beyond the current AI-only analytics.
+          </Text>
+        </Pressable>
+
         <View style={styles.segmentRow}>
           <Pressable
             onPress={() => setActiveTab('reports')}

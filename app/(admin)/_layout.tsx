@@ -31,6 +31,12 @@ export default function AdminLayout() {
           title: 'Admin audit log',
         }}
       />
+      <Stack.Screen
+        name="analytics"
+        options={{
+          title: 'Marketplace analytics',
+        }}
+      />
     </Stack>
   )
 }
