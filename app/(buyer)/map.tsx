@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { EmptyState } from '../../components/EmptyState'
 import { ErrorState } from '../../components/ErrorState'
 import { BrandedLoadingScreen } from '../../components/BrandedLoadingScreen'
+import { InlineStatusNotice } from '../../components/InlineStatusNotice'
 import { MapMarker } from '../../components/MapMarker'
 import { PinPopup } from '../../components/PinPopup'
 import { useToast } from '../../components/Toast'
@@ -40,6 +41,7 @@ export default function MapScreen() {
   const setBuyerCoordinates = useBuyerLocationStore((state) => state.setCoordinates)
   const [pins, setPins] = useState<ListingPin[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [isLocationLoading, setIsLocationLoading] = useState(false)
   const [selectedListing, setSelectedListing] = useState<ListingDetail | null>(
     null,
@@ -48,15 +50,20 @@ export default function MapScreen() {
   const [mapRegion, setMapRegion] = useState(INITIAL_REGION)
   const [loadError, setLoadError] = useState<string | null>(null)
 
-  const loadPins = async () => {
-    setIsLoading(true)
+  const loadPins = async (mode: 'initial' | 'refresh' = 'initial') => {
+    if (mode === 'refresh') {
+      setIsRefreshing(true)
+    } else {
+      setIsLoading(true)
+    }
+
     setLoadError(null)
     const result = await fetchListingPins()
 
     if (result.error) {
-      setPins([])
       setLoadError(result.error.message)
       setIsLoading(false)
+      setIsRefreshing(false)
       return
     }
 
@@ -65,6 +72,7 @@ export default function MapScreen() {
       setCachedMapPins(result.data ?? [])
     }
     setIsLoading(false)
+    setIsRefreshing(false)
   }
 
   useEffect(() => {
@@ -90,6 +98,7 @@ export default function MapScreen() {
     snapshotItemCount: cachedMapPins.items.length,
   })
   const effectivePins = isUsingCachedPins ? cachedMapPins.items : pins
+  const hasVisiblePins = effectivePins.length > 0
   const cachedPinsUpdatedAt = useMemo(
     () => formatOfflineSnapshotUpdatedAt(cachedMapPins.updatedAt),
     [cachedMapPins.updatedAt],
@@ -206,6 +215,17 @@ export default function MapScreen() {
                       : 'Use my location'}
                 </Text>
               </Pressable>
+              <Pressable
+                disabled={isRefreshing}
+                onPress={() => {
+                  void loadPins('refresh')
+                }}
+                style={[styles.locationButton, isRefreshing ? styles.buttonDisabled : null]}
+              >
+                <Text style={styles.locationButtonText}>
+                  {isRefreshing ? 'Refreshing pins...' : 'Refresh pins'}
+                </Text>
+              </Pressable>
               {buyerCoordinates ? (
                 <Text style={styles.locationMeta}>
                   {nearbyPinCount} nearby pin{nearbyPinCount === 1 ? '' : 's'} within 15 km
@@ -224,22 +244,32 @@ export default function MapScreen() {
                   : 'Showing cached map pins. Reconnect to refresh nearby listings.'}
               </Text>
             ) : null}
+            {loadError && hasVisiblePins ? (
+              <InlineStatusNotice
+                title="Showing last loaded map pins"
+                description="Refamora could not refresh nearby listing pins right now. Retry to update the map."
+                actionLabel="Retry refresh"
+                onAction={() => {
+                  void loadPins('refresh')
+                }}
+              />
+            ) : null}
           </View>
         </View>
 
-        {isLoading && !isUsingCachedPins ? (
+        {isLoading && !isUsingCachedPins && !hasVisiblePins ? (
           <BrandedLoadingScreen message="Loading map pins..." />
-        ) : loadError && effectivePins.length === 0 ? (
+        ) : loadError && !hasVisiblePins ? (
           <View style={styles.emptyWrapper}>
             <ErrorState
               title="Map pins could not be loaded"
               description="Refamora could not load listing pins right now. Try again to refresh the map."
               onAction={() => {
-                void loadPins()
+                void loadPins('refresh')
               }}
             />
           </View>
-        ) : isOffline && effectivePins.length === 0 ? (
+        ) : isOffline && !hasVisiblePins ? (
           <View style={styles.emptyWrapper}>
             <EmptyState
               title="Map is unavailable offline"
@@ -388,6 +418,9 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontSize: 12,
     lineHeight: 18,
+  },
+  buttonDisabled: {
+    opacity: 0.72,
   },
   map: {
     flex: 1,

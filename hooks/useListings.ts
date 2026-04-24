@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { ListingFilters, ListingPreview } from '../types/app'
 
@@ -14,6 +14,8 @@ export function useBuyerListings(filters: ListingFilters = {}, enabled = true) {
   const [hasMore, setHasMore] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const [reloadNonce, setReloadNonce] = useState(0)
+  const previousRequestKeyRef = useRef<string | null>(null)
+  const previousReloadNonceRef = useRef<number | null>(null)
   const requestFilters = useMemo(
     () => ({
       fulfillmentType: filters.fulfillmentType,
@@ -30,6 +32,7 @@ export function useBuyerListings(filters: ListingFilters = {}, enabled = true) {
       filters.wasteType,
     ],
   )
+  const requestKey = useMemo(() => JSON.stringify(requestFilters), [requestFilters])
 
   useEffect(() => {
     if (!enabled) {
@@ -37,6 +40,10 @@ export function useBuyerListings(filters: ListingFilters = {}, enabled = true) {
     }
 
     let isMounted = true
+    const isManualRetry =
+      previousRequestKeyRef.current === requestKey &&
+      previousReloadNonceRef.current != null &&
+      previousReloadNonceRef.current !== reloadNonce
 
     const loadFirstPage = async () => {
       setIsLoading(true)
@@ -50,8 +57,10 @@ export function useBuyerListings(filters: ListingFilters = {}, enabled = true) {
 
       if (result.error) {
         setError(result.error)
-        setListings([])
-        setHasMore(false)
+        if (!isManualRetry) {
+          setListings([])
+          setHasMore(false)
+        }
         setIsLoading(false)
         return
       }
@@ -64,10 +73,13 @@ export function useBuyerListings(filters: ListingFilters = {}, enabled = true) {
 
     void loadFirstPage()
 
+    previousRequestKeyRef.current = requestKey
+    previousReloadNonceRef.current = reloadNonce
+
     return () => {
       isMounted = false
     }
-  }, [enabled, reloadNonce, requestFilters])
+  }, [enabled, reloadNonce, requestFilters, requestKey])
 
   const loadMore = async () => {
     if (!enabled || isLoading || isFetchingMore || !hasMore) {

@@ -1,10 +1,11 @@
 import { router, useLocalSearchParams } from 'expo-router'
 import * as ExpoLinking from 'expo-linking'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import MapView, { Marker } from 'react-native-maps'
 import {
   Linking,
   Pressable,
+  RefreshControl,
   Share,
   ScrollView,
   StyleSheet,
@@ -18,6 +19,7 @@ import { ContactSellerModal } from '../../../components/ContactSellerModal'
 import { EmptyState } from '../../../components/EmptyState'
 import { ErrorState } from '../../../components/ErrorState'
 import { FulfillmentLabel } from '../../../components/FulfillmentLabel'
+import { InlineStatusNotice } from '../../../components/InlineStatusNotice'
 import { AppImage } from '../../../components/AppImage'
 import { ListingCard } from '../../../components/ListingCard'
 import { ListingReportModal } from '../../../components/ListingReportModal'
@@ -143,6 +145,7 @@ export default function ListingDetailScreen() {
   const toggleSavedListing = useSavedListingsStore((state) => state.toggleListing)
   const [listing, setListing] = useState<ListingDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [isLocationLoading, setIsLocationLoading] = useState(false)
   const [isContactModalVisible, setIsContactModalVisible] = useState(false)
   const [contactMessage, setContactMessage] = useState('')
@@ -159,69 +162,42 @@ export default function ListingDetailScreen() {
   const reportDetailsRef = useRef<TextInput>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
 
-  const loadListing = async () => {
+  const loadListing = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (!id) {
       setListing(null)
       setLoadError(null)
       setIsLoading(false)
+      setIsRefreshing(false)
       return
     }
 
-    setIsLoading(true)
+    if (mode === 'refresh') {
+      setIsRefreshing(true)
+    } else {
+      setIsLoading(true)
+    }
+
     setLoadError(null)
     const result = await getListingById(id)
 
     if (result.error || !result.data) {
-      setListing(null)
       setLoadError(result.error?.message ?? 'Listing could not be loaded right now.')
       setIsLoading(false)
+      setIsRefreshing(false)
       return
     }
 
     setListing(result.data)
     setCachedListingDetail(id, result.data)
     setIsLoading(false)
-  }
+    setIsRefreshing(false)
+  }, [id, setCachedListingDetail])
 
   useEffect(() => {
-    let isMounted = true
-
-    const loadCurrentListing = async () => {
-      if (!id) {
-        if (isMounted) {
-          setListing(null)
-          setLoadError(null)
-          setIsLoading(false)
-        }
-        return
-      }
-
-      setIsLoading(true)
-      setLoadError(null)
-      const result = await getListingById(id)
-
-      if (!isMounted) {
-        return
-      }
-
-      if (result.error || !result.data) {
-        setListing(null)
-        setLoadError(result.error?.message ?? 'Listing could not be loaded right now.')
-        setIsLoading(false)
-        return
-      }
-
-      setListing(result.data)
-      setCachedListingDetail(id, result.data)
-      setIsLoading(false)
-    }
-
-    void loadCurrentListing()
-
-    return () => {
-      isMounted = false
-    }
-  }, [id, setCachedListingDetail])
+    setListing(null)
+    setRelatedListings([])
+    void loadListing()
+  }, [id, loadListing])
 
   const isUsingCachedListing = shouldUseOfflineSnapshotValue({
     isOffline,
@@ -247,6 +223,7 @@ export default function ListingDetailScreen() {
       null,
     [cachedBuyerRequests.items, effectiveListing?.id],
   )
+  const hasVisibleListing = Boolean(effectiveListing)
 
   useEffect(() => {
     let isMounted = true
@@ -636,7 +613,7 @@ export default function ListingDetailScreen() {
     showToast('Report submitted. Refamora can review this listing now.', 'success')
   }
 
-  if (isLoading && !isUsingCachedListing) {
+  if (isLoading && !isUsingCachedListing && !hasVisibleListing) {
     return (
       <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
         <ListingDetailScreenSkeleton />
@@ -685,6 +662,15 @@ export default function ListingDetailScreen() {
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
       <ScrollView
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            tintColor={palette.sageDark}
+            onRefresh={() => {
+              void loadListing('refresh')
+            }}
+          />
+        }
         contentContainerStyle={[
           styles.content,
           canContactSeller ? styles.contentWithFooter : null,
@@ -705,6 +691,17 @@ export default function ListingDetailScreen() {
                 : 'Reconnect to refresh price, availability, and seller details.'}
             </Text>
           </View>
+        ) : null}
+
+        {loadError && effectiveListing ? (
+          <InlineStatusNotice
+            title="Showing last loaded listing"
+            description="Refamora could not refresh the latest listing details right now. Retry to check for newer price, status, or seller updates."
+            actionLabel="Retry refresh"
+            onAction={() => {
+              void loadListing('refresh')
+            }}
+          />
         ) : null}
 
         {hasQueuedContactRequest ? (

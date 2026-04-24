@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   FlatList,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,6 +19,7 @@ import { EmptyState } from '../../components/EmptyState'
 import { ErrorState } from '../../components/ErrorState'
 import { FeedFilterSheet } from '../../components/FeedFilterSheet'
 import { AppImage } from '../../components/AppImage'
+import { InlineStatusNotice } from '../../components/InlineStatusNotice'
 import { ListingCard } from '../../components/ListingCard'
 import { SkeletonCard } from '../../components/SkeletonCard'
 import { useToast } from '../../components/Toast'
@@ -177,6 +179,8 @@ export default function FeedScreen() {
       listingsWithDistance.filter((item) => item.distanceKm != null).length,
     [listingsWithDistance],
   )
+  const hasVisibleListings = listingsWithDistance.length > 0
+  const isRefreshing = isLoading && hasVisibleListings && !isUsingCachedFeed
 
   const handleQueryChange = (value: string) => {
     setQuery(value)
@@ -417,7 +421,18 @@ export default function FeedScreen() {
           </View>
         ) : null}
 
-        {isLoading && !isUsingCachedFeed ? (
+        {error && hasVisibleListings ? (
+          <View style={styles.inlineNotice}>
+            <InlineStatusNotice
+              title="Showing last loaded feed"
+              description="Refamora could not refresh the latest listings right now. Retry to check for newer marketplace results."
+              actionLabel="Retry refresh"
+              onAction={retry}
+            />
+          </View>
+        ) : null}
+
+        {isLoading && !isUsingCachedFeed && !hasVisibleListings ? (
           <View style={styles.loading}>
             <SkeletonCard />
             <SkeletonCard />
@@ -434,6 +449,13 @@ export default function FeedScreen() {
             data={listingsWithDistance}
             keyExtractor={(item) => item.listing.id}
             contentContainerStyle={styles.list}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                tintColor={palette.sageDark}
+                onRefresh={retry}
+              />
+            }
             onEndReached={isOffline ? undefined : loadMore}
             onEndReachedThreshold={0.8}
             ListFooterComponent={
@@ -706,6 +728,11 @@ const styles = StyleSheet.create({
     color: palette.clay,
     fontSize: 12,
     lineHeight: 17,
+  },
+  inlineNotice: {
+    marginHorizontal: 24,
+    marginTop: 14,
+    marginBottom: 2,
   },
   recentCard: {
     width: 156,

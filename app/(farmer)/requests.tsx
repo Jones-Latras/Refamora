@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from 'react'
 import {
   FlatList,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -14,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { ContactRequestCard } from '../../components/ContactRequestCard'
 import { EmptyState } from '../../components/EmptyState'
 import { ErrorState } from '../../components/ErrorState'
+import { InlineStatusNotice } from '../../components/InlineStatusNotice'
 import { InquiryAiModal } from '../../components/InquiryAiModal'
 import { RequestsScreenSkeleton } from '../../components/ScreenSkeleton'
 import { useToast } from '../../components/Toast'
@@ -87,6 +89,7 @@ export default function FarmerRequestsScreen() {
   const setCachedSellerRequests = useOfflineDataStore((state) => state.setSellerRequests)
   const [requests, setRequests] = useState<ContactRequestSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [isSummaryLoading, setIsSummaryLoading] = useState(false)
   const [summaryResult, setSummaryResult] = useState<InquirySummaryResult | null>(null)
   const [isSummaryModalVisible, setIsSummaryModalVisible] = useState(false)
@@ -95,28 +98,35 @@ export default function FarmerRequestsScreen() {
   const [searchValue, setSearchValue] = useState('')
   const [activeFilter, setActiveFilter] = useState<SellerMessageFilter>('all')
 
-  const loadRequests = useCallback(async () => {
+  const loadRequests = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (!user) {
       setRequests([])
       setIsLoading(false)
+      setIsRefreshing(false)
       return
     }
 
-    setIsLoading(true)
+    if (mode === 'refresh') {
+      setIsRefreshing(true)
+    } else {
+      setIsLoading(true)
+    }
+
     setLoadError(null)
     const result = await getSellerInquiries(user.id)
 
     if (result.error) {
       showToast(result.error.message, 'error')
-      setRequests([])
       setLoadError('Seller messages could not be loaded right now.')
       setIsLoading(false)
+      setIsRefreshing(false)
       return
     }
 
     setRequests(result.data ?? [])
     setCachedSellerRequests(user.id, result.data ?? [])
     setIsLoading(false)
+    setIsRefreshing(false)
   }, [setCachedSellerRequests, showToast, user])
 
   useFocusEffect(
@@ -212,6 +222,7 @@ export default function FarmerRequestsScreen() {
   }
 
   const hasSearch = searchValue.trim().length > 0
+  const hasVisibleRequests = filteredRequests.length > 0
 
   return (
     <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={styles.safeArea}>
@@ -288,9 +299,19 @@ export default function FarmerRequestsScreen() {
             </Text>
           </View>
         ) : null}
+        {loadError && effectiveRequests.length > 0 ? (
+          <InlineStatusNotice
+            title="Showing last loaded inbox"
+            description="Refamora could not refresh your latest buyer conversations right now. Retry to check for new inquiries and replies."
+            actionLabel="Retry refresh"
+            onAction={() => {
+              void loadRequests('refresh')
+            }}
+          />
+        ) : null}
       </View>
 
-      {isLoading && !isUsingCachedRequests ? (
+      {isLoading && !isUsingCachedRequests && !hasVisibleRequests ? (
         <RequestsScreenSkeleton />
       ) : loadError && effectiveRequests.length === 0 ? (
         <View style={styles.content}>
@@ -307,6 +328,15 @@ export default function FarmerRequestsScreen() {
           data={filteredRequests}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              tintColor={palette.sageDark}
+              onRefresh={() => {
+                void loadRequests('refresh')
+              }}
+            />
+          }
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           renderItem={({ item }) => (
             <ContactRequestCard

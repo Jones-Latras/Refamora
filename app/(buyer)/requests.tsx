@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from 'react'
 import {
   FlatList,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -14,6 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { ContactRequestCard } from '../../components/ContactRequestCard'
 import { EmptyState } from '../../components/EmptyState'
 import { ErrorState } from '../../components/ErrorState'
+import { InlineStatusNotice } from '../../components/InlineStatusNotice'
+import { RequestsScreenSkeleton } from '../../components/ScreenSkeleton'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
 import { useConnectivity } from '../../hooks/useConnectivity'
@@ -63,32 +66,40 @@ export default function BuyerRequestsScreen() {
   const setCachedBuyerRequests = useOfflineDataStore((state) => state.setBuyerRequests)
   const [requests, setRequests] = useState<ContactRequestSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [searchValue, setSearchValue] = useState('')
   const [activeFilter, setActiveFilter] = useState<BuyerMessageFilter>('all')
 
-  const loadRequests = useCallback(async () => {
+  const loadRequests = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (!user) {
       setRequests([])
       setIsLoading(false)
+      setIsRefreshing(false)
       return
     }
 
-    setIsLoading(true)
+    if (mode === 'refresh') {
+      setIsRefreshing(true)
+    } else {
+      setIsLoading(true)
+    }
+
     setLoadError(null)
     const result = await getBuyerContactRequests(user.id)
 
     if (result.error) {
       showToast(result.error.message, 'error')
-      setRequests([])
       setLoadError('Buyer messages could not be loaded right now.')
       setIsLoading(false)
+      setIsRefreshing(false)
       return
     }
 
     setRequests(result.data ?? [])
     setCachedBuyerRequests(user.id, result.data ?? [])
     setIsLoading(false)
+    setIsRefreshing(false)
   }, [setCachedBuyerRequests, showToast, user])
 
   useFocusEffect(
@@ -130,6 +141,7 @@ export default function BuyerRequestsScreen() {
   }, [activeFilter, effectiveRequests, searchValue])
 
   const hasSearch = searchValue.trim().length > 0
+  const hasVisibleRequests = filteredRequests.length > 0
 
   return (
     <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={styles.safeArea}>
@@ -178,12 +190,20 @@ export default function BuyerRequestsScreen() {
             </Text>
           </View>
         ) : null}
+        {loadError && effectiveRequests.length > 0 ? (
+          <InlineStatusNotice
+            title="Showing last loaded inbox"
+            description="Refamora could not refresh your latest seller conversations right now. Retry to check for new replies."
+            actionLabel="Retry refresh"
+            onAction={() => {
+              void loadRequests('refresh')
+            }}
+          />
+        ) : null}
       </View>
 
-      {isLoading && !isUsingCachedRequests ? (
-        <View style={styles.center}>
-          <Text style={styles.helper}>Loading messages...</Text>
-        </View>
+      {isLoading && !isUsingCachedRequests && !hasVisibleRequests ? (
+        <RequestsScreenSkeleton />
       ) : loadError && effectiveRequests.length === 0 ? (
         <View style={styles.content}>
           <ErrorState
@@ -199,6 +219,15 @@ export default function BuyerRequestsScreen() {
           data={filteredRequests}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              tintColor={palette.sageDark}
+              onRefresh={() => {
+                void loadRequests('refresh')
+              }}
+            />
+          }
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           renderItem={({ item }) => (
             <ContactRequestCard
@@ -306,14 +335,6 @@ const styles = StyleSheet.create({
   },
   filterChipTextActive: {
     color: palette.sageDark,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  helper: {
-    color: palette.muted,
   },
   content: {
     flex: 1,
