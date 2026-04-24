@@ -155,6 +155,62 @@ export type Database = {
         }
         Relationships: []
       }
+      app_crash_reports: {
+        Row: {
+          app_env: string
+          app_version: string | null
+          component_stack: string | null
+          created_at: string
+          id: string
+          message: string
+          metadata: Json
+          platform: string
+          route: string | null
+          severity: string
+          source: string
+          stack: string | null
+          user_id: string | null
+        }
+        Insert: {
+          app_env: string
+          app_version?: string | null
+          component_stack?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          metadata?: Json
+          platform: string
+          route?: string | null
+          severity: string
+          source: string
+          stack?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          app_env?: string
+          app_version?: string | null
+          component_stack?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          metadata?: Json
+          platform?: string
+          route?: string | null
+          severity?: string
+          source?: string
+          stack?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_crash_reports_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_request_messages: {
         Row: {
           created_at: string

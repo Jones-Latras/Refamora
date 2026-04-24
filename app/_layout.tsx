@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { AppErrorBoundary } from '../components/AppErrorBoundary'
 import { AppVersionGate } from '../components/AppVersionGate'
 import { BrandedLoadingScreen } from '../components/BrandedLoadingScreen'
+import { CrashReporterBootstrap } from '../components/CrashReporterBootstrap'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { ToastProvider, useToast } from '../components/Toast'
 import { AuthProvider, useAuth } from '../hooks/useAuth'
@@ -116,10 +117,17 @@ function SplashGate() {
 
 function AppChrome() {
   const pathname = usePathname()
+  const { user, role } = useAuth()
 
   return (
     <AppVersionGate>
-      <AppErrorBoundary resetKey={pathname}>
+      <CrashReporterBootstrap />
+      <AppErrorBoundary
+        resetKey={pathname}
+        routePath={pathname}
+        userId={user?.id ?? null}
+        userRole={role}
+      >
         <SplashGate />
         <OfflineBanner />
       </AppErrorBoundary>

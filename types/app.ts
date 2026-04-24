@@ -163,6 +163,10 @@ export type AppRuntimePolicy = {
   updatedAt: string
 }
 
+export type CrashReportSource = 'react_error_boundary' | 'global_js_handler'
+
+export type CrashReportSeverity = 'error' | 'fatal'
+
 export type InquiryAssistItem = {
   id: string
   listingTitle: string

@@ -52,6 +52,7 @@ Any AI agent updating this file should:
 - Product analytics exist mainly for AI usage, not full marketplace analytics
 - Zero-dependency unit tests and Beta config checks now exist, but there is still no integration suite or user-flow smoke coverage
 - EAS build profiles, app and function environment templates, release and rollback runbooks, and Expo config checks now exist, but real staging or production validation and secret rollout are not finished
+- Crash reporting now has a first in-app foundation through a global JS handler, render-error boundary reporting, and a Supabase-backed crash log, but there is still no third-party alerting or operational triage flow
 
 ### Confirmed Production Gaps
 
@@ -59,7 +60,7 @@ Any AI agent updating this file should:
 - No complete admin suite for verification workflows, broader operations, or audit history
 - No end-to-end reservation, handoff, or completion workflow
 - No integration test suite or real user-flow smoke coverage yet
-- No crash reporting or production monitoring integration yet
+- No third-party crash alerting or production monitoring integration yet
 
 ## Immediate Production Risks Found In Repo
 
@@ -95,7 +96,7 @@ These are higher priority than cosmetic feature work and should be treated as ro
 - [ ] Release and environment setup
   Status: Partial
 - [ ] Crash reporting
-  Status: Not Started
+  Status: Partial
 - [ ] Basic product analytics
   Status: Partial
 - [ ] App version policy
@@ -337,10 +338,11 @@ Already present:
 - basic offline detection and banners
 - admin audit log migration, automatic database-backed audit entries, and a first admin audit log screen
 - app runtime policy migration, environment-scoped minimum supported version reads, and a blocking version gate component now exist in the app shell
+- client-side crash reporting foundation now exists through a global JS error handler, render crash capture, and a Supabase crash log table
 
 Still required:
 
-- crash reporting integration
+- external crash alerting or triage workflow
 - marketplace analytics beyond AI usage
 - operational seeding and validation of minimum supported versions per environment
 - broader offline behavior review for last-known feed and request states

@@ -36,6 +36,7 @@ Apply later migrations in repo order, including:
 - [migrations/202604230004_user_notifications_foundation.sql](./migrations/202604230004_user_notifications_foundation.sql)
 - [migrations/202604230005_admin_audit_log.sql](./migrations/202604230005_admin_audit_log.sql)
 - [migrations/202604230006_app_runtime_policies.sql](./migrations/202604230006_app_runtime_policies.sql)
+- [migrations/202604240001_app_crash_reports.sql](./migrations/202604240001_app_crash_reports.sql)
 
 ## Regenerate TypeScript types
 

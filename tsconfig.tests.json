@@ -13,6 +13,7 @@
   "include": [
     "tests/**/*.ts",
     "utils/appVersion.ts",
+    "utils/crashReporting.ts",
     "utils/schemas.ts",
     "utils/wasteTypes.ts",
     "utils/supabaseUrl.ts"

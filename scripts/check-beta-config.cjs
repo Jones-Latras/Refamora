@@ -39,6 +39,7 @@ function main() {
     'supabase/migrations/202604230004_user_notifications_foundation.sql',
     'supabase/migrations/202604230005_admin_audit_log.sql',
     'supabase/migrations/202604230006_app_runtime_policies.sql',
+    'supabase/migrations/202604240001_app_crash_reports.sql',
   ]) {
     assert(fs.existsSync(path.join(process.cwd(), migrationFile)), `Missing migration: ${migrationFile}`)
   }

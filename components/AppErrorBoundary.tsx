@@ -1,12 +1,17 @@
 import { Component, type ReactNode } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 
+import type { UserRole } from '../types/app'
+import { reportAppCrash } from '../services/crashReportingService'
 import { ErrorState } from './ErrorState'
 import { palette } from '../utils/theme'
 
 type Props = {
   children: ReactNode
   resetKey?: string
+  routePath?: string
+  userId?: string | null
+  userRole?: UserRole | null
 }
 
 type State = {
@@ -28,8 +33,17 @@ export class AppErrorBoundary extends Component<Props, State> {
     }
   }
 
-  componentDidCatch(error: Error) {
+  componentDidCatch(error: Error, errorInfo: { componentStack?: string | null }) {
     console.error('Refamora render error:', error)
+    void reportAppCrash({
+      source: 'react_error_boundary',
+      severity: 'error',
+      error,
+      route: this.props.routePath,
+      userId: this.props.userId,
+      userRole: this.props.userRole,
+      componentStack: errorInfo.componentStack ?? null,
+    })
   }
 
   handleReset = () => {

@@ -43,11 +43,11 @@ npx expo config --json
 
 `npm run quality:beta` currently verifies:
 
-- unit checks for schema validation, app version comparison, and Supabase dev URL normalization
+- unit checks for schema validation, app version comparison, crash-report normalization, and Supabase dev URL normalization
 - Beta config checks for `verify_jwt`
 - Expo config output for development, staging, and production app environments
 - EAS profiles for `development`, `staging`, and `production`
-- required admin, seller verification, notification, audit-log, and app runtime policy migrations
+- required admin, seller verification, notification, audit-log, app runtime policy, and crash-report migrations
 - release and rollback documentation plus app and function environment templates
 
 ## Supabase Deployment Order
@@ -100,6 +100,7 @@ The current Beta build depends on these later migrations in addition to the earl
 - `202604230004_user_notifications_foundation.sql`
 - `202604230005_admin_audit_log.sql`
 - `202604230006_app_runtime_policies.sql`
+- `202604240001_app_crash_reports.sql`
 
 ## Edge Function Secrets
 
