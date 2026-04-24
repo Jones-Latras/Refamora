@@ -26,6 +26,7 @@ import { ListingDetailScreenSkeleton } from '../../../components/ScreenSkeleton'
 import { VerifiedBadge } from '../../../components/VerifiedBadge'
 import { useToast } from '../../../components/Toast'
 import { useAuth } from '../../../hooks/useAuth'
+import { useOfflineActionQueueStore } from '../../../hooks/useOfflineActionQueue'
 import { useBuyerLocationStore } from '../../../hooks/useBuyerLocation'
 import { useConnectivity } from '../../../hooks/useConnectivity'
 import { useOfflineDataStore } from '../../../hooks/useOfflineData'
@@ -125,6 +126,17 @@ export default function ListingDetailScreen() {
   const cachedBuyerRequests = useOfflineDataStore((state) =>
     user?.id ? state.buyerRequestsByUser[user.id] ?? EMPTY_REQUEST_SUMMARY_SNAPSHOT : EMPTY_REQUEST_SUMMARY_SNAPSHOT,
   )
+  const queuedContactRequest = useOfflineActionQueueStore((state) =>
+    user?.id && id
+      ? state.items.find(
+          (item) =>
+            item.kind === 'contact_request' &&
+            item.userId === user.id &&
+            item.payload.listingId === id,
+        ) ?? null
+      : null,
+  )
+  const enqueueContactRequest = useOfflineActionQueueStore((state) => state.enqueueContactRequest)
   const setCachedListingDetail = useOfflineDataStore((state) => state.setListingDetail)
   const setCachedRelatedListings = useOfflineDataStore((state) => state.setRelatedListings)
   const savedListingIds = useSavedListingsStore((state) => state.listingIds)
@@ -276,7 +288,7 @@ export default function ListingDetailScreen() {
     return () => {
       isMounted = false
     }
-  }, [cachedContactRequest?.id, effectiveListing, isOffline, role, user])
+  }, [cachedContactRequest?.id, effectiveListing, isOffline, queuedContactRequest?.id, role, user])
 
   useEffect(() => {
     if (role !== 'buyer' || !effectiveListing) {
@@ -363,6 +375,7 @@ export default function ListingDetailScreen() {
   const canContactSeller =
     role === 'buyer' && !!user && !!effectiveListing && user.id !== effectiveListing.sellerId
   const hasRequestedContact = !!contactRequestId
+  const hasQueuedContactRequest = !!queuedContactRequest
   const canSaveListing = role !== 'farmer'
   const isSaved = effectiveListing ? savedListingIds.includes(effectiveListing.id) : false
   const postedLabel = effectiveListing ? formatRelativePostedDate(effectiveListing.createdAt) : ''
@@ -462,7 +475,18 @@ export default function ListingDetailScreen() {
     }
 
     if (isOffline) {
-      showToast('Reconnect before sending an inquiry to the seller.', 'info')
+      enqueueContactRequest({
+        userId: user.id,
+        payload: {
+          listingId: effectiveListing.id,
+          buyerId: user.id,
+          sellerId: effectiveListing.sellerId,
+          message: contactMessage.trim() || null,
+        },
+      })
+      setContactMessage('')
+      setIsContactModalVisible(false)
+      showToast('Inquiry queued. It will send automatically when you reconnect.', 'info')
       return
     }
 
@@ -515,8 +539,13 @@ export default function ListingDetailScreen() {
       return
     }
 
+    if (hasQueuedContactRequest) {
+      showToast('This inquiry is queued and will send automatically when you reconnect.', 'info')
+      return
+    }
+
     if (isOffline) {
-      showToast('Reconnect before starting a new seller conversation.', 'info')
+      setIsContactModalVisible(true)
       return
     }
 
@@ -657,6 +686,16 @@ export default function ListingDetailScreen() {
               {cachedListingUpdatedAt
                 ? `Last updated ${cachedListingUpdatedAt}. Reconnect to refresh price, availability, and seller details.`
                 : 'Reconnect to refresh price, availability, and seller details.'}
+            </Text>
+          </View>
+        ) : null}
+
+        {hasQueuedContactRequest ? (
+          <View style={styles.queuedNotice}>
+            <Text style={styles.queuedNoticeTitle}>Inquiry queued for sync</Text>
+            <Text style={styles.queuedNoticeText}>
+              Your seller request is saved on this device and will send automatically once the
+              connection returns.
             </Text>
           </View>
         ) : null}
@@ -971,7 +1010,11 @@ export default function ListingDetailScreen() {
         <View style={styles.footer}>
           <Pressable onPress={handleContactPress} style={styles.footerButton}>
             <Text style={styles.footerButtonText}>
-              {hasRequestedContact ? 'Open conversation' : 'Contact Seller'}
+              {hasRequestedContact
+                ? 'Open conversation'
+                : hasQueuedContactRequest
+                  ? 'Inquiry queued'
+                  : 'Contact Seller'}
             </Text>
           </Pressable>
         </View>
@@ -1070,6 +1113,25 @@ const styles = StyleSheet.create({
   },
   cachedNoticeText: {
     color: palette.clay,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  queuedNotice: {
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(58, 102, 72, 0.12)',
+    backgroundColor: '#eef6ed',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 4,
+  },
+  queuedNoticeTitle: {
+    color: palette.soil,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  queuedNoticeText: {
+    color: palette.sageDark,
     fontSize: 12,
     lineHeight: 18,
   },

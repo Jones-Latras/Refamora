@@ -53,7 +53,7 @@ Any AI agent updating this file should:
 - Zero-dependency unit tests and Beta config checks now exist, but there is still no integration suite or user-flow smoke coverage
 - EAS build profiles, app and function environment templates, release and rollback runbooks, and Expo config checks now exist, but real staging or production validation and secret rollout are not finished
 - Crash reporting now has a first in-app foundation through a global JS handler, render-error boundary reporting, and a Supabase-backed crash log, but there is still no third-party alerting or operational triage flow
-- Buyer feed, map pins, buyer or seller request inboxes, listing detail, and conversation threads now reuse last-known snapshots offline, but write actions still require live connectivity
+- Buyer feed, map pins, buyer or seller request inboxes, listing detail, and conversation threads now reuse last-known snapshots offline, and inquiry or reply actions now queue locally for retry, but broader write actions still require live connectivity
 
 ### Confirmed Production Gaps
 
@@ -342,14 +342,15 @@ Already present:
 - client-side crash reporting foundation now exists through a global JS error handler, render crash capture, and a Supabase crash log table
 - marketplace analytics now have a first admin screen covering users, listing inventory, views, inquiries, response rate, and top active listing breakdowns
 - buyer feed, buyer map, buyer or seller request lists, listing detail, and conversation threads now reuse cached last-known snapshots offline instead of failing closed immediately
+- offline inquiry and reply actions now queue locally and sync automatically when connectivity returns
 
 Still required:
 
 - external crash alerting or triage workflow
 - deeper funnel and operations analytics for pilot-scale reporting
 - operational seeding and validation of minimum supported versions per environment
-- offline write-queue handling for inquiries, replies, and other user actions that still require connectivity
 - broader offline behavior review for profile edits and remaining write-heavy flows
+- offline write-queue handling for non-messaging actions that still require connectivity
 
 Definition of done:
 

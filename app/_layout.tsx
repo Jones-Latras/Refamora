@@ -6,6 +6,7 @@ import { StyleSheet } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import { AppErrorBoundary } from '../components/AppErrorBoundary'
+import { OfflineActionQueueBootstrap } from '../components/OfflineActionQueueBootstrap'
 import { AppVersionGate } from '../components/AppVersionGate'
 import { BrandedLoadingScreen } from '../components/BrandedLoadingScreen'
 import { CrashReporterBootstrap } from '../components/CrashReporterBootstrap'
@@ -122,6 +123,7 @@ function AppChrome() {
   return (
     <AppVersionGate>
       <CrashReporterBootstrap />
+      <OfflineActionQueueBootstrap />
       <AppErrorBoundary
         resetKey={pathname}
         routePath={pathname}

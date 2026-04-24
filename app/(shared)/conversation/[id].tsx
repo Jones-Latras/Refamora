@@ -22,6 +22,7 @@ import { ErrorState } from '../../../components/ErrorState'
 import { BrandedLoadingScreen } from '../../../components/BrandedLoadingScreen'
 import { useToast } from '../../../components/Toast'
 import { useAuth } from '../../../hooks/useAuth'
+import { useOfflineActionQueueStore } from '../../../hooks/useOfflineActionQueue'
 import { useConnectivity } from '../../../hooks/useConnectivity'
 import { useOfflineDataStore } from '../../../hooks/useOfflineData'
 import { useUnreadMessages } from '../../../hooks/useUnreadMessages'
@@ -62,10 +63,25 @@ export default function ContactConversationScreen() {
   const { isOffline } = useConnectivity()
   const { refreshUnreadMessages } = useUnreadMessages()
   const { showToast } = useToast()
+  const enqueueContactRequestMessage = useOfflineActionQueueStore(
+    (state) => state.enqueueContactRequestMessage,
+  )
   const cachedConversation = useOfflineDataStore((state) =>
     id ? state.conversationsById[id] ?? EMPTY_CONVERSATION_SNAPSHOT : EMPTY_CONVERSATION_SNAPSHOT,
   )
   const setCachedConversation = useOfflineDataStore((state) => state.setConversation)
+  const cachedBuyerRequests = useOfflineDataStore((state) =>
+    user?.id
+      ? state.buyerRequestsByUser[user.id] ?? { items: [], updatedAt: null }
+      : { items: [], updatedAt: null },
+  )
+  const cachedSellerRequests = useOfflineDataStore((state) =>
+    user?.id
+      ? state.sellerRequestsByUser[user.id] ?? { items: [], updatedAt: null }
+      : { items: [], updatedAt: null },
+  )
+  const setCachedBuyerRequests = useOfflineDataStore((state) => state.setBuyerRequests)
+  const setCachedSellerRequests = useOfflineDataStore((state) => state.setSellerRequests)
   const [conversation, setConversation] = useState<ContactConversation | null>(null)
   const [composerValue, setComposerValue] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -179,13 +195,43 @@ export default function ContactConversationScreen() {
   const keyboardVerticalOffset = Platform.OS === 'ios' ? headerHeight : 0
   const composerPaddingBottom = Math.max(insets.bottom, 14)
 
+  const updateCachedRequestLists = useCallback(
+    (nextConversation: ContactConversation) => {
+      if (!user) {
+        return
+      }
+
+      if (role === 'buyer') {
+        setCachedBuyerRequests(
+          user.id,
+          cachedBuyerRequests.items.map((request) =>
+            request.id === nextConversation.request.id ? nextConversation.request : request,
+          ),
+        )
+        return
+      }
+
+      if (role === 'farmer') {
+        setCachedSellerRequests(
+          user.id,
+          cachedSellerRequests.items.map((request) =>
+            request.id === nextConversation.request.id ? nextConversation.request : request,
+          ),
+        )
+      }
+    },
+    [
+      cachedBuyerRequests.items,
+      cachedSellerRequests.items,
+      role,
+      setCachedBuyerRequests,
+      setCachedSellerRequests,
+      user,
+    ],
+  )
+
   const handleSend = async () => {
     if (!user || !effectiveConversation || isSending) {
-      return
-    }
-
-    if (isOffline) {
-      showToast('Reconnect before sending a new message.', 'info')
       return
     }
 
@@ -193,6 +239,50 @@ export default function ContactConversationScreen() {
 
     if (!trimmedMessage) {
       showToast('Write a message before sending it.', 'error')
+      return
+    }
+
+    if (isOffline) {
+      const createdAt = new Date().toISOString()
+      const queuedMessageId = enqueueContactRequestMessage({
+        userId: user.id,
+        payload: {
+          requestId: effectiveConversation.request.id,
+          senderId: user.id,
+          message: trimmedMessage,
+          actorRole: role === 'farmer' ? 'farmer' : 'buyer',
+        },
+      })
+      const isSellerMessage = user.id === effectiveConversation.request.sellerId
+      const nextConversation: ContactConversation = {
+        request: {
+          ...effectiveConversation.request,
+          message: trimmedMessage,
+          messageCount: effectiveConversation.request.messageCount + 1,
+          lastMessageSenderId: user.id,
+          buyerLastReadAt: isSellerMessage
+            ? effectiveConversation.request.buyerLastReadAt
+            : createdAt,
+          status: isSellerMessage ? 'responded' : 'pending',
+          updatedAt: createdAt,
+        },
+        messages: [
+          ...effectiveConversation.messages,
+          {
+            id: queuedMessageId,
+            requestId: effectiveConversation.request.id,
+            senderId: user.id,
+            message: trimmedMessage,
+            createdAt,
+          },
+        ],
+      }
+
+      setComposerValue('')
+      setConversation(nextConversation)
+      setCachedConversation(effectiveConversation.request.id, nextConversation)
+      updateCachedRequestLists(nextConversation)
+      showToast('Message queued. It will send automatically when you reconnect.', 'info')
       return
     }
 
@@ -238,6 +328,7 @@ export default function ContactConversationScreen() {
     }
     setConversation(nextConversation)
     setCachedConversation(effectiveConversation.request.id, nextConversation)
+    updateCachedRequestLists(nextConversation)
     void refreshUnreadMessages()
     showToast(role === 'farmer' ? 'Reply sent.' : 'Message sent.', 'success')
   }
@@ -474,11 +565,9 @@ export default function ContactConversationScreen() {
                 <TextInput
                   multiline
                   numberOfLines={3}
-                  editable={!isSending && !isOffline}
+                  editable={!isSending}
                   placeholder={
-                    isOffline
-                      ? 'Reconnect to write and send new messages...'
-                      : role === 'farmer'
+                    role === 'farmer'
                       ? 'Write your reply to the buyer...'
                       : 'Write a follow-up message...'
                   }
@@ -491,11 +580,11 @@ export default function ContactConversationScreen() {
               </View>
 
               <Pressable
-                disabled={isSending || isOffline}
+                disabled={isSending}
                 onPress={() => void handleSend()}
                 style={[
                   styles.sendButton,
-                  isSending || isOffline ? styles.disabledButton : null,
+                  isSending ? styles.disabledButton : null,
                 ]}
               >
                 {isSending ? (
