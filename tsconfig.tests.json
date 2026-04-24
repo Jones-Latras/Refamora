@@ -18,6 +18,7 @@
     "utils/offlineData.ts",
     "utils/offlineQueue.ts",
     "utils/schemas.ts",
+    "utils/storageUpload.ts",
     "utils/wasteTypes.ts",
     "utils/supabaseUrl.ts"
   ]

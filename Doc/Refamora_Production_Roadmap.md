@@ -169,10 +169,10 @@ Already present:
 - offline-aware UI in several screens
 - inquiry creation now reuses an existing buyer conversation for the same listing instead of inserting a duplicate request
 - offline queued inquiries and replies now dedupe repeated pending actions instead of stacking identical retries
+- listing image uploads now retry transient storage and timeout failures before surfacing an error to the seller
 
 Still required:
 
-- harden image upload failure states and retry behavior
 - standardize timeout, empty, and retry UX across feed, map, listing detail, and inbox
 - verify status changes for seller listings do not create stale buyer-side states
 - review pagination and map loading behavior for larger data sets

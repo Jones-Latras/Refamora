@@ -2,11 +2,16 @@ import { decode } from 'base64-arraybuffer'
 import * as FileSystem from 'expo-file-system/legacy'
 
 import type { ServiceResult } from '../types/app'
+import {
+  getStorageUploadRetryDelayMs,
+  shouldRetryStorageUpload,
+} from '../utils/storageUpload'
 
 import { getSupabaseClient, hasSupabaseEnv } from './supabase'
 
 type StorageBucket = 'avatars' | 'listing-images' | 'verification-documents'
 const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024
+const MAX_UPLOAD_ATTEMPTS = 3
 const SUPPORTED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
 
 function formatFileSize(bytes: number) {
@@ -81,6 +86,29 @@ function toStorageError(
   return new Error(message || fallbackMessage)
 }
 
+function getRetryExhaustedStorageError(
+  error: Error,
+  bucket: StorageBucket,
+) {
+  if (shouldRetryStorageUpload(error)) {
+    if (bucket === 'listing-images') {
+      return new Error(
+        'Refamora retried the listing image upload, but the connection to Supabase Storage is still failing. Check your connection and try again.',
+      )
+    }
+
+    return new Error(
+      'Refamora retried the upload, but the connection to Supabase Storage is still failing. Check your connection and try again.',
+    )
+  }
+
+  return error
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 export async function uploadImage(
   bucket: StorageBucket,
   filePath: string,
@@ -125,26 +153,53 @@ export async function uploadImage(
       encoding: FileSystem.EncodingType.Base64,
     })
 
-    const { data, error } = await getSupabaseClient().storage
-      .from(bucket)
-      .upload(filePath, decode(base64), {
-        contentType:
-          extension === 'png'
-            ? 'image/png'
-            : extension === 'webp'
-              ? 'image/webp'
-              : 'image/jpeg',
-        upsert: true,
-      })
+    const contentType =
+      extension === 'png'
+        ? 'image/png'
+        : extension === 'webp'
+          ? 'image/webp'
+          : 'image/jpeg'
 
-    if (error) {
+    let lastError: Error | null = null
+
+    for (let attempt = 1; attempt <= MAX_UPLOAD_ATTEMPTS; attempt += 1) {
+      const { data, error } = await getSupabaseClient().storage
+        .from(bucket)
+        .upload(filePath, decode(base64), {
+          contentType,
+          upsert: true,
+        })
+
+      if (!error) {
+        return { data: data?.path ?? null, error: null }
+      }
+
+      lastError = toStorageError(error, bucket, 'Failed to upload image.')
+
+      if (
+        attempt < MAX_UPLOAD_ATTEMPTS &&
+        shouldRetryStorageUpload(error)
+      ) {
+        await sleep(getStorageUploadRetryDelayMs(attempt))
+        continue
+      }
+
       return {
         data: null,
-        error: toStorageError(error, bucket, 'Failed to upload image.'),
+        error:
+          attempt >= MAX_UPLOAD_ATTEMPTS && lastError
+            ? getRetryExhaustedStorageError(lastError, bucket)
+            : lastError,
       }
     }
 
-    return { data: data?.path ?? null, error: null }
+    return {
+      data: null,
+      error:
+        lastError != null
+          ? getRetryExhaustedStorageError(lastError, bucket)
+          : new Error('Failed to upload image.'),
+    }
   } catch (error) {
     return {
       data: null,
