@@ -1,14 +1,14 @@
- # Refamora Production Roadmap
+# Refamora Proposal-Ready Roadmap
 
 ## Purpose
 
-This roadmap converts the current Refamora prototype into a production plan with three release stages:
+This file is now a trimmed roadmap for one immediate goal:
 
-- **Beta**: stable internal or advisor testing build
-- **Pilot**: controlled real-world rollout with a small user group
-- **V1**: public production release
+- make Refamora credible, stable, and demo-ready for the project proposal presentation
 
-This version is based on a repo audit completed on **April 23, 2026**. It reflects what is already implemented in the app and Supabase project files, not just the original thesis plan.
+It is not the full production roadmap anymore. Anything that does not materially improve the proposal demo, proposal defense, or installable presentation build is out of scope for now.
+
+This version reflects the repo state as of **April 24, 2026**.
 
 ## AI Agent Update Rule
 
@@ -16,572 +16,260 @@ Any AI agent updating this file should:
 
 - change `[ ]` to `[x]` only when a checklist item is fully complete
 - keep incomplete items unchecked even if they are partially done
-- update the `Status:` line for each phase and workstream as progress changes
-- keep the current-state notes aligned with the actual repo
+- update each `Status:` line when progress changes
+- prefer presentation-critical stability over adding new surface area
 
-## Release Status
+## Proposal Readiness Status
 
-- [ ] Beta phase completed
+- [ ] Proposal presentation build ready
   Status: In Progress
-- [ ] Pilot phase completed
-  Status: Not Started
-- [ ] V1 phase completed
-  Status: Not Started
 
-## Repo-Audited Current State
+## What Must Be True Before Proposal
 
-### Already Implemented
+Refamora does not need full production scope before the proposal presentation.
 
-- Farmer and buyer role flows
-- Email confirmation during sign-up
-- Login, logout, session restore, password change in profile
-- Listing creation, edit, delete, search, map discovery, and seller dashboard
-- Inquiry messaging between buyer and seller
-- Listing reports submission flow
-- AI-assisted listing help, waste advice, search assist, inquiry assist, photo check, and listing moderation
-- `listing_review_queue` and `listing_reports` tables as a base for moderation operations
-- Basic offline detection, offline banners, and some cached image behavior
-- AI event logging and analytics-oriented tables
+It does need:
 
-### Partially Implemented
+- a stable buyer demo flow
+- a stable seller demo flow
+- a visible trust and moderation story
+- one installable build that works on the presentation device
+- seeded demo data and test accounts that make the walkthrough predictable
 
-- Listing lifecycle exists, but only as `active`, `sold`, and `unavailable`
-- Seller verification now has a first real workflow: seller submission, admin review states, document storage, and verified badge display, but production hardening and push delivery are still incomplete
-- In-app notifications now exist for inquiry messages, seller replies, and verification decisions, but there is still no push provider, device token registration, or fallback delivery channel
-- Moderation data exists in Supabase and a first admin moderation dashboard now exists, but the admin toolset is still limited to reports and AI review queue handling
-- Product analytics now include a first marketplace admin summary for users, listings, views, inquiries, and top listing breakdowns, but analytics are still not yet deep enough for full pilot operations
-- Zero-dependency unit tests and Beta config checks now exist, but there is still no integration suite or user-flow smoke coverage
-- EAS build profiles, app and function environment templates, release and rollback runbooks, a dedicated production build plan, and Expo config checks now exist, but real staging or production validation and secret rollout are not finished
-- Crash reporting now has a first in-app foundation through a global JS handler, render-error boundary reporting, and a Supabase-backed crash log, but there is still no third-party alerting or operational triage flow
-- Buyer feed, map pins, buyer or seller request inboxes, listing detail, and conversation threads now reuse last-known snapshots offline, and inquiry or reply actions now queue locally for retry, but broader write actions still require live connectivity
+It does not need yet:
 
-### Confirmed Production Gaps
+- payments
+- logistics scheduling
+- SMS or email fallback
+- full pilot analytics
+- third-party observability stack
+- public-launch security and scale work
 
-- No push notifications or fallback email or SMS notifications
-- No complete admin suite for verification workflows, broader operations, or audit history
-- No end-to-end reservation, handoff, or completion workflow
-- No integration test suite or real user-flow smoke coverage yet
-- No third-party crash alerting or production monitoring integration yet
+## Current Strengths Already In Repo
 
-## Immediate Production Risks Found In Repo
+- Farmer and buyer role flows exist
+- Login, sign-up, email confirmation, session restore, forgot-password, reset-password, and password change flows exist
+- Farmers can create, edit, and manage listings
+- Buyers can browse listings through feed, map, and listing detail screens
+- Buyers and sellers can message through inquiry threads
+- Listing reports and AI moderation review queue flows exist
+- Admin moderation dashboard exists
+- Admin operations hub now includes direct moderation and seller verification review plus crash-visibility links
+- Seller verification request and approval or rejection flow exists
+- Verified seller badge is already visible in buyer-facing UI
+- In-app notifications exist for inquiries, replies, and verification updates
+- Better offline and retry behavior now exists across feed, map, listing detail, inboxes, and conversation flows
+- EAS profiles, release runbooks, rollback notes, and proposal-relevant build docs already exist
 
-These are higher priority than cosmetic feature work and should be treated as roadmap blockers:
+## Proposal Blockers To Focus On
 
-1. Admin moderation now has a basic in-app surface, but it still depends on the new admin role and RLS policies being applied in the real Supabase project.
-2. Release profiles exist now, but staging and production secrets, migrations, and rollout steps are not fully documented.
-3. JWT verification and safer Android network defaults were tightened in repo config, but they still need deployment validation in real environments.
-
-## Delivery Principles
-
-1. Finish operational trust and release safety before adding more marketplace surface area.
-2. Build admin tools before expecting real pilot operations to scale.
-3. Treat notifications, observability, and auth recovery as production foundations, not optional polish.
-4. Do not label a phase complete unless its exit criteria are met in app behavior, backend behavior, and deployment workflow.
+1. Demo flow confidence
+   The buyer, seller, and admin walkthroughs still need final verification end to end.
+2. Presentation build confidence
+   The app still needs one known-good presentation build plus device-level smoke validation.
+3. Demo data confidence
+   The presentation will be weaker if listings, messages, verification states, and moderation examples are not pre-seeded and predictable.
+4. Stability over extra features
+   Remaining work should reduce demo risk, not expand scope.
 
 ## Master Checklist
 
-### Beta Master Checklist
+### Must-Have Before Proposal
 
-- [ ] Marketplace stability hardening
+- [ ] Core buyer demo flow
   Status: Partial
-- [ ] Authentication and account safety
+- [ ] Core seller demo flow
   Status: Partial
-- [ ] Admin moderation foundation
+- [ ] Trust and admin credibility flow
   Status: Partial
-- [ ] Seller verification phase 1
+- [ ] Presentation build and device readiness
   Status: Partial
-- [ ] Notifications
-  Status: Partial
-- [ ] Testing and quality gates
-  Status: Partial
-- [ ] Release and environment setup
-  Status: Partial
-- [ ] Crash reporting
-  Status: Partial
-- [ ] Basic product analytics
-  Status: Partial
-- [ ] App version policy
-  Status: Partial
-- [ ] Better offline UX
-  Status: Partial
-- [ ] Admin audit log
+- [ ] Demo data and script preparation
+  Status: Not Started
+- [ ] Proposal support artifacts
   Status: Partial
 
-### Pilot Master Checklist
-
-- [ ] Transaction completion workflow
-  Status: Not Started
-- [ ] Fulfillment coordination
-  Status: Partial
-- [ ] Trust and reputation
-  Status: Not Started
-- [ ] Pilot operations dashboard
-  Status: Not Started
-- [ ] Saved searches with alerts
-  Status: Partial
-- [ ] Buyer wanted-material posts
-  Status: Not Started
-- [ ] SMS or email fallback notifications
-  Status: Not Started
-- [ ] Exportable pilot reports
-  Status: Not Started
-- [ ] Multi-image listings
-  Status: Not Started
-
-### V1 Master Checklist
-
-- [ ] Payments or payment-adjacent workflow
-  Status: Not Started
-- [ ] Logistics and fulfillment expansion
-  Status: Partial
-- [ ] Production observability
-  Status: Not Started
-- [ ] Security and compliance hardening
-  Status: Not Started
-- [ ] Scale readiness
-  Status: Not Started
-- [ ] Regional expansion
-  Status: Not Started
-- [ ] Business buyer features
-  Status: Not Started
-- [ ] Price trend insights
-  Status: Not Started
-- [ ] Localization
-  Status: Not Started
-- [ ] Public help center and onboarding guides
-  Status: Not Started
-
-## Phase 1: Beta
-
-### Goal
-
-Ship a stable build for internal testing that can be installed repeatedly, used safely, and supported without manual database intervention for common issues.
-
-### Workstream 1: Marketplace Stability
+## Workstream 1: Core Buyer Demo Flow
 
 Status: Partial
 
 Already present:
 
-- core listing create and edit flows
-- inquiry messaging
+- buyer sign-up and sign-in
+- feed browsing
+- map browsing
+- listing detail
+- contact seller flow
+- conversation thread
+- notifications inbox
+
+Still required before proposal:
+
+- verify that a buyer can complete browse -> open listing -> send inquiry -> see reply without blocker defects
+- verify seller listing status changes do not leave stale buyer-side states in feed, map, or listing detail
+- verify seeded buyer demo account has clean, realistic data for presentation
+- prepare one fallback buyer path if the live message loop fails during demo
+
+Definition of done:
+
+- a buyer can complete the main marketplace story in front of the panel without manual fixes
+
+## Workstream 2: Core Seller Demo Flow
+
+Status: Partial
+
+Already present:
+
+- seller sign-up and sign-in
+- listing creation
+- listing edit
+- listing status changes
+- seller inbox
+- reply flow
+- seller verification submission screen
+
+Still required before proposal:
+
+- verify create listing -> publish -> receive inquiry -> reply works with demo data and presentation accounts
+- verify listing edit and status changes reflect correctly in buyer-facing screens
+- prepare one seller account with a polished profile and at least one verified-looking listing
+- verify the seller dashboard and inbox are clean enough for live walkthrough use
+
+Definition of done:
+
+- a seller can demonstrate listing management and buyer communication without visible instability
+
+## Workstream 3: Trust and Admin Credibility Flow
+
+Status: Partial
+
+Already present:
+
 - listing reports
-- offline-aware UI in several screens
-- inquiry creation now reuses an existing buyer conversation for the same listing instead of inserting a duplicate request
-- offline queued inquiries and replies now dedupe repeated pending actions instead of stacking identical retries
-- listing image uploads now retry transient storage and timeout failures before surfacing an error to the seller
-- feed, map, listing detail, and buyer or seller inbox screens now keep last-loaded data visible during refresh failures and surface a consistent retry notice instead of failing closed
+- AI moderation review queue
+- admin moderation dashboard
+- admin crash reports screen
+- seller verification review screen
+- verified seller badge
+- admin audit log screen
 
-Still required:
+Still required before proposal:
 
-- verify status changes for seller listings do not create stale buyer-side states
-- review pagination and map loading behavior for larger data sets
+- verify admin role, admin routing, and required RLS-backed flows work in the real demo environment
+- prepare at least one realistic moderation example and one seller verification example
+- verify an admin can review, dismiss, suspend, restore, approve, and reject without manual SQL intervention during demo
+- make sure the trust story is easy to explain in the proposal narrative
 
 Definition of done:
 
-- publish, edit, report, contact-seller, and reply flows are stable under slow network conditions
-- known duplicate-submit paths are blocked
-- core screens have consistent loading, empty, and retry behavior
+- the panel can clearly see that Refamora is not just listing CRUD and includes governance and trust controls
 
-### Workstream 2: Authentication and Account Safety
+## Workstream 4: Presentation Build and Device Readiness
 
 Status: Partial
 
 Already present:
 
-- sign-up
-- email confirmation step
-- sign-in
-- forgot-password request flow
-- reset-password flow from email link
-- password change from authenticated profile
-- invalid-session cleanup and recovery
+- EAS profiles
+- app env templates
+- function env templates
+- release runbook
+- rollback runbook
+- production build plan
+- Expo config checks
+- Beta quality gate scripts
 
-Still required:
+Still required before proposal:
 
-- stronger password policy than current minimum-length behavior
-- session-expired UX review across protected screens
-- final verification that role-selection and callback flows behave correctly after email confirmation
-
-Definition of done:
-
-- a user can create, verify, recover, and secure an account without admin help
-- expired or invalid sessions always return the user to a safe auth state
-
-### Workstream 3: Admin Moderation Foundation
-
-Status: Partial
-
-Already present:
-
-- `listing_reports` table and report submission flow
-- `listing_review_queue` table from AI moderation
-- AI moderation queue insertion for flagged or blocked listings
-- admin role support in app routing and type model
-- basic admin moderation dashboard for reports and AI review queue
-- admin actions to review, dismiss, suspend, restore, and save admin notes
-- migration for admin RLS access and moderation review metadata
-
-Still required:
-
-- apply and validate the new admin migration in the real Supabase project
-- expand the admin surface beyond moderation into verification and broader operations
-- add stronger role separation and access review for production hardening
-- add admin audit history for sensitive actions
+- produce one known-good presentation build
+- validate that build on the actual presentation device or a matching backup device
+- confirm login, feed, listing detail, messaging, admin, and verification screens open in the build
+- confirm Supabase project, migrations, storage buckets, and admin role setup match the demo script
+- freeze nonessential feature work once the presentation build is stable
 
 Definition of done:
 
-- admins can manage flagged content through the product UI
-- no moderation action requires manual database edits during Beta
+- the app can be installed and demonstrated reliably on presentation day
 
-### Workstream 4: Seller Verification Phase 1
+## Workstream 5: Demo Data and Script Preparation
 
-Status: Partial
-
-Current repo note:
-
-- `seller_verification_requests` migration and storage bucket design now exist
-- sellers can submit a verification request with a document upload
-- admins can review requests in a dedicated verification screen with `pending`, `approved`, and `rejected` states
-- approved sellers now display a verified badge in profile and buyer-facing listing UI
+Status: Not Started
 
 Required scope:
 
-- apply and validate the new verification migration and storage policies in the real Supabase project
-- add stronger document review guidance, audit visibility, and operational safeguards for admin actions
-- notify sellers when verification status changes
-- harden document requirements, rejection handling, and resubmission policy for production use
+- create one buyer demo account
+- create one seller demo account
+- create one admin demo account
+- seed realistic listings with clean titles, images, prices, quantities, and locations
+- prepare at least one open inquiry thread and one replied thread
+- prepare at least one reported listing and one verification request for admin walkthrough
+- write the exact demo order so the presenter is not improvising screen flow live
 
 Definition of done:
 
-- a seller can submit for review
-- an admin can approve or reject
-- approved sellers display a real trust indicator in buyer-facing UI
+- the presentation can follow a controlled walkthrough with predictable records and outcomes
 
-### Workstream 5: Notifications
-
-Status: Partial
-
-Current repo note:
-
-- `user_notifications` migration and RLS-backed inbox now exist
-- automatic in-app notifications are created for new buyer inquiries, seller replies, and seller verification approval or rejection
-- unread notification badges now surface in app navigation and profile
-- a dedicated notifications screen now lets users review and mark alerts as read
-
-Required scope:
-
-- push notification provider setup
-- device token registration and storage
-- add notification coverage for moderation actions and other production events
-- in-app notification preference rules if needed
-
-Definition of done:
-
-- users reliably receive inquiry, reply, moderation, and verification updates without needing to open the app manually
-
-### Workstream 6: Testing and Quality Gates
-
-Status: Partial
-
-Current repo note:
-
-- `npm run test:unit` now runs automated unit checks for schema validation and Supabase dev URL normalization
-- `npm run check:beta-config` now verifies key Beta production-hardening settings like `verify_jwt`, EAS profiles, and required migrations
-- `npm run quality:beta` now bundles the current automated Beta quality gate
-
-Required scope:
-
-- expand unit tests for more service-layer logic
-- integration tests for auth, listings, contact requests, and reports
-- smoke tests for sign-up, sign-in, create listing, send inquiry, and reply
-- lint included in release checklist and resolved enough to be enforceable
-
-Definition of done:
-
-- core flows are covered by automated checks and a repeatable pre-release checklist
-
-### Workstream 7: Release and Environment Setup
-
-Status: Partial
-
-Current repo note:
-
-- `eas.json` now exists with `development`, `staging`, and `production` build profiles
-- `app.config.ts` now uses `APP_ENV` to set display name, bundle identifiers, and cleartext behavior
-- cleartext traffic is now limited to development-only `http` Supabase usage
-- Supabase function JWT verification is now enabled in `supabase/config.toml`
-- environment templates now exist for development, staging, and production app builds
-- function secret templates now exist for local, staging, and production Supabase Edge Function environments
-- a release runbook now documents migration order, seed policy, and internal, staging, and production checklists
-- a production build plan now defines build profiles, preflight checks, exact build commands, release gates, and release-record expectations
-- a rollback runbook now documents app, function, and schema recovery steps for failed releases
-- `npm run check:expo-config` now validates Expo config output for development, staging, and production scenarios
-- `npm run check:production-build-plan` now verifies that the dedicated build-plan document still includes required release commands and gates
-- `npm run check:release-readiness` now verifies the runbook, build plan, app and function env templates, and current migration references
-
-Required scope:
-
-- validate real staging and production app env plus function secret rollout against separate Supabase projects
-- validate deployed AI functions with JWT enforcement enabled
-- validate a real development build against local Supabase when `http` is used
-
-Definition of done:
-
-- staging and production builds are repeatable
-- environment-specific secrets are documented and separated
-- release settings are no longer production-unsafe by default
-
-### Workstream 8: Observability, Analytics, Versioning, Offline, and Audit
+## Workstream 6: Proposal Support Artifacts
 
 Status: Partial
 
 Already present:
 
-- AI event logging
-- basic offline detection and banners
-- admin audit log migration, automatic database-backed audit entries, and a first admin audit log screen
-- app runtime policy migration, environment-scoped minimum supported version reads, and a blocking version gate component now exist in the app shell
-- client-side crash reporting foundation now exists through a global JS error handler, render crash capture, and a Supabase crash log table
-- marketplace analytics now have a first admin screen covering users, listing inventory, views, inquiries, response rate, and top active listing breakdowns
-- buyer feed, buyer map, buyer or seller request lists, listing detail, and conversation threads now reuse cached last-known snapshots offline instead of failing closed immediately
-- offline inquiry and reply actions now queue locally and sync automatically when connectivity returns
+- DBMS proposal draft
+- build and release docs
+- roadmap notes aligned to repo state
 
-Still required:
+Still required before proposal:
 
-- external crash alerting or triage workflow
-- deeper funnel and operations analytics for pilot-scale reporting
-- operational seeding and validation of minimum supported versions per environment
-- broader offline behavior review for profile edits and remaining write-heavy flows
-- offline write-queue handling for non-messaging actions that still require connectivity
+- produce a strict presentation checklist
+- align the proposal narrative to the actual demo flow
+- prepare screenshots or fallback visuals for buyer, seller, and admin views
+- prepare a short explanation of what is implemented now versus what is intentionally deferred
 
 Definition of done:
 
-- the team can detect crashes, track core usage, control outdated app versions, and review admin actions
-
-### Beta Exit Criteria
-
-- internal testers can complete sign-up, confirm email, create listing, send inquiry, reply, and report content without blocking defects
-- admins can review reports and moderation items through UI
-- seller verification requests are functional
-- release builds can be created through a defined staging workflow
-- the app has automated coverage for core flows
-- obvious production-unsafe defaults have been removed
-
-## Phase 2: Pilot
-
-### Goal
-
-Run Refamora with a small controlled user group and close the gap between inquiry-only coordination and real transaction completion.
-
-### Pilot Workstreams
-
-#### 1. Transaction Completion Workflow
-
-Status: Not Started
-
-- extend listing lifecycle to include `reserved`, `cancelled`, and completed handoff states
-- convert inquiry threads into structured offer or reservation flows
-- prevent overselling through quantity tracking
-- add explicit completion confirmation
-
-#### 2. Fulfillment Coordination
-
-Status: Partial
-
-Already present:
-
-- listing-level `pickup`, `delivery`, and `both` options
-
-Still required:
-
-- pickup scheduling
-- delivery scheduling
-- meeting notes and handoff instructions
-- completion confirmation from both sides
-
-#### 3. Trust and Reputation
-
-Status: Not Started
-
-- post-transaction ratings or review summaries
-- response-rate and completion-rate metrics
-- visible trust indicators for buyers
-
-#### 4. Pilot Operations Dashboard
-
-Status: Not Started
-
-- active users
-- active listings
-- inquiry-to-reservation conversion
-- flagged-content queue size
-- failed AI request visibility
-- support issue intake
-
-#### 5. Pilot Growth Features
-
-Status: Mixed
-
-- saved searches with alerts: Partial
-- buyer wanted-material posts: Not Started
-- SMS or email fallback notifications: Not Started
-- exportable reports for partner evaluation: Not Started
-- multi-image listings: Not Started
-
-### Pilot Exit Criteria
-
-- a pilot user group can move from listing to handoff completion inside the system
-- admins can operate moderation, verification, and pilot support without database-only work
-- pilot metrics are visible centrally
-- trust signals reduce buyer uncertainty during real usage
-
-## Phase 3: V1
-
-### Goal
-
-Launch a production-ready public release with repeatable operations, stronger trust controls, and enough infrastructure discipline to support public growth.
-
-### V1 Workstreams
-
-#### 1. Payments or Payment-Adjacent Workflow
-
-Status: Not Started
-
-Choose one before public launch:
-
-- full in-app payment integration
-- payment-assisted workflow with proof-of-payment and dispute logging
-- documented no-payment policy with clear transaction logging and dispute handling
-
-#### 2. Logistics and Fulfillment Expansion
-
-Status: Partial
-
-Already present:
-
-- delivery support exists only as a listing preference
-
-Still required:
-
-- area coverage rules
-- courier or partner workflow if applicable
-- delivery status tracking where supported
-
-#### 3. Production Observability
-
-Status: Not Started
-
-- monitoring dashboard
-- error alerting
-- function health checks
-- backup and restore procedure
-- incident response checklist
-
-#### 4. Security and Compliance Hardening
-
-Status: Not Started
-
-- admin role separation and least privilege
-- secure handling of verification documents
-- abuse rate limiting across high-risk flows
-- spam and fraud response procedures
-- privacy and retention policy
-
-#### 5. Scale Readiness
-
-Status: Not Started
-
-- feed, map, and messaging performance review
-- query and index optimization
-- background job strategy for notifications and cleanups
-- AI and storage cost planning
-
-#### 6. Expansion Features
-
-Status: Not Started
-
-- regional expansion
-- business buyer workflows
-- price trend insights
-- localization for English and Filipino
-- public onboarding and help content
-
-### V1 Exit Criteria
-
-- normal production operations do not depend on manual engineering intervention
-- transaction, moderation, verification, and support workflows are fully usable
-- monitoring, backup, and security processes are documented and tested
-- public deployment is repeatable and supportable
-
-## Recommended Build Order
-
-### Sequence
-
-1. Release and environment setup
-2. Authentication recovery and account safety
-3. Admin moderation foundation
-4. Seller verification phase 1
-5. Notifications
-6. Testing and quality gates
-7. Transaction completion workflow
-8. Fulfillment coordination
-9. Trust and reputation
-10. Payments or payment-adjacent workflow
-
-### Why This Order
-
-- The repo already has moderation data, so admin tooling can be built quickly and removes operational risk fast.
-- Production-unsafe config should be fixed before broader testing.
-- Notifications and auth recovery directly improve usability of the existing messaging workflow.
-- Transaction and fulfillment work should come before expansion features because they define whether Refamora is a real marketplace or only a discovery tool.
-
-## Features To Defer Until Core Readiness
-
-These should not block Beta:
-
-- advanced AI recommendation features
-- promotions or referral systems
-- social marketplace features
-- deep personalization
-- complex price intelligence
-
-## Success Metrics By Phase
-
-### Beta
-
-- listing publish success rate
-- inquiry send success rate
-- reply success rate
-- crash-free sessions
-- moderation resolution time
-- recovery success rate for auth issues
-
-### Pilot
-
-- inquiry-to-reservation rate
-- reservation-to-completion rate
-- seller response time
-- verified seller share
-- support issue resolution time
-
-### V1
-
-- monthly active users
-- completed transactions
-- dispute rate
-- trust and fulfillment score trends
-- infrastructure uptime
+- the proposal document, live demo, and spoken explanation all tell the same story
+
+## Proposal Exit Criteria
+
+- buyer demo flow works end to end
+- seller demo flow works end to end
+- admin moderation and verification can be shown credibly
+- one stable build is ready for the presentation device
+- demo accounts and seeded records are prepared
+- the presenter has a fixed walkthrough and fallback plan
+
+## Defer Until After Proposal
+
+These are real future needs, but they should not block the proposal presentation:
+
+- payments or payment-adjacent workflow
+- fulfillment coordination and scheduling
+- trust and reputation scores
+- SMS or email fallback notifications
+- pilot operations dashboard
+- multi-image listings
+- third-party crash alerting
+- public-launch observability stack
+- scale and compliance hardening
+
+## Immediate Recommended Order
+
+1. Verify buyer and seller end-to-end demo flows
+2. Verify admin moderation and seller verification in the real demo environment
+3. Prepare demo accounts and seeded records
+4. Produce the presentation build and validate it on the device
+5. Freeze scope and rehearse the proposal walkthrough
 
 ## Final Recommendation
 
-Refamora is no longer only a concept-stage prototype. The app already has meaningful marketplace and AI functionality, but the production gap is now mostly operational.
+For proposal presentation, Refamora should be treated as a polished, credible demo build, not a full production launch candidate.
 
-The highest-value path is:
+The correct priority is:
 
-- secure the release setup
-- finish admin and trust tooling
-- add notifications and account recovery
-- then complete the transaction lifecycle
+- make the main user journeys stable
+- make trust and admin features visible
+- make the build reliable
+- make the demo predictable
 
-That path gives Refamora the best chance of moving from a strong thesis build to a system that can survive real users.
+If those are solid, the proposal will read as focused and defensible even if broader production work remains unfinished.

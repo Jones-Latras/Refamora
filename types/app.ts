@@ -527,3 +527,20 @@ export type AdminAuditLogItem = {
   createdAt: string
   admin: AdminUserSummary | null
 }
+
+export type AdminCrashReportItem = {
+  id: string
+  userId: string | null
+  source: CrashReportSource
+  severity: CrashReportSeverity
+  message: string
+  stack: string | null
+  componentStack: string | null
+  route: string | null
+  appEnv: AppEnvironment
+  appVersion: string | null
+  platform: string
+  metadata: Record<string, unknown>
+  createdAt: string
+  user: AdminUserSummary | null
+}

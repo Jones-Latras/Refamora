@@ -16,7 +16,7 @@ export default function AdminLayout() {
       <Stack.Screen
         name="dashboard"
         options={{
-          title: 'Admin moderation',
+          title: 'Admin hub',
         }}
       />
       <Stack.Screen
@@ -35,6 +35,12 @@ export default function AdminLayout() {
         name="analytics"
         options={{
           title: 'Marketplace analytics',
+        }}
+      />
+      <Stack.Screen
+        name="crashes"
+        options={{
+          title: 'App crash reports',
         }}
       />
     </Stack>

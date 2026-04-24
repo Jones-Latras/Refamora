@@ -1,3 +1,4 @@
+import * as Linking from 'expo-linking'
 import { router } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
 import {
@@ -13,15 +14,11 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { EmptyState } from '../../components/EmptyState'
 import { ErrorState } from '../../components/ErrorState'
+import { VerifiedBadge } from '../../components/VerifiedBadge'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
-import type {
-  AdminListingReportItem,
-  AdminListingReportStatus,
-  AdminModerationQueueItem,
-  AdminReviewQueueStatus,
-} from '../../types/app'
-import { palette, radii, shadow } from '../../utils/theme'
+import { signOut } from '../../services/authService'
+import { getAdminCrashReports } from '../../services/adminCrashReportsService'
 import {
   getAdminListingReports,
   getAdminModerationQueue,
@@ -29,8 +26,24 @@ import {
   updateAdminListingStatus,
   updateAdminModerationQueueStatus,
 } from '../../services/adminModerationService'
+import {
+  getAdminSellerVerificationRequests,
+  updateAdminSellerVerificationStatus,
+} from '../../services/sellerVerificationService'
+import { getVerificationDocumentSignedUrl } from '../../services/storageService'
+import type {
+  AdminCrashReportItem,
+  AdminListingReportItem,
+  AdminListingReportStatus,
+  AdminModerationQueueItem,
+  AdminReviewQueueStatus,
+  AdminSellerVerificationItem,
+  SellerVerificationDocumentType,
+  SellerVerificationRequestStatus,
+} from '../../types/app'
+import { palette, radii, shadow } from '../../utils/theme'
 
-type AdminTab = 'reports' | 'queue'
+type AdminTab = 'reports' | 'queue' | 'verifications'
 
 const REPORT_REASON_LABELS: Record<string, string> = {
   inaccurate_details: 'Inaccurate details',
@@ -38,6 +51,14 @@ const REPORT_REASON_LABELS: Record<string, string> = {
   wrong_photo: 'Wrong photo',
   spam: 'Spam',
   other: 'Other',
+}
+
+const DOCUMENT_LABELS: Record<SellerVerificationDocumentType, string> = {
+  government_id: 'Government ID',
+  farm_id: 'Farm ID',
+  business_permit: 'Business permit',
+  cooperative_certificate: 'Cooperative certificate',
+  other: 'Other proof',
 }
 
 function formatTimestamp(value: string | null) {
@@ -75,22 +96,65 @@ function getQueueStatusTone(status: AdminReviewQueueStatus) {
   }
 }
 
+function getVerificationStatusTone(status: SellerVerificationRequestStatus) {
+  switch (status) {
+    case 'approved':
+      return styles.statusPositive
+    case 'rejected':
+      return styles.statusNegative
+    default:
+      return styles.statusWarning
+  }
+}
+
+function truncateValue(value: string, maxLength = 140) {
+  const trimmed = value.trim()
+
+  if (trimmed.length <= maxLength) {
+    return trimmed
+  }
+
+  return `${trimmed.slice(0, maxLength)}...`
+}
+
+type MetricCardProps = {
+  value: string
+  label: string
+  hint?: string
+}
+
+function MetricCard({ value, label, hint }: MetricCardProps) {
+  return (
+    <View style={styles.metricCard}>
+      <Text style={styles.metricValue}>{value}</Text>
+      <Text style={styles.metricLabel}>{label}</Text>
+      {hint ? <Text style={styles.metricHint}>{hint}</Text> : null}
+    </View>
+  )
+}
+
 export default function AdminDashboardScreen() {
   const { user, role } = useAuth()
   const { showToast } = useToast()
   const [activeTab, setActiveTab] = useState<AdminTab>('reports')
   const [reportFilter, setReportFilter] = useState<AdminListingReportStatus | 'all'>('pending')
   const [queueFilter, setQueueFilter] = useState<AdminReviewQueueStatus | 'all'>('pending')
+  const [verificationFilter, setVerificationFilter] = useState<
+    SellerVerificationRequestStatus | 'all'
+  >('pending')
   const [reports, setReports] = useState<AdminListingReportItem[]>([])
   const [queueItems, setQueueItems] = useState<AdminModerationQueueItem[]>([])
+  const [verificationItems, setVerificationItems] = useState<AdminSellerVerificationItem[]>([])
+  const [crashReports, setCrashReports] = useState<AdminCrashReportItem[]>([])
   const [reportNotes, setReportNotes] = useState<Record<string, string>>({})
   const [queueNotes, setQueueNotes] = useState<Record<string, string>>({})
+  const [verificationNotes, setVerificationNotes] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isActingOnId, setIsActingOnId] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const loadModerationData = async (mode: 'initial' | 'refresh' = 'initial') => {
+  const loadAdminData = async (mode: 'initial' | 'refresh' = 'initial') => {
     if (role !== 'admin') {
       setIsLoading(false)
       return
@@ -102,18 +166,26 @@ export default function AdminDashboardScreen() {
       setIsLoading(true)
     }
 
-    const [reportsResult, queueResult] = await Promise.all([
+    const [reportsResult, queueResult, verificationResult, crashResult] = await Promise.all([
       getAdminListingReports(),
       getAdminModerationQueue(),
+      getAdminSellerVerificationRequests(),
+      getAdminCrashReports(12),
     ])
 
     if (reportsResult.error) {
       setErrorMessage(reportsResult.error.message)
     } else if (queueResult.error) {
       setErrorMessage(queueResult.error.message)
+    } else if (verificationResult.error) {
+      setErrorMessage(verificationResult.error.message)
+    } else if (crashResult.error) {
+      setErrorMessage(crashResult.error.message)
     } else {
       setReports(reportsResult.data ?? [])
       setQueueItems(queueResult.data ?? [])
+      setVerificationItems(verificationResult.data ?? [])
+      setCrashReports(crashResult.data ?? [])
       setErrorMessage(null)
     }
 
@@ -122,7 +194,7 @@ export default function AdminDashboardScreen() {
   }
 
   useEffect(() => {
-    void loadModerationData()
+    void loadAdminData()
   }, [role])
 
   const visibleReports = useMemo(
@@ -133,12 +205,42 @@ export default function AdminDashboardScreen() {
     () => queueItems.filter((item) => queueFilter === 'all' || item.queueStatus === queueFilter),
     [queueFilter, queueItems],
   )
+  const visibleVerificationItems = useMemo(
+    () =>
+      verificationItems.filter(
+        (item) => verificationFilter === 'all' || item.status === verificationFilter,
+      ),
+    [verificationFilter, verificationItems],
+  )
 
   const pendingReportsCount = reports.filter((item) => item.status === 'pending').length
   const pendingQueueCount = queueItems.filter((item) => item.queueStatus === 'pending').length
+  const pendingVerificationCount = verificationItems.filter(
+    (item) => item.status === 'pending',
+  ).length
   const unavailableListingsCount = [...reports, ...queueItems].filter(
     (item) => item.listing?.status === 'unavailable',
   ).length
+  const fatalCrashCount = crashReports.filter((item) => item.severity === 'fatal').length
+  const recentCrashHint = crashReports[0]
+    ? `Last crash ${formatTimestamp(crashReports[0].createdAt)}`
+    : 'No crash reports yet'
+
+  const handleOpenDocument = async (documentPath: string) => {
+    const result = await getVerificationDocumentSignedUrl(documentPath)
+
+    if (result.error || !result.data) {
+      showToast(result.error?.message ?? 'Unable to open the uploaded document.', 'error')
+      return
+    }
+
+    await Linking.openURL(result.data)
+  }
+
+  const handleLogout = async () => {
+    await signOut()
+    router.replace('/(auth)/login')
+  }
 
   const handleReportAction = async (input: {
     item: AdminListingReportItem
@@ -194,7 +296,7 @@ export default function AdminDashboardScreen() {
     }
 
     showToast('Report updated.', 'success')
-    void loadModerationData('refresh')
+    void loadAdminData('refresh')
   }
 
   const handleQueueAction = async (input: {
@@ -251,7 +353,35 @@ export default function AdminDashboardScreen() {
     }
 
     showToast('Queue item updated.', 'success')
-    void loadModerationData('refresh')
+    void loadAdminData('refresh')
+  }
+
+  const handleVerificationAction = async (
+    item: AdminSellerVerificationItem,
+    status: SellerVerificationRequestStatus,
+  ) => {
+    if (!user) {
+      showToast('Sign in again before continuing admin review.', 'error')
+      return
+    }
+
+    setIsActingOnId(item.id)
+    const result = await updateAdminSellerVerificationStatus({
+      requestId: item.id,
+      sellerId: item.sellerId,
+      status,
+      adminNote: verificationNotes[item.id] ?? item.adminNote,
+      reviewerId: user.id,
+    })
+    setIsActingOnId(null)
+
+    if (result.error) {
+      showToast(result.error.message, 'error')
+      return
+    }
+
+    showToast('Verification request updated.', 'success')
+    void loadAdminData('refresh')
   }
 
   if (role !== 'admin') {
@@ -260,7 +390,7 @@ export default function AdminDashboardScreen() {
         <View style={styles.stateWrap}>
           <EmptyState
             title="Admin access required"
-            description="This moderation dashboard is only available to accounts with the admin role."
+            description="This dashboard is only available to accounts with the admin role."
           />
         </View>
       </SafeAreaView>
@@ -272,10 +402,10 @@ export default function AdminDashboardScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.stateWrap}>
           <ErrorState
-            title="Moderation dashboard unavailable"
+            title="Admin dashboard unavailable"
             description={errorMessage}
             onAction={() => {
-              void loadModerationData()
+              void loadAdminData()
             }}
           />
         </View>
@@ -292,90 +422,138 @@ export default function AdminDashboardScreen() {
             refreshing={isRefreshing}
             tintColor={palette.sageDark}
             onRefresh={() => {
-              void loadModerationData('refresh')
+              void loadAdminData('refresh')
             }}
           />
         }
       >
         <View style={styles.hero}>
-          <Text style={styles.title}>Moderation operations</Text>
-          <Text style={styles.subtitle}>
-            Review user-submitted reports and AI-flagged listings without leaving the app.
-          </Text>
+          <View style={styles.heroHeader}>
+            <View style={styles.heroTextBlock}>
+              <Text style={styles.title}>Admin operations hub</Text>
+              <Text style={styles.subtitle}>
+                Review moderation, seller verification, and app health from one admin surface.
+              </Text>
+            </View>
+            <Pressable onPress={handleLogout} style={styles.logoutButton}>
+              <Text style={styles.logoutButtonText}>Log out</Text>
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.metricsRow}>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>{pendingReportsCount}</Text>
-            <Text style={styles.metricLabel}>Pending reports</Text>
-          </View>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>{pendingQueueCount}</Text>
-            <Text style={styles.metricLabel}>Pending AI reviews</Text>
-          </View>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>{unavailableListingsCount}</Text>
-            <Text style={styles.metricLabel}>Unavailable listings</Text>
-          </View>
+          <MetricCard value={pendingReportsCount.toString()} label="Pending reports" />
+          <MetricCard value={pendingQueueCount.toString()} label="Pending AI reviews" />
+          <MetricCard value={pendingVerificationCount.toString()} label="Pending verifications" />
         </View>
 
-        <Pressable
-          onPress={() => router.push('/(admin)/verifications')}
-          style={styles.verificationNavCard}
-        >
-          <Text style={styles.verificationNavTitle}>Seller verification reviews</Text>
-          <Text style={styles.verificationNavText}>
-            Open the verification queue to approve or reject seller document submissions.
-          </Text>
-        </Pressable>
+        <View style={styles.metricsRow}>
+          <MetricCard value={unavailableListingsCount.toString()} label="Unavailable listings" />
+          <MetricCard value={fatalCrashCount.toString()} label="Recent fatal crashes" />
+          <MetricCard
+            value={crashReports.length.toString()}
+            label="Recent crash reports"
+            hint={recentCrashHint}
+          />
+        </View>
 
-        <Pressable
-          onPress={() => router.push('/(admin)/audit-log')}
-          style={styles.verificationNavCard}
-        >
-          <Text style={styles.verificationNavTitle}>Admin audit log</Text>
-          <Text style={styles.verificationNavText}>
-            Review the recorded history of admin moderation, listing, and verification actions.
-          </Text>
-        </Pressable>
+        <View style={styles.quickGrid}>
+          <Pressable
+            onPress={() => router.push('/(admin)/verifications')}
+            style={styles.quickCard}
+          >
+            <Text style={styles.quickCardTitle}>Seller verification reviews</Text>
+            <Text style={styles.quickCardText}>
+              Open the full verification queue for detailed seller document review.
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/(admin)/audit-log')}
+            style={styles.quickCard}
+          >
+            <Text style={styles.quickCardTitle}>Admin audit log</Text>
+            <Text style={styles.quickCardText}>
+              Review the recorded history of sensitive admin actions.
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/(admin)/analytics' as never)}
+            style={styles.quickCard}
+          >
+            <Text style={styles.quickCardTitle}>Marketplace analytics</Text>
+            <Text style={styles.quickCardText}>
+              Review user, listing, view, and inquiry trends from the app.
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/(admin)/crashes')}
+            style={styles.quickCard}
+          >
+            <Text style={styles.quickCardTitle}>App crash reports</Text>
+            <Text style={styles.quickCardText}>
+              Review client-side crash entries captured from production-style app use.
+            </Text>
+          </Pressable>
+        </View>
 
-        <Pressable
-          onPress={() => router.push('/(admin)/analytics' as never)}
-          style={styles.verificationNavCard}
-        >
-          <Text style={styles.verificationNavTitle}>Marketplace analytics</Text>
-          <Text style={styles.verificationNavText}>
-            Review user, listing, view, and inquiry trends beyond the current AI-only analytics.
-          </Text>
-        </Pressable>
+        {crashReports.length > 0 ? (
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionHeaderText}>
+                <Text style={styles.sectionTitle}>Recent app crashes</Text>
+                <Text style={styles.sectionSubtitle}>
+                  Latest client failures visible from the admin hub.
+                </Text>
+              </View>
+              <Pressable onPress={() => router.push('/(admin)/crashes')} style={styles.inlineLink}>
+                <Text style={styles.inlineLinkText}>Open full crash log</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.stack}>
+              {crashReports.slice(0, 3).map((item) => (
+                <View key={item.id} style={styles.inlineCard}>
+                  <View style={styles.inlineCardHeader}>
+                    <Text style={styles.inlineCardTitle}>{truncateValue(item.message, 80)}</Text>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        item.severity === 'fatal' ? styles.statusNegative : styles.statusWarning,
+                      ]}
+                    >
+                      <Text style={styles.statusBadgeText}>{item.severity}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.metaText}>
+                    {item.route ?? 'Unknown route'} | {item.platform} | {formatTimestamp(item.createdAt)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
 
         <View style={styles.segmentRow}>
-          <Pressable
-            onPress={() => setActiveTab('reports')}
-            style={[styles.segmentButton, activeTab === 'reports' ? styles.segmentActive : null]}
-          >
-            <Text
-              style={[
-                styles.segmentText,
-                activeTab === 'reports' ? styles.segmentTextActive : null,
-              ]}
+          {([
+            ['reports', 'User reports'],
+            ['queue', 'AI review queue'],
+            ['verifications', 'Verifications'],
+          ] as const).map(([value, label]) => (
+            <Pressable
+              key={value}
+              onPress={() => setActiveTab(value)}
+              style={[styles.segmentButton, activeTab === value ? styles.segmentActive : null]}
             >
-              User reports
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setActiveTab('queue')}
-            style={[styles.segmentButton, activeTab === 'queue' ? styles.segmentActive : null]}
-          >
-            <Text
-              style={[
-                styles.segmentText,
-                activeTab === 'queue' ? styles.segmentTextActive : null,
-              ]}
-            >
-              AI review queue
-            </Text>
-          </Pressable>
+              <Text
+                style={[
+                  styles.segmentText,
+                  activeTab === value ? styles.segmentTextActive : null,
+                ]}
+              >
+                {label}
+              </Text>
+            </Pressable>
+          ))}
         </View>
 
         {activeTab === 'reports' ? (
@@ -504,7 +682,7 @@ export default function AdminDashboardScreen() {
               ))
             )}
           </>
-        ) : (
+        ) : activeTab === 'queue' ? (
           <>
             <View style={styles.filterRow}>
               {(['pending', 'resolved', 'dismissed', 'all'] as const).map((filterValue) => (
@@ -637,6 +815,107 @@ export default function AdminDashboardScreen() {
               ))
             )}
           </>
+        ) : (
+          <>
+            <View style={styles.filterRow}>
+              {(['pending', 'approved', 'rejected', 'all'] as const).map((filterValue) => (
+                <Pressable
+                  key={filterValue}
+                  onPress={() => setVerificationFilter(filterValue)}
+                  style={[
+                    styles.filterChip,
+                    verificationFilter === filterValue ? styles.filterChipActive : null,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      verificationFilter === filterValue ? styles.filterChipTextActive : null,
+                    ]}
+                  >
+                    {filterValue === 'all'
+                      ? 'All'
+                      : filterValue.charAt(0).toUpperCase() + filterValue.slice(1)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {isLoading ? (
+              <View style={styles.card}>
+                <Text style={styles.loadingText}>Loading verification requests...</Text>
+              </View>
+            ) : visibleVerificationItems.length === 0 ? (
+              <EmptyState
+                title="No matching verification requests"
+                description="There are no seller verification requests in this filter right now."
+              />
+            ) : (
+              visibleVerificationItems.map((item) => (
+                <View key={item.id} style={styles.card}>
+                  <View style={styles.cardHeader}>
+                    <View style={styles.headerTextBlock}>
+                      <Text style={styles.cardTitle}>{item.seller?.fullName ?? 'Unknown seller'}</Text>
+                      <Text style={styles.metaText}>
+                        {item.seller?.city ?? 'Location not provided'}
+                        {item.seller?.email ? ` | ${item.seller.email}` : ''}
+                      </Text>
+                    </View>
+                    <View style={[styles.statusBadge, getVerificationStatusTone(item.status)]}>
+                      <Text style={styles.statusBadgeText}>{item.status}</Text>
+                    </View>
+                  </View>
+
+                  {item.status === 'approved' ? <VerifiedBadge /> : null}
+
+                  <Text style={styles.metaText}>
+                    Document: {DOCUMENT_LABELS[item.documentType] ?? 'Verification proof'}
+                  </Text>
+                  <Text style={styles.metaText}>Reference: {item.documentNumber}</Text>
+                  <Text style={styles.metaText}>Submitted: {formatTimestamp(item.createdAt)}</Text>
+                  {item.notes ? <Text style={styles.detailText}>{item.notes}</Text> : null}
+                  {item.adminNote ? (
+                    <Text style={styles.metaText}>Admin note: {item.adminNote}</Text>
+                  ) : null}
+
+                  <Pressable
+                    onPress={() => void handleOpenDocument(item.documentPath)}
+                    style={styles.inlineAction}
+                  >
+                    <Text style={styles.inlineActionText}>Open document</Text>
+                  </Pressable>
+
+                  <TextInput
+                    value={verificationNotes[item.id] ?? item.adminNote ?? ''}
+                    onChangeText={(value) =>
+                      setVerificationNotes((current) => ({ ...current, [item.id]: value }))
+                    }
+                    placeholder="Admin note"
+                    placeholderTextColor="#9e9183"
+                    multiline
+                    style={styles.noteInput}
+                  />
+
+                  <View style={styles.actionRow}>
+                    <Pressable
+                      disabled={isActingOnId === item.id}
+                      onPress={() => void handleVerificationAction(item, 'approved')}
+                      style={[styles.actionButton, styles.primaryAction]}
+                    >
+                      <Text style={styles.primaryActionText}>Approve</Text>
+                    </Pressable>
+                    <Pressable
+                      disabled={isActingOnId === item.id}
+                      onPress={() => void handleVerificationAction(item, 'rejected')}
+                      style={[styles.actionButton, styles.warningAction]}
+                    >
+                      <Text style={styles.warningActionText}>Reject</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ))
+            )}
+          </>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -660,6 +939,16 @@ const styles = StyleSheet.create({
   hero: {
     gap: 6,
   },
+  heroHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  heroTextBlock: {
+    flex: 1,
+    gap: 6,
+  },
   title: {
     color: palette.soil,
     fontSize: 30,
@@ -670,6 +959,17 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontSize: 14,
     lineHeight: 22,
+  },
+  logoutButton: {
+    borderRadius: 999,
+    backgroundColor: '#f9e4df',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  logoutButtonText: {
+    color: palette.error,
+    fontSize: 12,
+    fontWeight: '800',
   },
   metricsRow: {
     flexDirection: 'row',
@@ -695,7 +995,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
   },
-  verificationNavCard: {
+  metricHint: {
+    color: palette.sageDark,
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '700',
+  },
+  quickGrid: {
+    gap: 10,
+  },
+  quickCard: {
     backgroundColor: '#eef5ef',
     borderRadius: radii.md,
     borderWidth: 1,
@@ -703,16 +1012,80 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 4,
   },
-  verificationNavTitle: {
+  quickCardTitle: {
     color: palette.soil,
     fontSize: 16,
     fontWeight: '800',
   },
-  verificationNavText: {
+  quickCardText: {
     color: palette.sageDark,
     fontSize: 13,
     lineHeight: 19,
     fontWeight: '700',
+  },
+  sectionCard: {
+    backgroundColor: palette.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: palette.border,
+    padding: 16,
+    gap: 12,
+    ...shadow,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  sectionHeaderText: {
+    flex: 1,
+    gap: 4,
+  },
+  sectionTitle: {
+    color: palette.soil,
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  sectionSubtitle: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  inlineLink: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    backgroundColor: palette.parchment,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  inlineLinkText: {
+    color: palette.clay,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  stack: {
+    gap: 10,
+  },
+  inlineCard: {
+    borderRadius: radii.sm,
+    backgroundColor: '#fbfdfb',
+    borderWidth: 1,
+    borderColor: palette.border,
+    padding: 12,
+    gap: 6,
+  },
+  inlineCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    alignItems: 'flex-start',
+  },
+  inlineCardTitle: {
+    flex: 1,
+    color: palette.soil,
+    fontSize: 14,
+    fontWeight: '800',
   },
   segmentRow: {
     flexDirection: 'row',
@@ -735,6 +1108,7 @@ const styles = StyleSheet.create({
     color: palette.soil,
     fontSize: 13,
     fontWeight: '700',
+    textAlign: 'center',
   },
   segmentTextActive: {
     color: palette.cream,
@@ -779,6 +1153,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 12,
   },
+  headerTextBlock: {
+    flex: 1,
+    gap: 4,
+  },
   cardTitle: {
     flex: 1,
     color: palette.soil,
@@ -795,6 +1173,9 @@ const styles = StyleSheet.create({
   },
   statusPositive: {
     backgroundColor: '#e8f2ea',
+  },
+  statusNegative: {
+    backgroundColor: '#f9e4df',
   },
   statusMuted: {
     backgroundColor: '#efefef',
@@ -859,6 +1240,18 @@ const styles = StyleSheet.create({
     color: palette.error,
     fontWeight: '800',
     fontSize: 12,
+  },
+  inlineAction: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    backgroundColor: palette.parchment,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  inlineActionText: {
+    color: palette.clay,
+    fontSize: 12,
+    fontWeight: '800',
   },
   loadingText: {
     color: palette.muted,
