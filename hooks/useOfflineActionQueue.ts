@@ -43,11 +43,11 @@ type OfflineActionQueueState = {
   enqueueContactRequest: (input: {
     userId: string
     payload: QueuedContactRequestPayload
-  }) => string
+  }) => { id: string; wasExisting: boolean }
   enqueueContactRequestMessage: (input: {
     userId: string
     payload: QueuedContactRequestMessagePayload
-  }) => string
+  }) => { id: string; wasExisting: boolean }
   markAttempted: (id: string) => void
   removeItem: (id: string) => void
 }
@@ -72,35 +72,67 @@ export const useOfflineActionQueueStore = create<OfflineActionQueueState>()(
       items: [],
       enqueueContactRequest: ({ userId, payload }) => {
         const id = createQueueId('contact-request')
+        let nextResult = { id, wasExisting: false }
 
-        set((state) => ({
-          items: [
-            ...state.items,
-            {
-              ...createBaseItem(id, userId),
-              kind: 'contact_request',
-              payload,
-            },
-          ],
-        }))
+        set((state) => {
+          const existing = state.items.find(
+            (item) =>
+              item.kind === 'contact_request' &&
+              item.userId === userId &&
+              item.payload.listingId === payload.listingId,
+          )
 
-        return id
+          if (existing) {
+            nextResult = { id: existing.id, wasExisting: true }
+            return state
+          }
+
+          return {
+            items: [
+              ...state.items,
+              {
+                ...createBaseItem(id, userId),
+                kind: 'contact_request',
+                payload,
+              },
+            ],
+          }
+        })
+
+        return nextResult
       },
       enqueueContactRequestMessage: ({ userId, payload }) => {
         const id = createQueueId('contact-message')
+        let nextResult = { id, wasExisting: false }
 
-        set((state) => ({
-          items: [
-            ...state.items,
-            {
-              ...createBaseItem(id, userId),
-              kind: 'contact_request_message',
-              payload,
-            },
-          ],
-        }))
+        set((state) => {
+          const existing = state.items.find(
+            (item) =>
+              item.kind === 'contact_request_message' &&
+              item.userId === userId &&
+              item.payload.requestId === payload.requestId &&
+              item.payload.senderId === payload.senderId &&
+              item.payload.message.trim() === payload.message.trim(),
+          )
 
-        return id
+          if (existing) {
+            nextResult = { id: existing.id, wasExisting: true }
+            return state
+          }
+
+          return {
+            items: [
+              ...state.items,
+              {
+                ...createBaseItem(id, userId),
+                kind: 'contact_request_message',
+                payload,
+              },
+            ],
+          }
+        })
+
+        return nextResult
       },
       markAttempted: (id) =>
         set((state) => ({

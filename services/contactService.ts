@@ -13,6 +13,10 @@ type ContactRequestMessageRow = Tables<'contact_request_messages'>
 type ListingRow = Tables<'listings'>
 type UserRow = Tables<'users'>
 type CounterpartKind = 'buyer' | 'seller'
+type ContactRequestSubmissionResult = {
+  request: ContactRequest
+  wasExisting: boolean
+}
 
 const GENERIC_PROFILE_NAMES = new Set([
   'buyer',
@@ -169,7 +173,7 @@ async function enrichRequests(
 
 export async function sendContactRequest(
   payload: TablesInsert<'contact_requests'>,
-): Promise<ServiceResult<ContactRequest>> {
+): Promise<ServiceResult<ContactRequestSubmissionResult>> {
   if (!hasSupabaseEnv) {
     return { data: null, error: new Error('Supabase is not configured yet.') }
   }
@@ -179,13 +183,44 @@ export async function sendContactRequest(
     message: payload.message?.trim() || null,
   }
 
+  const existingRequestResult = await getSupabaseClient()
+    .from('contact_requests')
+    .select('*')
+    .eq('buyer_id', normalizedPayload.buyer_id)
+    .eq('listing_id', normalizedPayload.listing_id)
+    .maybeSingle()
+
+  if (existingRequestResult.error) {
+    return { data: null, error: existingRequestResult.error }
+  }
+
+  if (existingRequestResult.data) {
+    return {
+      data: {
+        request: existingRequestResult.data,
+        wasExisting: true,
+      },
+      error: null,
+    }
+  }
+
   const { data, error } = await getSupabaseClient()
     .from('contact_requests')
     .insert(normalizedPayload)
     .select()
     .single()
 
-  return { data, error }
+  if (error) {
+    return { data: null, error }
+  }
+
+  return {
+    data: {
+      request: data,
+      wasExisting: false,
+    },
+    error: null,
+  }
 }
 
 export async function sendContactRequestMessage(

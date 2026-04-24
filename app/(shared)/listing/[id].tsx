@@ -475,7 +475,7 @@ export default function ListingDetailScreen() {
     }
 
     if (isOffline) {
-      enqueueContactRequest({
+      const queuedResult = enqueueContactRequest({
         userId: user.id,
         payload: {
           listingId: effectiveListing.id,
@@ -484,6 +484,13 @@ export default function ListingDetailScreen() {
           message: contactMessage.trim() || null,
         },
       })
+
+      if (queuedResult.wasExisting) {
+        showToast('This inquiry is already queued for sync.', 'info')
+        setIsContactModalVisible(false)
+        return
+      }
+
       setContactMessage('')
       setIsContactModalVisible(false)
       showToast('Inquiry queued. It will send automatically when you reconnect.', 'info')
@@ -511,9 +518,19 @@ export default function ListingDetailScreen() {
       return
     }
 
-    setContactRequestId(result.data.id)
+    setContactRequestId(result.data.request.id)
     setContactMessage('')
     setIsContactModalVisible(false)
+
+    if (result.data.wasExisting) {
+      showToast({
+        title: 'Conversation already exists',
+        message:
+          'You already contacted this seller for this listing. Opening the existing conversation instead.',
+        variant: 'info',
+      })
+      return
+    }
 
     if (effectiveListing.seller?.phone) {
       showToast({

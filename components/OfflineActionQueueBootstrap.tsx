@@ -122,7 +122,12 @@ export function OfflineActionQueueBootstrap() {
           removeItem(nextItem.id)
           await refreshBuyerState()
           void refreshUnreadMessages()
-          showToast('Queued inquiry sent.', 'success')
+          showToast(
+            result.data?.wasExisting
+              ? 'Queued inquiry matched an existing conversation.'
+              : 'Queued inquiry sent.',
+            'success',
+          )
           return
         }
 

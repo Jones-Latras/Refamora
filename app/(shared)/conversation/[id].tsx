@@ -244,7 +244,7 @@ export default function ContactConversationScreen() {
 
     if (isOffline) {
       const createdAt = new Date().toISOString()
-      const queuedMessageId = enqueueContactRequestMessage({
+      const queuedMessageResult = enqueueContactRequestMessage({
         userId: user.id,
         payload: {
           requestId: effectiveConversation.request.id,
@@ -253,6 +253,12 @@ export default function ContactConversationScreen() {
           actorRole: role === 'farmer' ? 'farmer' : 'buyer',
         },
       })
+
+      if (queuedMessageResult.wasExisting) {
+        showToast('This message is already queued for sync.', 'info')
+        return
+      }
+
       const isSellerMessage = user.id === effectiveConversation.request.sellerId
       const nextConversation: ContactConversation = {
         request: {
@@ -269,7 +275,7 @@ export default function ContactConversationScreen() {
         messages: [
           ...effectiveConversation.messages,
           {
-            id: queuedMessageId,
+            id: queuedMessageResult.id,
             requestId: effectiveConversation.request.id,
             senderId: user.id,
             message: trimmedMessage,
