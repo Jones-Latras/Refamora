@@ -22,6 +22,8 @@ import { ErrorState } from '../../../components/ErrorState'
 import { BrandedLoadingScreen } from '../../../components/BrandedLoadingScreen'
 import { useToast } from '../../../components/Toast'
 import { useAuth } from '../../../hooks/useAuth'
+import { useConnectivity } from '../../../hooks/useConnectivity'
+import { useOfflineDataStore } from '../../../hooks/useOfflineData'
 import { useUnreadMessages } from '../../../hooks/useUnreadMessages'
 import { getReplyDraft } from '../../../services/aiService'
 import {
@@ -32,7 +34,16 @@ import {
 } from '../../../services/contactService'
 import type { ContactConversation } from '../../../types/app'
 import { formatDateTime } from '../../../utils/formatters'
+import {
+  formatOfflineSnapshotUpdatedAt,
+  shouldUseOfflineSnapshotValue,
+} from '../../../utils/offlineData'
 import { palette, radii, shadow } from '../../../utils/theme'
+
+const EMPTY_CONVERSATION_SNAPSHOT = {
+  items: null as ContactConversation | null,
+  updatedAt: null as string | null,
+}
 
 function getHeaderFallbackLabel(conversation: ContactConversation) {
   const source =
@@ -48,14 +59,32 @@ export default function ContactConversationScreen() {
   const headerHeight = useHeaderHeight()
   const insets = useSafeAreaInsets()
   const { user, role } = useAuth()
+  const { isOffline } = useConnectivity()
   const { refreshUnreadMessages } = useUnreadMessages()
   const { showToast } = useToast()
+  const cachedConversation = useOfflineDataStore((state) =>
+    id ? state.conversationsById[id] ?? EMPTY_CONVERSATION_SNAPSHOT : EMPTY_CONVERSATION_SNAPSHOT,
+  )
+  const setCachedConversation = useOfflineDataStore((state) => state.setConversation)
   const [conversation, setConversation] = useState<ContactConversation | null>(null)
   const [composerValue, setComposerValue] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
   const [isDraftLoading, setIsDraftLoading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+
+  const isUsingCachedConversation = shouldUseOfflineSnapshotValue({
+    isOffline,
+    hasLiveValue: Boolean(conversation),
+    hasSnapshotValue: Boolean(cachedConversation.items),
+  })
+  const effectiveConversation = isUsingCachedConversation
+    ? cachedConversation.items
+    : conversation
+  const cachedConversationUpdatedAt = useMemo(
+    () => formatOfflineSnapshotUpdatedAt(cachedConversation.updatedAt),
+    [cachedConversation.updatedAt],
+  )
 
   const loadConversation = useCallback(async () => {
     if (!user || !id) {
@@ -75,65 +104,63 @@ export default function ContactConversationScreen() {
       return
     }
 
-    setConversation(result.data)
+    let nextConversation = result.data
+    setConversation(nextConversation)
+    setCachedConversation(id, nextConversation)
     setIsLoading(false)
 
-    if (role === 'farmer' && result.data.request.status === 'pending') {
-      const seenResult = await markInquirySeen(result.data.request.id, user.id)
+    if (role === 'farmer' && nextConversation.request.status === 'pending') {
+      const seenResult = await markInquirySeen(nextConversation.request.id, user.id)
 
       if (!seenResult.error) {
-        setConversation((current) =>
-          current
-            ? {
-                ...current,
-                request: {
-                  ...current.request,
-                  status: 'seen',
-                },
-              }
-            : current,
-        )
+        nextConversation = {
+          ...nextConversation,
+          request: {
+            ...nextConversation.request,
+            status: 'seen',
+          },
+        }
+        setConversation(nextConversation)
+        setCachedConversation(id, nextConversation)
         void refreshUnreadMessages()
       }
     }
 
     if (
       role === 'buyer' &&
-      result.data.request.lastMessageSenderId === result.data.request.sellerId &&
-      (!result.data.request.buyerLastReadAt ||
-        new Date(result.data.request.buyerLastReadAt).getTime() <
-          new Date(result.data.request.updatedAt).getTime())
+      nextConversation.request.lastMessageSenderId === nextConversation.request.sellerId &&
+      (!nextConversation.request.buyerLastReadAt ||
+        new Date(nextConversation.request.buyerLastReadAt).getTime() <
+          new Date(nextConversation.request.updatedAt).getTime())
     ) {
-      const readResult = await markBuyerConversationRead(result.data.request.id)
+      const readResult = await markBuyerConversationRead(nextConversation.request.id)
 
       if (!readResult.error) {
-        setConversation((current) =>
-          current
-            ? {
-                ...current,
-                request: {
-                  ...current.request,
-                  buyerLastReadAt:
-                    readResult.data?.buyer_last_read_at ??
-                    new Date().toISOString(),
-                },
-              }
-            : current,
-        )
+        nextConversation = {
+          ...nextConversation,
+          request: {
+            ...nextConversation.request,
+            buyerLastReadAt:
+              readResult.data?.buyer_last_read_at ??
+              new Date().toISOString(),
+          },
+        }
+        setConversation(nextConversation)
+        setCachedConversation(id, nextConversation)
         void refreshUnreadMessages()
       }
     }
-  }, [id, refreshUnreadMessages, role, user])
+  }, [id, refreshUnreadMessages, role, setCachedConversation, user])
 
   useFocusEffect(
     useCallback(() => {
       void loadConversation()
     }, [loadConversation]),
   )
-  const messageCount = conversation?.messages.length ?? 0
+  const messageCount = effectiveConversation?.messages.length ?? 0
 
   useEffect(() => {
-    if (!conversation) {
+    if (!effectiveConversation) {
       return
     }
 
@@ -142,7 +169,7 @@ export default function ContactConversationScreen() {
     }, 60)
 
     return () => clearTimeout(timeoutId)
-  }, [conversation, messageCount])
+  }, [effectiveConversation, messageCount])
 
   const counterpartRoleLabel = useMemo(
     () => (role === 'farmer' ? 'Buyer' : 'Seller'),
@@ -153,7 +180,12 @@ export default function ContactConversationScreen() {
   const composerPaddingBottom = Math.max(insets.bottom, 14)
 
   const handleSend = async () => {
-    if (!user || !conversation || isSending) {
+    if (!user || !effectiveConversation || isSending) {
+      return
+    }
+
+    if (isOffline) {
+      showToast('Reconnect before sending a new message.', 'info')
       return
     }
 
@@ -166,7 +198,7 @@ export default function ContactConversationScreen() {
 
     setIsSending(true)
     const result = await sendContactRequestMessage({
-      request_id: conversation.request.id,
+      request_id: effectiveConversation.request.id,
       sender_id: user.id,
       message: trimmedMessage,
     })
@@ -180,62 +212,62 @@ export default function ContactConversationScreen() {
     const sentMessage = result.data
 
     setComposerValue('')
-    setConversation((current) => {
-      if (!current) {
-        return current
-      }
-
-      const isSellerMessage = user.id === current.request.sellerId
-
-      return {
-        request: {
-          ...current.request,
+    const isSellerMessage = user.id === effectiveConversation.request.sellerId
+    const nextConversation: ContactConversation = {
+      request: {
+        ...effectiveConversation.request,
+        message: sentMessage.message,
+        messageCount: effectiveConversation.request.messageCount + 1,
+        lastMessageSenderId: sentMessage.sender_id,
+        buyerLastReadAt: isSellerMessage
+          ? effectiveConversation.request.buyerLastReadAt
+          : sentMessage.created_at,
+        status: isSellerMessage ? 'responded' : 'pending',
+        updatedAt: sentMessage.created_at,
+      },
+      messages: [
+        ...effectiveConversation.messages,
+        {
+          id: sentMessage.id,
+          requestId: sentMessage.request_id,
+          senderId: sentMessage.sender_id,
           message: sentMessage.message,
-          messageCount: current.request.messageCount + 1,
-          lastMessageSenderId: sentMessage.sender_id,
-          buyerLastReadAt: isSellerMessage
-            ? current.request.buyerLastReadAt
-            : sentMessage.created_at,
-          status: isSellerMessage ? 'responded' : 'pending',
-          updatedAt: sentMessage.created_at,
+          createdAt: sentMessage.created_at,
         },
-        messages: [
-          ...current.messages,
-          {
-            id: sentMessage.id,
-            requestId: sentMessage.request_id,
-            senderId: sentMessage.sender_id,
-            message: sentMessage.message,
-            createdAt: sentMessage.created_at,
-          },
-        ],
-      }
-    })
+      ],
+    }
+    setConversation(nextConversation)
+    setCachedConversation(effectiveConversation.request.id, nextConversation)
     void refreshUnreadMessages()
     showToast(role === 'farmer' ? 'Reply sent.' : 'Message sent.', 'success')
   }
 
   const handleGenerateDraft = async () => {
-    if (!conversation || isDraftLoading) {
+    if (!effectiveConversation || isDraftLoading) {
       return
     }
 
-    const latestBuyerMessage = [...conversation.messages]
+    if (isOffline) {
+      showToast('Reconnect before generating an AI reply draft.', 'info')
+      return
+    }
+
+    const latestBuyerMessage = [...effectiveConversation.messages]
       .reverse()
-      .find((message) => message.senderId === conversation.request.buyerId)
+      .find((message) => message.senderId === effectiveConversation.request.buyerId)
 
     setIsDraftLoading(true)
 
     try {
       const result = await getReplyDraft({
         inquiry: {
-          id: conversation.request.id,
-          listingTitle: conversation.request.listingTitle,
-          counterpartName: conversation.request.counterpartName,
-          counterpartCity: conversation.request.counterpartCity,
-          message: latestBuyerMessage?.message ?? conversation.request.message,
-          status: conversation.request.status,
-          createdAt: latestBuyerMessage?.createdAt ?? conversation.request.updatedAt,
+          id: effectiveConversation.request.id,
+          listingTitle: effectiveConversation.request.listingTitle,
+          counterpartName: effectiveConversation.request.counterpartName,
+          counterpartCity: effectiveConversation.request.counterpartCity,
+          message: latestBuyerMessage?.message ?? effectiveConversation.request.message,
+          status: effectiveConversation.request.status,
+          createdAt: latestBuyerMessage?.createdAt ?? effectiveConversation.request.updatedAt,
         },
       })
 
@@ -251,7 +283,7 @@ export default function ContactConversationScreen() {
     }
   }
 
-  if (isLoading) {
+  if (isLoading && !isUsingCachedConversation) {
     return (
       <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={styles.safeArea}>
         <BrandedLoadingScreen message="Loading conversation..." />
@@ -259,7 +291,7 @@ export default function ContactConversationScreen() {
     )
   }
 
-  if (loadError && !conversation) {
+  if (loadError && !effectiveConversation) {
     return (
       <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={styles.safeArea}>
         <View style={styles.stateWrapper}>
@@ -275,7 +307,7 @@ export default function ContactConversationScreen() {
     )
   }
 
-  if (!conversation) {
+  if (!effectiveConversation) {
     return (
       <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={styles.safeArea}>
         <View style={styles.stateWrapper}>
@@ -307,40 +339,40 @@ export default function ContactConversationScreen() {
         <View style={styles.screen}>
           <View style={styles.headerCard}>
             <View style={styles.headerMain}>
-              {conversation.request.listingImageUrl ? (
+              {effectiveConversation.request.listingImageUrl ? (
                 <Image
-                  source={{ uri: conversation.request.listingImageUrl }}
+                  source={{ uri: effectiveConversation.request.listingImageUrl }}
                   style={styles.headerThumb}
                 />
-              ) : conversation.request.counterpartAvatarUrl ? (
+              ) : effectiveConversation.request.counterpartAvatarUrl ? (
                 <Image
-                  source={{ uri: conversation.request.counterpartAvatarUrl }}
+                  source={{ uri: effectiveConversation.request.counterpartAvatarUrl }}
                   style={styles.headerThumb}
                 />
               ) : (
                 <View style={styles.headerFallbackThumb}>
                   <Text style={styles.headerFallbackText}>
-                    {getHeaderFallbackLabel(conversation)}
+                    {getHeaderFallbackLabel(effectiveConversation)}
                   </Text>
                 </View>
               )}
 
               <View style={styles.headerText}>
-                <Text style={styles.headerTitle}>{conversation.request.listingTitle}</Text>
+                <Text style={styles.headerTitle}>{effectiveConversation.request.listingTitle}</Text>
                 <Text style={styles.headerSubtitle}>
-                  {conversation.request.counterpartName}
+                  {effectiveConversation.request.counterpartName}
                 </Text>
                 <Text style={styles.headerMeta}>
                   {counterpartRoleLabel}
-                  {conversation.request.counterpartCity
-                    ? ` | ${conversation.request.counterpartCity}`
+                  {effectiveConversation.request.counterpartCity
+                    ? ` | ${effectiveConversation.request.counterpartCity}`
                     : ''}
-                  {` | Last activity ${formatDateTime(conversation.request.updatedAt)}`}
+                  {` | Last activity ${formatDateTime(effectiveConversation.request.updatedAt)}`}
                 </Text>
               </View>
             </View>
             <Pressable
-              onPress={() => router.push(`/(shared)/listing/${conversation.request.listingId}`)}
+              onPress={() => router.push(`/(shared)/listing/${effectiveConversation.request.listingId}`)}
               style={[styles.listingLink, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
             >
               <Feather name="external-link" size={12} color={palette.sageDark} />
@@ -348,12 +380,23 @@ export default function ContactConversationScreen() {
             </Pressable>
           </View>
 
-          {conversation.request.counterpartPhone ? (
+          {isUsingCachedConversation ? (
+            <View style={styles.cachedNotice}>
+              <Text style={styles.cachedNoticeTitle}>Showing cached conversation</Text>
+              <Text style={styles.cachedNoticeText}>
+                {cachedConversationUpdatedAt
+                  ? `Last updated ${cachedConversationUpdatedAt}. Reconnect to refresh replies and send new messages.`
+                  : 'Reconnect to refresh replies and send new messages.'}
+              </Text>
+            </View>
+          ) : null}
+
+          {effectiveConversation.request.counterpartPhone ? (
             <View style={[styles.phoneCard, { flexDirection: 'row', alignItems: 'center', gap: 10 }]}>
               <Feather name="phone" size={16} color={palette.sageDark} />
               <View style={{ gap: 2 }}>
                 <Text style={styles.phoneLabel}>Contact number</Text>
-                <Text style={styles.phoneValue}>{conversation.request.counterpartPhone}</Text>
+                <Text style={styles.phoneValue}>{effectiveConversation.request.counterpartPhone}</Text>
               </View>
             </View>
           ) : null}
@@ -366,8 +409,8 @@ export default function ContactConversationScreen() {
             keyboardShouldPersistTaps="handled"
             style={styles.messageScroll}
           >
-            {conversation.messages.length > 0 ? (
-              conversation.messages.map((message) => {
+            {effectiveConversation.messages.length > 0 ? (
+              effectiveConversation.messages.map((message) => {
                 const isOwnMessage = message.senderId === user?.id
 
                 return (
@@ -415,22 +458,27 @@ export default function ContactConversationScreen() {
               <View style={styles.composerInputShell}>
                 {canUseAiDraft ? (
                   <Pressable
-                    disabled={isDraftLoading}
+                    disabled={isDraftLoading || isOffline}
                     onPress={() => void handleGenerateDraft()}
-                    style={[styles.draftButton, isDraftLoading ? styles.disabledButton : null]}
+                    style={[
+                      styles.draftButton,
+                      isDraftLoading || isOffline ? styles.disabledButton : null,
+                    ]}
                   >
                     <Feather name="zap" size={12} color={palette.sageDark} />
                     <Text style={styles.draftButtonText}>
-                      {isDraftLoading ? 'Drafting...' : 'AI draft'}
+                      {isOffline ? 'AI draft offline' : isDraftLoading ? 'Drafting...' : 'AI draft'}
                     </Text>
                   </Pressable>
                 ) : null}
                 <TextInput
                   multiline
                   numberOfLines={3}
-                  editable={!isSending}
+                  editable={!isSending && !isOffline}
                   placeholder={
-                    role === 'farmer'
+                    isOffline
+                      ? 'Reconnect to write and send new messages...'
+                      : role === 'farmer'
                       ? 'Write your reply to the buyer...'
                       : 'Write a follow-up message...'
                   }
@@ -443,9 +491,12 @@ export default function ContactConversationScreen() {
               </View>
 
               <Pressable
-                disabled={isSending}
+                disabled={isSending || isOffline}
                 onPress={() => void handleSend()}
-                style={[styles.sendButton, isSending ? styles.disabledButton : null]}
+                style={[
+                  styles.sendButton,
+                  isSending || isOffline ? styles.disabledButton : null,
+                ]}
               >
                 {isSending ? (
                   <ActivityIndicator size="small" color={palette.cream} />
@@ -547,6 +598,25 @@ const styles = StyleSheet.create({
     color: palette.sageDark,
     fontSize: 12,
     fontWeight: '800',
+  },
+  cachedNotice: {
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(176, 126, 40, 0.18)',
+    backgroundColor: '#fff7ea',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 4,
+  },
+  cachedNoticeTitle: {
+    color: palette.soil,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  cachedNoticeText: {
+    color: palette.clay,
+    fontSize: 12,
+    lineHeight: 17,
   },
   phoneCard: {
     backgroundColor: '#f6f8f5',

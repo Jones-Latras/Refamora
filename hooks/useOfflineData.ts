@@ -3,7 +3,9 @@ import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
 import type {
+  ContactConversation,
   ContactRequestSummary,
+  ListingDetail,
   ListingPin,
   ListingPreview,
 } from '../types/app'
@@ -17,13 +19,19 @@ type OfflineDataState = {
   hydrated: boolean
   buyerFeed: OfflineSnapshot<ListingPreview[]>
   mapPins: OfflineSnapshot<ListingPin[]>
+  listingDetailsById: Record<string, OfflineSnapshot<ListingDetail>>
+  relatedListingsByListingId: Record<string, OfflineSnapshot<ListingPreview[]>>
   buyerRequestsByUser: Record<string, OfflineSnapshot<ContactRequestSummary[]>>
   sellerRequestsByUser: Record<string, OfflineSnapshot<ContactRequestSummary[]>>
+  conversationsById: Record<string, OfflineSnapshot<ContactConversation>>
   markHydrated: () => void
   setBuyerFeed: (items: ListingPreview[]) => void
   setMapPins: (items: ListingPin[]) => void
+  setListingDetail: (listingId: string, item: ListingDetail) => void
+  setRelatedListings: (listingId: string, items: ListingPreview[]) => void
   setBuyerRequests: (userId: string, items: ContactRequestSummary[]) => void
   setSellerRequests: (userId: string, items: ContactRequestSummary[]) => void
+  setConversation: (requestId: string, item: ContactConversation) => void
 }
 
 function createSnapshot<T>(items: T): OfflineSnapshot<T> {
@@ -45,8 +53,11 @@ export const useOfflineDataStore = create<OfflineDataState>()(
         items: [],
         updatedAt: null,
       },
+      listingDetailsById: {},
+      relatedListingsByListingId: {},
       buyerRequestsByUser: {},
       sellerRequestsByUser: {},
+      conversationsById: {},
       markHydrated: () => set({ hydrated: true }),
       setBuyerFeed: (items) =>
         set({
@@ -56,6 +67,20 @@ export const useOfflineDataStore = create<OfflineDataState>()(
         set({
           mapPins: createSnapshot(items),
         }),
+      setListingDetail: (listingId, item) =>
+        set((state) => ({
+          listingDetailsById: {
+            ...state.listingDetailsById,
+            [listingId]: createSnapshot(item),
+          },
+        })),
+      setRelatedListings: (listingId, items) =>
+        set((state) => ({
+          relatedListingsByListingId: {
+            ...state.relatedListingsByListingId,
+            [listingId]: createSnapshot(items),
+          },
+        })),
       setBuyerRequests: (userId, items) =>
         set((state) => ({
           buyerRequestsByUser: {
@@ -70,6 +95,13 @@ export const useOfflineDataStore = create<OfflineDataState>()(
             [userId]: createSnapshot(items),
           },
         })),
+      setConversation: (requestId, item) =>
+        set((state) => ({
+          conversationsById: {
+            ...state.conversationsById,
+            [requestId]: createSnapshot(item),
+          },
+        })),
     }),
     {
       name: 'offline-data',
@@ -77,8 +109,11 @@ export const useOfflineDataStore = create<OfflineDataState>()(
       partialize: (state) => ({
         buyerFeed: state.buyerFeed,
         mapPins: state.mapPins,
+        listingDetailsById: state.listingDetailsById,
+        relatedListingsByListingId: state.relatedListingsByListingId,
         buyerRequestsByUser: state.buyerRequestsByUser,
         sellerRequestsByUser: state.sellerRequestsByUser,
+        conversationsById: state.conversationsById,
       }),
       onRehydrateStorage: () => (state) => {
         state?.markHydrated()

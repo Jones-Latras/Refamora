@@ -3,6 +3,7 @@ import { equal } from 'node:assert/strict'
 import {
   formatOfflineSnapshotUpdatedAt,
   shouldUseOfflineSnapshot,
+  shouldUseOfflineSnapshotValue,
 } from '../../utils/offlineData'
 
 function runTest(name: string, callback: () => void) {
@@ -31,4 +32,23 @@ runTest('shouldUseOfflineSnapshot only enables fallback when offline and snapsho
 
 runTest('formatOfflineSnapshotUpdatedAt returns null for missing timestamps', () => {
   equal(formatOfflineSnapshotUpdatedAt(null), null)
+})
+
+runTest('shouldUseOfflineSnapshotValue falls back only when live data is unavailable', () => {
+  equal(
+    shouldUseOfflineSnapshotValue({
+      isOffline: true,
+      hasLiveValue: false,
+      hasSnapshotValue: true,
+    }),
+    true,
+  )
+  equal(
+    shouldUseOfflineSnapshotValue({
+      isOffline: true,
+      hasLiveValue: true,
+      hasSnapshotValue: true,
+    }),
+    false,
+  )
 })

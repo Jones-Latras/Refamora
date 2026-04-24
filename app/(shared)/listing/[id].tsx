@@ -27,6 +27,8 @@ import { VerifiedBadge } from '../../../components/VerifiedBadge'
 import { useToast } from '../../../components/Toast'
 import { useAuth } from '../../../hooks/useAuth'
 import { useBuyerLocationStore } from '../../../hooks/useBuyerLocation'
+import { useConnectivity } from '../../../hooks/useConnectivity'
+import { useOfflineDataStore } from '../../../hooks/useOfflineData'
 import { useRecentlyViewedStore } from '../../../hooks/useRecentlyViewed'
 import { useSavedListingsStore } from '../../../hooks/useSavedListings'
 import {
@@ -40,10 +42,34 @@ import {
   recordListingView,
 } from '../../../services/listingService'
 import { submitListingReport } from '../../../services/listingReportService'
-import type { ListingDetail, ListingPreview } from '../../../types/app'
+import type {
+  ContactRequestSummary,
+  ListingDetail,
+  ListingPreview,
+} from '../../../types/app'
 import { formatDate, formatPrice, titleCase } from '../../../utils/formatters'
 import { formatDistanceAway, getDistanceKm } from '../../../utils/location'
+import {
+  formatOfflineSnapshotUpdatedAt,
+  shouldUseOfflineSnapshot,
+  shouldUseOfflineSnapshotValue,
+} from '../../../utils/offlineData'
 import { palette, radii, shadow } from '../../../utils/theme'
+
+const EMPTY_LISTING_DETAIL_SNAPSHOT = {
+  items: null as ListingDetail | null,
+  updatedAt: null as string | null,
+}
+
+const EMPTY_LISTING_PREVIEW_SNAPSHOT = {
+  items: [] as ListingPreview[],
+  updatedAt: null as string | null,
+}
+
+const EMPTY_REQUEST_SUMMARY_SNAPSHOT = {
+  items: [] as ContactRequestSummary[],
+  updatedAt: null as string | null,
+}
 
 function getAvatarInitials(name?: string | null) {
   if (!name) {
@@ -83,10 +109,24 @@ function formatRelativePostedDate(value: string) {
 export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { user, role } = useAuth()
+  const { isOffline } = useConnectivity()
   const { showToast } = useToast()
   const addRecentlyViewed = useRecentlyViewedStore((state) => state.addListing)
   const buyerCoordinates = useBuyerLocationStore((state) => state.coordinates)
   const setBuyerCoordinates = useBuyerLocationStore((state) => state.setCoordinates)
+  const cachedListingDetail = useOfflineDataStore((state) =>
+    id ? state.listingDetailsById[id] ?? EMPTY_LISTING_DETAIL_SNAPSHOT : EMPTY_LISTING_DETAIL_SNAPSHOT,
+  )
+  const cachedRelatedListings = useOfflineDataStore((state) =>
+    id
+      ? state.relatedListingsByListingId[id] ?? EMPTY_LISTING_PREVIEW_SNAPSHOT
+      : EMPTY_LISTING_PREVIEW_SNAPSHOT,
+  )
+  const cachedBuyerRequests = useOfflineDataStore((state) =>
+    user?.id ? state.buyerRequestsByUser[user.id] ?? EMPTY_REQUEST_SUMMARY_SNAPSHOT : EMPTY_REQUEST_SUMMARY_SNAPSHOT,
+  )
+  const setCachedListingDetail = useOfflineDataStore((state) => state.setListingDetail)
+  const setCachedRelatedListings = useOfflineDataStore((state) => state.setRelatedListings)
   const savedListingIds = useSavedListingsStore((state) => state.listingIds)
   const toggleSavedListing = useSavedListingsStore((state) => state.toggleListing)
   const [listing, setListing] = useState<ListingDetail | null>(null)
@@ -119,14 +159,15 @@ export default function ListingDetailScreen() {
     setLoadError(null)
     const result = await getListingById(id)
 
-    if (result.error) {
+    if (result.error || !result.data) {
       setListing(null)
-      setLoadError(result.error.message)
+      setLoadError(result.error?.message ?? 'Listing could not be loaded right now.')
       setIsLoading(false)
       return
     }
 
     setListing(result.data)
+    setCachedListingDetail(id, result.data)
     setIsLoading(false)
   }
 
@@ -151,14 +192,15 @@ export default function ListingDetailScreen() {
         return
       }
 
-      if (result.error) {
+      if (result.error || !result.data) {
         setListing(null)
-        setLoadError(result.error.message)
+        setLoadError(result.error?.message ?? 'Listing could not be loaded right now.')
         setIsLoading(false)
         return
       }
 
       setListing(result.data)
+      setCachedListingDetail(id, result.data)
       setIsLoading(false)
     }
 
@@ -167,15 +209,47 @@ export default function ListingDetailScreen() {
     return () => {
       isMounted = false
     }
-  }, [id])
+  }, [id, setCachedListingDetail])
+
+  const isUsingCachedListing = shouldUseOfflineSnapshotValue({
+    isOffline,
+    hasLiveValue: Boolean(listing),
+    hasSnapshotValue: Boolean(cachedListingDetail.items),
+  })
+  const effectiveListing = isUsingCachedListing ? cachedListingDetail.items : listing
+  const isUsingCachedRelatedListings = shouldUseOfflineSnapshot({
+    isOffline,
+    liveItemCount: relatedListings.length,
+    snapshotItemCount: cachedRelatedListings.items.length,
+  })
+  const effectiveRelatedListings = isUsingCachedRelatedListings
+    ? cachedRelatedListings.items
+    : relatedListings
+  const cachedListingUpdatedAt = useMemo(
+    () => formatOfflineSnapshotUpdatedAt(cachedListingDetail.updatedAt),
+    [cachedListingDetail.updatedAt],
+  )
+  const cachedContactRequest = useMemo(
+    () =>
+      cachedBuyerRequests.items.find((request) => request.listingId === effectiveListing?.id) ??
+      null,
+    [cachedBuyerRequests.items, effectiveListing?.id],
+  )
 
   useEffect(() => {
     let isMounted = true
 
     const loadContactState = async () => {
-      if (!user || role !== 'buyer' || !listing) {
+      if (!user || role !== 'buyer' || !effectiveListing) {
         if (isMounted) {
           setContactRequestId(null)
+        }
+        return
+      }
+
+      if (isOffline) {
+        if (isMounted) {
+          setContactRequestId(cachedContactRequest?.id ?? null)
         }
         return
       }
@@ -186,10 +260,15 @@ export default function ListingDetailScreen() {
         return
       }
 
-      const matchingRequest =
-        (result.data ?? []).find((request) => request.listingId === listing.id) ?? null
+      if (result.error) {
+        setContactRequestId(cachedContactRequest?.id ?? null)
+        return
+      }
 
-      setContactRequestId(matchingRequest?.id ?? null)
+      const matchingRequest =
+        (result.data ?? []).find((request) => request.listingId === effectiveListing.id) ?? null
+
+      setContactRequestId(matchingRequest?.id ?? cachedContactRequest?.id ?? null)
     }
 
     void loadContactState()
@@ -197,18 +276,18 @@ export default function ListingDetailScreen() {
     return () => {
       isMounted = false
     }
-  }, [listing, role, user])
+  }, [cachedContactRequest?.id, effectiveListing, isOffline, role, user])
 
   useEffect(() => {
-    if (role !== 'buyer' || !listing) {
+    if (role !== 'buyer' || !effectiveListing) {
       return
     }
 
-    addRecentlyViewed(listing.id)
-  }, [addRecentlyViewed, listing, role])
+    addRecentlyViewed(effectiveListing.id)
+  }, [addRecentlyViewed, effectiveListing, role])
 
   useEffect(() => {
-    if (!user || role !== 'buyer' || !listing) {
+    if (!user || role !== 'buyer' || !listing || isUsingCachedListing) {
       return
     }
 
@@ -216,7 +295,7 @@ export default function ListingDetailScreen() {
       listingId: listing.id,
       buyerId: user.id,
     })
-  }, [listing, role, user])
+  }, [isUsingCachedListing, listing, role, user])
 
   useEffect(() => {
     let isMounted = true
@@ -245,6 +324,7 @@ export default function ListingDetailScreen() {
       }
 
       setRelatedListings(result.data ?? [])
+      setCachedRelatedListings(listing.id, result.data ?? [])
     }
 
     void loadRelatedListings()
@@ -252,46 +332,46 @@ export default function ListingDetailScreen() {
     return () => {
       isMounted = false
     }
-  }, [listing])
+  }, [listing, setCachedRelatedListings])
 
   const readableWasteType = useMemo(() => {
-    if (!listing) {
+    if (!effectiveListing) {
       return ''
     }
 
-    return titleCase(listing.wasteType.replace(/_/g, ' '))
-  }, [listing])
+    return titleCase(effectiveListing.wasteType.replace(/_/g, ' '))
+  }, [effectiveListing])
   const locationDistanceLabel = useMemo(() => {
     if (
       !buyerCoordinates ||
-      !listing ||
-      listing.latitude == null ||
-      listing.longitude == null
+      !effectiveListing ||
+      effectiveListing.latitude == null ||
+      effectiveListing.longitude == null
     ) {
       return null
     }
 
     return formatDistanceAway(
       getDistanceKm(buyerCoordinates, {
-        latitude: listing.latitude,
-        longitude: listing.longitude,
+        latitude: effectiveListing.latitude,
+        longitude: effectiveListing.longitude,
       }),
       buyerCoordinates.accuracyMeters,
     )
-  }, [buyerCoordinates, listing])
+  }, [buyerCoordinates, effectiveListing])
 
   const canContactSeller =
-    role === 'buyer' && !!user && !!listing && user.id !== listing.sellerId
+    role === 'buyer' && !!user && !!effectiveListing && user.id !== effectiveListing.sellerId
   const hasRequestedContact = !!contactRequestId
   const canSaveListing = role !== 'farmer'
-  const isSaved = listing ? savedListingIds.includes(listing.id) : false
-  const postedLabel = listing ? formatRelativePostedDate(listing.createdAt) : ''
+  const isSaved = effectiveListing ? savedListingIds.includes(effectiveListing.id) : false
+  const postedLabel = effectiveListing ? formatRelativePostedDate(effectiveListing.createdAt) : ''
   const sellerTrustSummary = useMemo(() => {
-    if (!listing?.seller) {
+    if (!effectiveListing?.seller) {
       return null
     }
 
-    if (listing.seller.isVerified) {
+    if (effectiveListing.seller.isVerified) {
       return {
         title: 'Verified seller',
         description:
@@ -299,7 +379,7 @@ export default function ListingDetailScreen() {
       }
     }
 
-    return listing.seller.isProfileComplete
+    return effectiveListing.seller.isProfileComplete
       ? {
           title: 'Trusted seller profile',
           description:
@@ -310,7 +390,7 @@ export default function ListingDetailScreen() {
           description:
             'Some trust details are still missing, but you can still review the listing and send a request.',
         }
-  }, [listing?.seller])
+  }, [effectiveListing?.seller])
 
   const handleBackPress = () => {
     if (router.canGoBack()) {
@@ -327,17 +407,17 @@ export default function ListingDetailScreen() {
   }
 
   const handleShareListing = async () => {
-    if (!listing) {
+    if (!effectiveListing) {
       return
     }
 
-    const listingUrl = ExpoLinking.createURL(`/listing/${listing.id}`)
+    const listingUrl = ExpoLinking.createURL(`/listing/${effectiveListing.id}`)
 
     try {
       await Share.share({
-        message: `Check this Refamora listing: ${listing.title}\n${listingUrl}`,
+        message: `Check this Refamora listing: ${effectiveListing.title}\n${listingUrl}`,
         url: listingUrl,
-        title: listing.title,
+        title: effectiveListing.title,
       })
     } catch {
       showToast('Unable to open the share sheet right now.', 'error')
@@ -345,11 +425,11 @@ export default function ListingDetailScreen() {
   }
 
   const handleToggleSavedListing = () => {
-    if (!listing) {
+    if (!effectiveListing) {
       return
     }
 
-    const nextSaved = toggleSavedListing(listing.id)
+    const nextSaved = toggleSavedListing(effectiveListing.id)
     showToast(
       nextSaved ? 'Listing saved for later.' : 'Listing removed from saved.',
       'success',
@@ -376,17 +456,22 @@ export default function ListingDetailScreen() {
   }
 
   const handleSubmitContactRequest = async () => {
-    if (!user || !listing) {
+    if (!user || !effectiveListing) {
       showToast('Sign in before contacting a seller.', 'error')
+      return
+    }
+
+    if (isOffline) {
+      showToast('Reconnect before sending an inquiry to the seller.', 'info')
       return
     }
 
     setIsSubmittingContact(true)
 
     const result = await sendContactRequest({
-      listing_id: listing.id,
+      listing_id: effectiveListing.id,
       buyer_id: user.id,
-      seller_id: listing.sellerId,
+      seller_id: effectiveListing.sellerId,
       message: contactMessage.trim() || null,
     })
 
@@ -397,11 +482,16 @@ export default function ListingDetailScreen() {
       return
     }
 
+    if (!result.data) {
+      showToast('Inquiry was sent, but the conversation could not be opened yet.', 'info')
+      return
+    }
+
     setContactRequestId(result.data.id)
     setContactMessage('')
     setIsContactModalVisible(false)
 
-    if (listing.seller?.phone) {
+    if (effectiveListing.seller?.phone) {
       showToast({
         title: 'Inquiry sent',
         message:
@@ -425,26 +515,31 @@ export default function ListingDetailScreen() {
       return
     }
 
-    if (!listing?.seller?.phone || !hasRequestedContact) {
+    if (isOffline) {
+      showToast('Reconnect before starting a new seller conversation.', 'info')
+      return
+    }
+
+    if (!effectiveListing?.seller?.phone || !hasRequestedContact) {
       setIsContactModalVisible(true)
       return
     }
   }
 
   const handleOpenReport = () => {
-    if (!listing) {
+    if (!effectiveListing) {
       return
     }
 
     if (!user) {
       router.push({
         pathname: '/(auth)/login',
-        params: { redirect: `/(shared)/listing/${listing.id}` },
+        params: { redirect: `/(shared)/listing/${effectiveListing.id}` },
       })
       return
     }
 
-    if (user.id === listing.sellerId) {
+    if (user.id === effectiveListing.sellerId) {
       showToast('You cannot report your own listing.', 'info')
       return
     }
@@ -454,8 +549,13 @@ export default function ListingDetailScreen() {
   }
 
   const handleSubmitReport = async () => {
-    if (!user || !listing) {
+    if (!user || !effectiveListing) {
       showToast('Sign in before reporting a listing.', 'error')
+      return
+    }
+
+    if (isOffline) {
+      showToast('Reconnect before submitting a listing report.', 'info')
       return
     }
 
@@ -469,9 +569,9 @@ export default function ListingDetailScreen() {
     setIsSubmittingReport(true)
 
     const result = await submitListingReport({
-      listing_id: listing.id,
+      listing_id: effectiveListing.id,
       reporter_id: user.id,
-      seller_id: listing.sellerId,
+      seller_id: effectiveListing.sellerId,
       reason: reportReason,
       details: reportDetails.trim() || null,
     })
@@ -490,7 +590,7 @@ export default function ListingDetailScreen() {
     showToast('Report submitted. Refamora can review this listing now.', 'success')
   }
 
-  if (isLoading) {
+  if (isLoading && !isUsingCachedListing) {
     return (
       <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
         <ListingDetailScreenSkeleton />
@@ -498,7 +598,7 @@ export default function ListingDetailScreen() {
     )
   }
 
-  if (loadError && !listing) {
+  if (loadError && !effectiveListing) {
     return (
       <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
         <View style={styles.emptyWrapper}>
@@ -514,7 +614,7 @@ export default function ListingDetailScreen() {
     )
   }
 
-  if (!listing) {
+  if (!effectiveListing) {
     return (
       <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
         <View style={styles.emptyWrapper}>
@@ -550,8 +650,19 @@ export default function ListingDetailScreen() {
           </Pressable>
         </View>
 
-        {listing.imageUrl ? (
-          <AppImage uri={listing.imageUrl} style={styles.heroImage} />
+        {isUsingCachedListing ? (
+          <View style={styles.cachedNotice}>
+            <Text style={styles.cachedNoticeTitle}>Showing cached listing</Text>
+            <Text style={styles.cachedNoticeText}>
+              {cachedListingUpdatedAt
+                ? `Last updated ${cachedListingUpdatedAt}. Reconnect to refresh price, availability, and seller details.`
+                : 'Reconnect to refresh price, availability, and seller details.'}
+            </Text>
+          </View>
+        ) : null}
+
+        {effectiveListing.imageUrl ? (
+          <AppImage uri={effectiveListing.imageUrl} style={styles.heroImage} />
         ) : (
           <View style={styles.heroPlaceholder}>
             <Text style={styles.heroPlaceholderLabel}>{readableWasteType}</Text>
@@ -562,9 +673,9 @@ export default function ListingDetailScreen() {
           <View style={styles.heroHeaderRow}>
             <View style={styles.heroTextBlock}>
               <Text style={styles.eyebrow}>{readableWasteType}</Text>
-              <Text style={styles.title}>{listing.title}</Text>
+              <Text style={styles.title}>{effectiveListing.title}</Text>
               <Text style={styles.price}>
-                {formatPrice(listing.price, listing.unit)}
+                {formatPrice(effectiveListing.price, effectiveListing.unit)}
               </Text>
             </View>
             <View style={styles.heroActions}>
@@ -596,7 +707,7 @@ export default function ListingDetailScreen() {
               <Text style={styles.infoBadgeText}>{postedLabel}</Text>
             </View>
             <View style={styles.infoBadge}>
-              <Text style={styles.infoBadgeText}>{titleCase(listing.status)}</Text>
+              <Text style={styles.infoBadgeText}>{titleCase(effectiveListing.status)}</Text>
             </View>
             {locationDistanceLabel ? (
               <View style={styles.infoBadge}>
@@ -605,14 +716,14 @@ export default function ListingDetailScreen() {
             ) : null}
           </View>
           <Text style={styles.meta}>
-            {listing.city} | {listing.quantity} {listing.unit} | {formatDate(listing.createdAt)}
+            {effectiveListing.city} | {effectiveListing.quantity} {effectiveListing.unit} | {formatDate(effectiveListing.createdAt)}
           </Text>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>About this listing</Text>
           <Text style={styles.sectionText}>
-            {listing.description ?? 'No description added yet.'}
+            {effectiveListing.description ?? 'No description added yet.'}
           </Text>
         </View>
 
@@ -620,31 +731,31 @@ export default function ListingDetailScreen() {
           <Text style={styles.sectionTitle}>Details</Text>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Fulfillment</Text>
-            <FulfillmentLabel type={listing.fulfillmentType} />
+            <FulfillmentLabel type={effectiveListing.fulfillmentType} />
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Offers</Text>
             <Text style={styles.detailValue}>
-              {listing.acceptOffers ? 'Seller accepts offers' : 'Fixed price'}
+              {effectiveListing.acceptOffers ? 'Seller accepts offers' : 'Fixed price'}
             </Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Status</Text>
-            <ListingStatusBadge status={listing.status} />
+            <ListingStatusBadge status={effectiveListing.status} />
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Address</Text>
             <Text style={styles.detailValue}>
-              {listing.address ?? 'Address not provided'}
+              {effectiveListing.address ?? 'Address not provided'}
             </Text>
           </View>
         </View>
 
-        {listing.latitude != null && listing.longitude != null ? (
+        {effectiveListing.latitude != null && effectiveListing.longitude != null ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Location</Text>
             <Text style={styles.sectionText}>
-              {listing.address ?? `${listing.city} listing location`}
+              {effectiveListing.address ?? `${effectiveListing.city} listing location`}
             </Text>
             {locationDistanceLabel ? (
               <Text style={styles.locationDistance}>{locationDistanceLabel}</Text>
@@ -660,7 +771,7 @@ export default function ListingDetailScreen() {
             <Pressable
               onPress={() =>
                 void Linking.openURL(
-                  `https://www.google.com/maps/search/?api=1&query=${listing.latitude},${listing.longitude}`,
+                  `https://www.google.com/maps/search/?api=1&query=${effectiveListing.latitude},${effectiveListing.longitude}`,
                 )
               }
             >
@@ -668,8 +779,8 @@ export default function ListingDetailScreen() {
                 pointerEvents="none"
                 style={styles.locationMap}
                 initialRegion={{
-                  latitude: listing.latitude,
-                  longitude: listing.longitude,
+                  latitude: effectiveListing.latitude,
+                  longitude: effectiveListing.longitude,
                   latitudeDelta: 0.02,
                   longitudeDelta: 0.02,
                 }}
@@ -680,8 +791,8 @@ export default function ListingDetailScreen() {
               >
                 <Marker
                   coordinate={{
-                    latitude: listing.latitude,
-                    longitude: listing.longitude,
+                    latitude: effectiveListing.latitude,
+                    longitude: effectiveListing.longitude,
                   }}
                 />
               </MapView>
@@ -692,29 +803,29 @@ export default function ListingDetailScreen() {
 
         <View style={styles.sellerSection}>
           <Text style={styles.sectionTitle}>Seller trust</Text>
-          {listing.seller ? (
+          {effectiveListing.seller ? (
             <>
               <View style={styles.sellerRow}>
-                {listing.seller.avatarUrl ? (
-                  <AppImage uri={listing.seller.avatarUrl} style={styles.avatarImage} />
+                {effectiveListing.seller.avatarUrl ? (
+                  <AppImage uri={effectiveListing.seller.avatarUrl} style={styles.avatarImage} />
                 ) : (
                   <View style={styles.avatarFallback}>
                     <Text style={styles.avatarText}>
-                      {getAvatarInitials(listing.seller.fullName)}
+                      {getAvatarInitials(effectiveListing.seller.fullName)}
                     </Text>
                   </View>
                 )}
                 <View style={styles.sellerMeta}>
-                  <Text style={styles.sellerName}>{listing.seller.fullName}</Text>
+                  <Text style={styles.sellerName}>{effectiveListing.seller.fullName}</Text>
                   <Text style={styles.sellerLocation}>
-                    {listing.seller.city ?? 'Location not provided'}
+                    {effectiveListing.seller.city ?? 'Location not provided'}
                   </Text>
-                  {listing.seller.isVerified ? <VerifiedBadge /> : null}
+                  {effectiveListing.seller.isVerified ? <VerifiedBadge /> : null}
                   <View style={styles.sellerBadgeRow}>
                     <View
                       style={[
                         styles.sellerBadge,
-                        listing.seller.isProfileComplete
+                        effectiveListing.seller.isProfileComplete
                           ? styles.sellerBadgePositive
                           : styles.sellerBadgeNeutral,
                       ]}
@@ -722,14 +833,14 @@ export default function ListingDetailScreen() {
                       <Text
                         style={[
                           styles.sellerBadgeText,
-                          listing.seller.isVerified || listing.seller.isProfileComplete
+                          effectiveListing.seller.isVerified || effectiveListing.seller.isProfileComplete
                             ? styles.sellerBadgeTextPositive
                             : null,
                         ]}
                       >
-                        {listing.seller.isVerified
+                        {effectiveListing.seller.isVerified
                           ? 'Verification approved'
-                          : listing.seller.isProfileComplete
+                          : effectiveListing.seller.isProfileComplete
                             ? 'Profile ready'
                             : 'Profile improving'}
                       </Text>
@@ -737,7 +848,7 @@ export default function ListingDetailScreen() {
                     <View
                       style={[
                         styles.sellerBadge,
-                        listing.seller.phone
+                        effectiveListing.seller.phone
                           ? styles.sellerBadgePositive
                           : styles.sellerBadgeNeutral,
                       ]}
@@ -745,10 +856,10 @@ export default function ListingDetailScreen() {
                       <Text
                         style={[
                           styles.sellerBadgeText,
-                          listing.seller.phone ? styles.sellerBadgeTextPositive : null,
+                          effectiveListing.seller.phone ? styles.sellerBadgeTextPositive : null,
                         ]}
                       >
-                        {listing.seller.phone ? 'Phone on file' : 'No phone yet'}
+                        {effectiveListing.seller.phone ? 'Phone on file' : 'No phone yet'}
                       </Text>
                     </View>
                   </View>
@@ -759,7 +870,7 @@ export default function ListingDetailScreen() {
                 <View
                   style={[
                     styles.sellerTrustSummaryCard,
-                    listing.seller.isProfileComplete
+                    effectiveListing.seller.isProfileComplete
                       ? styles.sellerTrustSummaryCardPositive
                       : null,
                   ]}
@@ -770,7 +881,7 @@ export default function ListingDetailScreen() {
                   <Text style={styles.sellerTrustSummaryText}>
                     {sellerTrustSummary.description}
                   </Text>
-                  {!listing.seller.isVerified ? (
+                  {!effectiveListing.seller.isVerified ? (
                     <Text style={styles.sellerVerificationHint}>
                       This seller has not been verified yet, but you can still review their profile
                       details and message history.
@@ -782,19 +893,19 @@ export default function ListingDetailScreen() {
               <View style={styles.sellerTrustGrid}>
                 <View style={styles.sellerTrustCard}>
                   <Text style={styles.sellerTrustValue}>
-                    {listing.seller.profileCompletionPercent}%
+                    {effectiveListing.seller.profileCompletionPercent}%
                   </Text>
                   <Text style={styles.sellerTrustLabel}>Profile complete</Text>
                 </View>
                 <View style={styles.sellerTrustCard}>
                   <Text style={styles.sellerTrustValue}>
-                    {listing.seller.listingCount ?? 0}
+                    {effectiveListing.seller.listingCount ?? 0}
                   </Text>
                   <Text style={styles.sellerTrustLabel}>Listings posted</Text>
                 </View>
                 <View style={styles.sellerTrustCard}>
                   <Text style={styles.sellerTrustValue}>
-                    {listing.seller.respondedInquiryCount ?? 0}
+                    {effectiveListing.seller.respondedInquiryCount ?? 0}
                   </Text>
                   <Text style={styles.sellerTrustLabel}>Buyer replies sent</Text>
                 </View>
@@ -811,14 +922,14 @@ export default function ListingDetailScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Seller contact</Text>
             <Text style={styles.sectionText}>
-              {listing.seller?.phone
-                ? `Phone: ${listing.seller.phone}`
+              {effectiveListing.seller?.phone
+                ? `Phone: ${effectiveListing.seller.phone}`
                 : 'This seller has not added a phone number yet.'}
             </Text>
           </View>
         ) : null}
 
-        {user?.id !== listing.sellerId ? (
+        {user?.id !== effectiveListing.sellerId ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Report this listing</Text>
             <Text style={styles.sectionText}>
@@ -833,7 +944,7 @@ export default function ListingDetailScreen() {
           </View>
         ) : null}
 
-        {relatedListings.length > 0 ? (
+        {effectiveRelatedListings.length > 0 ? (
           <View style={styles.relatedSection}>
             <View style={styles.relatedHeader}>
               <View>
@@ -844,7 +955,7 @@ export default function ListingDetailScreen() {
               </View>
             </View>
             <View style={styles.relatedStack}>
-              {relatedListings.map((item) => (
+              {effectiveRelatedListings.map((item) => (
                 <ListingCard
                   key={item.id}
                   listing={item}
@@ -942,6 +1053,25 @@ const styles = StyleSheet.create({
     color: palette.soil,
     fontSize: 13,
     fontWeight: '800',
+  },
+  cachedNotice: {
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(176, 126, 40, 0.18)',
+    backgroundColor: '#fff7ea',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 4,
+  },
+  cachedNoticeTitle: {
+    color: palette.soil,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  cachedNoticeText: {
+    color: palette.clay,
+    fontSize: 12,
+    lineHeight: 18,
   },
   emptyWrapper: {
     flex: 1,
