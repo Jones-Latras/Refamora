@@ -10,9 +10,10 @@
     "lint": "expo lint",
     "test:unit": "tsc -p tsconfig.tests.json && node scripts/run-unit-tests.cjs",
     "check:beta-config": "node scripts/check-beta-config.cjs",
+    "check:production-build-plan": "node scripts/check-production-build-plan.cjs",
     "check:expo-config": "powershell -ExecutionPolicy Bypass -File scripts/check-expo-config.ps1",
     "check:release-readiness": "node scripts/check-release-readiness.cjs",
-    "quality:beta": "npm run test:unit && npm run check:beta-config && npm run check:expo-config && npm run check:release-readiness"
+    "quality:beta": "npm run test:unit && npm run check:beta-config && npm run check:production-build-plan && npm run check:expo-config && npm run check:release-readiness"
   },
   "dependencies": {
     "@gorhom/bottom-sheet": "^5.2.9",

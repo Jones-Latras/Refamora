@@ -51,7 +51,7 @@ Any AI agent updating this file should:
 - Moderation data exists in Supabase and a first admin moderation dashboard now exists, but the admin toolset is still limited to reports and AI review queue handling
 - Product analytics now include a first marketplace admin summary for users, listings, views, inquiries, and top listing breakdowns, but analytics are still not yet deep enough for full pilot operations
 - Zero-dependency unit tests and Beta config checks now exist, but there is still no integration suite or user-flow smoke coverage
-- EAS build profiles, app and function environment templates, release and rollback runbooks, and Expo config checks now exist, but real staging or production validation and secret rollout are not finished
+- EAS build profiles, app and function environment templates, release and rollback runbooks, a dedicated production build plan, and Expo config checks now exist, but real staging or production validation and secret rollout are not finished
 - Crash reporting now has a first in-app foundation through a global JS handler, render-error boundary reporting, and a Supabase-backed crash log, but there is still no third-party alerting or operational triage flow
 - Buyer feed, map pins, buyer or seller request inboxes, listing detail, and conversation threads now reuse last-known snapshots offline, and inquiry or reply actions now queue locally for retry, but broader write actions still require live connectivity
 
@@ -313,9 +313,11 @@ Current repo note:
 - environment templates now exist for development, staging, and production app builds
 - function secret templates now exist for local, staging, and production Supabase Edge Function environments
 - a release runbook now documents migration order, seed policy, and internal, staging, and production checklists
+- a production build plan now defines build profiles, preflight checks, exact build commands, release gates, and release-record expectations
 - a rollback runbook now documents app, function, and schema recovery steps for failed releases
 - `npm run check:expo-config` now validates Expo config output for development, staging, and production scenarios
-- `npm run check:release-readiness` now verifies the runbook, app and function env templates, and current migration references
+- `npm run check:production-build-plan` now verifies that the dedicated build-plan document still includes required release commands and gates
+- `npm run check:release-readiness` now verifies the runbook, build plan, app and function env templates, and current migration references
 
 Required scope:
 

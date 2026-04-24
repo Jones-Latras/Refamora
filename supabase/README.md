@@ -1,7 +1,7 @@
 # Supabase Setup
 
 This folder is the source-controlled Phase 1 database setup for AgriWaste.
-For current Beta release and environment workflow, also see [../Doc/Refamora_Release_Runbook.md](../Doc/Refamora_Release_Runbook.md).
+For current Beta release and environment workflow, also see [../Doc/Refamora_Release_Runbook.md](../Doc/Refamora_Release_Runbook.md) and [../Doc/Refamora_Production_Build_Plan.md](../Doc/Refamora_Production_Build_Plan.md).
 
 ## Apply the schema
 

@@ -2,6 +2,8 @@
 
 This runbook documents the current Beta release process in the repo as of **April 23, 2026**.
 
+For the exact build-sequencing document used to prepare staging and production binaries, also see [Refamora_Production_Build_Plan.md](./Refamora_Production_Build_Plan.md).
+
 ## Environment Separation
 
 Use separate Supabase projects and app env files for each profile:

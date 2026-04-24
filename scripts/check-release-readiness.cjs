@@ -15,6 +15,7 @@ function main() {
   const requiredFiles = [
     '.env.staging.example',
     '.env.production.example',
+    'Doc/Refamora_Production_Build_Plan.md',
     'Doc/Refamora_Release_Runbook.md',
     'Doc/Refamora_Rollback_Runbook.md',
     'supabase/functions/.env.staging.example',
@@ -26,6 +27,7 @@ function main() {
   }
 
   const runbook = readFile('Doc/Refamora_Release_Runbook.md')
+  const buildPlan = readFile('Doc/Refamora_Production_Build_Plan.md')
   const rollbackRunbook = readFile('Doc/Refamora_Rollback_Runbook.md')
   const supabaseReadme = readFile('supabase/README.md')
 
@@ -52,6 +54,16 @@ function main() {
   }
 
   for (const marker of [
+    '## Build Profiles',
+    '## Preflight Checklist',
+    '## Build Commands',
+    '## Release Record',
+    '## Remaining Gaps',
+  ]) {
+    assert(buildPlan.includes(marker), `Production build plan is missing section: ${marker}`)
+  }
+
+  for (const marker of [
     '## App Build Rollback',
     '## Edge Function Rollback',
     '## Database Rollback Guidance',
@@ -73,6 +85,15 @@ function main() {
       `supabase/README.md must reference ${migrationFile}.`,
     )
   }
+
+  assert(
+    runbook.includes('Refamora_Production_Build_Plan.md'),
+    'Release runbook must reference the production build plan.',
+  )
+  assert(
+    supabaseReadme.includes('Refamora_Production_Build_Plan.md'),
+    'supabase/README.md must reference the production build plan.',
+  )
 
   console.log('Release readiness checks passed.')
 }
