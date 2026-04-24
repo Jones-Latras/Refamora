@@ -1,6 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native'
 import { router } from 'expo-router'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
@@ -27,11 +27,16 @@ import { useDebounce } from '../../hooks/useDebounce'
 import { useBuyerListings } from '../../hooks/useListings'
 import { useBuyerFeedStore } from '../../hooks/useBuyerFeedState'
 import { useConnectivity } from '../../hooks/useConnectivity'
+import { useOfflineDataStore } from '../../hooks/useOfflineData'
 import { useProfile } from '../../hooks/useProfile'
 import { useRecentlyViewedStore } from '../../hooks/useRecentlyViewed'
 import { getListingPreviewsByIds } from '../../services/listingService'
 import { requestCurrentCoordinates } from '../../services/locationService'
 import { formatDistanceAway, getDistanceKm } from '../../utils/location'
+import {
+  formatOfflineSnapshotUpdatedAt,
+  shouldUseOfflineSnapshot,
+} from '../../utils/offlineData'
 import { palette, radii } from '../../utils/theme'
 
 function getInitials(name?: string | null, fallback = 'B') {
@@ -89,6 +94,9 @@ export default function FeedScreen() {
   const setBuyerCoordinates = useBuyerLocationStore((state) => state.setCoordinates)
   const clearBuyerCoordinates = useBuyerLocationStore((state) => state.clearCoordinates)
   const isFeedStateHydrated = useBuyerFeedStore((state) => state.hydrated)
+  const isOfflineDataHydrated = useOfflineDataStore((state) => state.hydrated)
+  const cachedBuyerFeed = useOfflineDataStore((state) => state.buyerFeed)
+  const setCachedBuyerFeed = useOfflineDataStore((state) => state.setBuyerFeed)
   const query = useBuyerFeedStore((state) => state.query)
   const setQuery = useBuyerFeedStore((state) => state.setQuery)
   const filters = useBuyerFeedStore((state) => state.filters)
@@ -105,6 +113,7 @@ export default function FeedScreen() {
     }[]
   >([])
   const debouncedQuery = useDebounce(query)
+  const hasSearch = debouncedQuery.trim().length > 0
   const { data, isLoading, isFetchingMore, loadMore, error, retry } = useBuyerListings(
     {
       ...filters,
@@ -119,9 +128,21 @@ export default function FeedScreen() {
     filters.minPrice,
     filters.maxPrice,
   ].filter((value) => value != null && value !== '').length
+  const isUsingCachedFeed = shouldUseOfflineSnapshot({
+    isOffline,
+    liveItemCount: data.length,
+    snapshotItemCount: cachedBuyerFeed.items.length,
+  })
+  const effectiveListings = useMemo(() => {
+    if (isUsingCachedFeed && !hasSearch && activeFilterCount === 0) {
+      return cachedBuyerFeed.items
+    }
+
+    return data
+  }, [activeFilterCount, cachedBuyerFeed.items, data, hasSearch, isUsingCachedFeed])
   const listingsWithDistance = useMemo(
     () =>
-      data
+      effectiveListings
         .map((listing) => ({
           listing,
           distanceKm:
@@ -149,7 +170,7 @@ export default function FeedScreen() {
 
           return left.distanceKm - right.distanceKm
         }),
-    [buyerCoordinates, data],
+    [buyerCoordinates, effectiveListings],
   )
   const mappedDistanceCount = useMemo(
     () =>
@@ -160,6 +181,17 @@ export default function FeedScreen() {
   const handleQueryChange = (value: string) => {
     setQuery(value)
   }
+
+  useEffect(() => {
+    if (!isOffline && data.length > 0) {
+      setCachedBuyerFeed(data)
+    }
+  }, [data, isOffline, setCachedBuyerFeed])
+
+  const cachedFeedUpdatedAt = useMemo(
+    () => formatOfflineSnapshotUpdatedAt(cachedBuyerFeed.updatedAt),
+    [cachedBuyerFeed.updatedAt],
+  )
 
   const loadRecentListings = useCallback(async () => {
     if (recentlyViewedIds.length === 0) {
@@ -374,7 +406,18 @@ export default function FeedScreen() {
           ) : null}
         </View>
 
-        {isLoading ? (
+        {isUsingCachedFeed && !hasSearch && activeFilterCount === 0 && isOfflineDataHydrated ? (
+          <View style={styles.cachedNotice}>
+            <Text style={styles.cachedNoticeTitle}>Showing cached listings</Text>
+            <Text style={styles.cachedNoticeText}>
+              {cachedFeedUpdatedAt
+                ? `Last updated ${cachedFeedUpdatedAt}. Reconnect to refresh the marketplace feed.`
+                : 'Reconnect to refresh the marketplace feed.'}
+            </Text>
+          </View>
+        ) : null}
+
+        {isLoading && !isUsingCachedFeed ? (
           <View style={styles.loading}>
             <SkeletonCard />
             <SkeletonCard />
@@ -417,10 +460,10 @@ export default function FeedScreen() {
           />
         ) : (
           <EmptyState
-            title={isOffline ? 'Listings are unavailable offline' : 'No listings match your search'}
+            title={isOffline ? 'No cached listings available' : 'No listings match your search'}
             description={
               isOffline
-                ? 'Reconnect to refresh the feed, pull the latest listings, and run search again.'
+                ? 'Reconnect to refresh the feed and pull the latest listings into offline view.'
                 : 'Try widening your price range, changing the waste type, or clearing some filters to explore more available listings.'
             }
             actionLabel="Clear filters"
@@ -641,6 +684,28 @@ const styles = StyleSheet.create({
   recentScroll: {
     gap: 10,
     paddingRight: 8,
+  },
+  cachedNotice: {
+    marginHorizontal: 24,
+    marginTop: 14,
+    marginBottom: 2,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(176, 126, 40, 0.18)',
+    backgroundColor: '#fff7ea',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 4,
+  },
+  cachedNoticeTitle: {
+    color: palette.soil,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  cachedNoticeText: {
+    color: palette.clay,
+    fontSize: 12,
+    lineHeight: 17,
   },
   recentCard: {
     width: 156,

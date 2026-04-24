@@ -13,10 +13,15 @@ import { PinPopup } from '../../components/PinPopup'
 import { useToast } from '../../components/Toast'
 import { useBuyerLocationStore } from '../../hooks/useBuyerLocation'
 import { useConnectivity } from '../../hooks/useConnectivity'
+import { useOfflineDataStore } from '../../hooks/useOfflineData'
 import { requestCurrentCoordinates } from '../../services/locationService'
 import { fetchListingPins, fetchPinDetails } from '../../services/mapService'
 import type { ListingDetail, ListingPin } from '../../types/app'
 import { formatDistanceAway, getDistanceKm } from '../../utils/location'
+import {
+  formatOfflineSnapshotUpdatedAt,
+  shouldUseOfflineSnapshot,
+} from '../../utils/offlineData'
 import { palette } from '../../utils/theme'
 
 const INITIAL_REGION = {
@@ -29,6 +34,8 @@ const INITIAL_REGION = {
 export default function MapScreen() {
   const { showToast } = useToast()
   const { isOffline } = useConnectivity()
+  const cachedMapPins = useOfflineDataStore((state) => state.mapPins)
+  const setCachedMapPins = useOfflineDataStore((state) => state.setMapPins)
   const buyerCoordinates = useBuyerLocationStore((state) => state.coordinates)
   const setBuyerCoordinates = useBuyerLocationStore((state) => state.setCoordinates)
   const [pins, setPins] = useState<ListingPin[]>([])
@@ -54,6 +61,9 @@ export default function MapScreen() {
     }
 
     setPins(result.data ?? [])
+    if ((result.data ?? []).length > 0) {
+      setCachedMapPins(result.data ?? [])
+    }
     setIsLoading(false)
   }
 
@@ -73,6 +83,17 @@ export default function MapScreen() {
       longitudeDelta: 0.18,
     })
   }, [buyerCoordinates])
+
+  const isUsingCachedPins = shouldUseOfflineSnapshot({
+    isOffline,
+    liveItemCount: pins.length,
+    snapshotItemCount: cachedMapPins.items.length,
+  })
+  const effectivePins = isUsingCachedPins ? cachedMapPins.items : pins
+  const cachedPinsUpdatedAt = useMemo(
+    () => formatOfflineSnapshotUpdatedAt(cachedMapPins.updatedAt),
+    [cachedMapPins.updatedAt],
+  )
 
   const handleSelectPin = async (pinId: string) => {
     if (isOffline) {
@@ -115,7 +136,7 @@ export default function MapScreen() {
       return 0
     }
 
-    return pins.filter((pin) => {
+    return effectivePins.filter((pin) => {
       const distanceKm = getDistanceKm(buyerCoordinates, {
         latitude: pin.latitude,
         longitude: pin.longitude,
@@ -123,7 +144,7 @@ export default function MapScreen() {
 
       return distanceKm <= 15
     }).length
-  }, [buyerCoordinates, pins])
+  }, [buyerCoordinates, effectivePins])
 
   const selectedDistanceLabel = useMemo(() => {
     if (
@@ -196,12 +217,19 @@ export default function MapScreen() {
                 ? 'Tap a pin to preview a listing, compare distance, then open full details.'
                 : 'Tap a pin to preview a listing, then open full details.'}
             </Text>
+            {isUsingCachedPins ? (
+              <Text style={styles.cachedHelper}>
+                {cachedPinsUpdatedAt
+                  ? `Showing cached map pins from ${cachedPinsUpdatedAt}. Reconnect to refresh nearby listings.`
+                  : 'Showing cached map pins. Reconnect to refresh nearby listings.'}
+              </Text>
+            ) : null}
           </View>
         </View>
 
-        {isLoading ? (
+        {isLoading && !isUsingCachedPins ? (
           <BrandedLoadingScreen message="Loading map pins..." />
-        ) : loadError && pins.length === 0 ? (
+        ) : loadError && effectivePins.length === 0 ? (
           <View style={styles.emptyWrapper}>
             <ErrorState
               title="Map pins could not be loaded"
@@ -211,7 +239,7 @@ export default function MapScreen() {
               }}
             />
           </View>
-        ) : isOffline && pins.length === 0 ? (
+        ) : isOffline && effectivePins.length === 0 ? (
           <View style={styles.emptyWrapper}>
             <EmptyState
               title="Map is unavailable offline"
@@ -230,7 +258,7 @@ export default function MapScreen() {
             minPoints={3}
             showsUserLocation
           >
-            {pins.map((pin) => (
+            {effectivePins.map((pin) => (
               <Marker
                 key={pin.id}
                 coordinate={{
@@ -322,6 +350,12 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontSize: 12,
     lineHeight: 18,
+  },
+  cachedHelper: {
+    color: palette.clay,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '700',
   },
   locationRow: {
     flexDirection: 'row',

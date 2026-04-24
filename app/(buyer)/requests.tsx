@@ -16,8 +16,14 @@ import { EmptyState } from '../../components/EmptyState'
 import { ErrorState } from '../../components/ErrorState'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
+import { useConnectivity } from '../../hooks/useConnectivity'
+import { useOfflineDataStore } from '../../hooks/useOfflineData'
 import { getBuyerContactRequests } from '../../services/contactService'
 import type { ContactRequestSummary } from '../../types/app'
+import {
+  formatOfflineSnapshotUpdatedAt,
+  shouldUseOfflineSnapshot,
+} from '../../utils/offlineData'
 import { palette } from '../../utils/theme'
 
 type BuyerMessageFilter = 'all' | 'replies' | 'sent'
@@ -47,7 +53,14 @@ function matchesQuery(request: ContactRequestSummary, query: string) {
 
 export default function BuyerRequestsScreen() {
   const { user } = useAuth()
+  const { isOffline } = useConnectivity()
   const { showToast } = useToast()
+  const cachedBuyerRequests = useOfflineDataStore((state) =>
+    user?.id
+      ? state.buyerRequestsByUser[user.id] ?? { items: [], updatedAt: null }
+      : { items: [], updatedAt: null },
+  )
+  const setCachedBuyerRequests = useOfflineDataStore((state) => state.setBuyerRequests)
   const [requests, setRequests] = useState<ContactRequestSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -74,8 +87,9 @@ export default function BuyerRequestsScreen() {
     }
 
     setRequests(result.data ?? [])
+    setCachedBuyerRequests(user.id, result.data ?? [])
     setIsLoading(false)
-  }, [showToast, user])
+  }, [setCachedBuyerRequests, showToast, user])
 
   useFocusEffect(
     useCallback(() => {
@@ -83,8 +97,19 @@ export default function BuyerRequestsScreen() {
     }, [loadRequests]),
   )
 
+  const isUsingCachedRequests = shouldUseOfflineSnapshot({
+    isOffline,
+    liveItemCount: requests.length,
+    snapshotItemCount: cachedBuyerRequests.items.length,
+  })
+  const effectiveRequests = isUsingCachedRequests ? cachedBuyerRequests.items : requests
+  const cachedRequestsUpdatedAt = useMemo(
+    () => formatOfflineSnapshotUpdatedAt(cachedBuyerRequests.updatedAt),
+    [cachedBuyerRequests.updatedAt],
+  )
+
   const filteredRequests = useMemo(() => {
-    return requests.filter((request) => {
+    return effectiveRequests.filter((request) => {
       if (!matchesQuery(request, searchValue)) {
         return false
       }
@@ -102,7 +127,7 @@ export default function BuyerRequestsScreen() {
 
       return true
     })
-  }, [activeFilter, requests, searchValue])
+  }, [activeFilter, effectiveRequests, searchValue])
 
   const hasSearch = searchValue.trim().length > 0
 
@@ -143,13 +168,23 @@ export default function BuyerRequestsScreen() {
             </Pressable>
           ))}
         </View>
+        {isUsingCachedRequests ? (
+          <View style={styles.cachedNotice}>
+            <Text style={styles.cachedNoticeTitle}>Showing cached inbox</Text>
+            <Text style={styles.cachedNoticeText}>
+              {cachedRequestsUpdatedAt
+                ? `Last updated ${cachedRequestsUpdatedAt}. Reconnect to refresh seller replies.`
+                : 'Reconnect to refresh seller replies.'}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
-      {isLoading ? (
+      {isLoading && !isUsingCachedRequests ? (
         <View style={styles.center}>
           <Text style={styles.helper}>Loading messages...</Text>
         </View>
-      ) : loadError && requests.length === 0 ? (
+      ) : loadError && effectiveRequests.length === 0 ? (
         <View style={styles.content}>
           <ErrorState
             title="Messages could not be loaded"
@@ -232,6 +267,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  cachedNotice: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(176, 126, 40, 0.18)',
+    backgroundColor: '#fff7ea',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 4,
+  },
+  cachedNoticeTitle: {
+    color: palette.soil,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  cachedNoticeText: {
+    color: palette.clay,
+    fontSize: 12,
+    lineHeight: 17,
   },
   filterChip: {
     borderRadius: 999,

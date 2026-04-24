@@ -53,6 +53,7 @@ Any AI agent updating this file should:
 - Zero-dependency unit tests and Beta config checks now exist, but there is still no integration suite or user-flow smoke coverage
 - EAS build profiles, app and function environment templates, release and rollback runbooks, and Expo config checks now exist, but real staging or production validation and secret rollout are not finished
 - Crash reporting now has a first in-app foundation through a global JS handler, render-error boundary reporting, and a Supabase-backed crash log, but there is still no third-party alerting or operational triage flow
+- Buyer feed, map pins, and buyer or seller request inboxes now reuse last-known snapshots offline, but listing detail, conversations, and write actions still require live connectivity
 
 ### Confirmed Production Gaps
 
@@ -340,6 +341,7 @@ Already present:
 - app runtime policy migration, environment-scoped minimum supported version reads, and a blocking version gate component now exist in the app shell
 - client-side crash reporting foundation now exists through a global JS error handler, render crash capture, and a Supabase crash log table
 - marketplace analytics now have a first admin screen covering users, listing inventory, views, inquiries, response rate, and top active listing breakdowns
+- buyer feed, buyer map, and buyer or seller request lists now reuse cached last-known snapshots offline instead of failing closed immediately
 
 Still required:
 

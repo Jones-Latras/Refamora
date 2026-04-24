@@ -15,6 +15,7 @@
     "utils/appVersion.ts",
     "utils/crashReporting.ts",
     "utils/marketplaceAnalytics.ts",
+    "utils/offlineData.ts",
     "utils/schemas.ts",
     "utils/wasteTypes.ts",
     "utils/supabaseUrl.ts"

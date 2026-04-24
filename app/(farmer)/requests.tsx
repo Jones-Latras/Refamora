@@ -18,6 +18,8 @@ import { InquiryAiModal } from '../../components/InquiryAiModal'
 import { RequestsScreenSkeleton } from '../../components/ScreenSkeleton'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
+import { useConnectivity } from '../../hooks/useConnectivity'
+import { useOfflineDataStore } from '../../hooks/useOfflineData'
 import { useUnreadMessages } from '../../hooks/useUnreadMessages'
 import { getInquirySummary } from '../../services/aiService'
 import {
@@ -29,6 +31,10 @@ import type {
   InquiryAssistItem,
   InquirySummaryResult,
 } from '../../types/app'
+import {
+  formatOfflineSnapshotUpdatedAt,
+  shouldUseOfflineSnapshot,
+} from '../../utils/offlineData'
 import { palette } from '../../utils/theme'
 
 type SellerMessageFilter = 'all' | 'unread' | 'replied'
@@ -70,8 +76,15 @@ function matchesQuery(request: ContactRequestSummary, query: string) {
 
 export default function FarmerRequestsScreen() {
   const { user } = useAuth()
+  const { isOffline } = useConnectivity()
   const { refreshUnreadMessages } = useUnreadMessages()
   const { showToast } = useToast()
+  const cachedSellerRequests = useOfflineDataStore((state) =>
+    user?.id
+      ? state.sellerRequestsByUser[user.id] ?? { items: [], updatedAt: null }
+      : { items: [], updatedAt: null },
+  )
+  const setCachedSellerRequests = useOfflineDataStore((state) => state.setSellerRequests)
   const [requests, setRequests] = useState<ContactRequestSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSummaryLoading, setIsSummaryLoading] = useState(false)
@@ -102,8 +115,9 @@ export default function FarmerRequestsScreen() {
     }
 
     setRequests(result.data ?? [])
+    setCachedSellerRequests(user.id, result.data ?? [])
     setIsLoading(false)
-  }, [showToast, user])
+  }, [setCachedSellerRequests, showToast, user])
 
   useFocusEffect(
     useCallback(() => {
@@ -111,13 +125,23 @@ export default function FarmerRequestsScreen() {
     }, [loadRequests]),
   )
 
+  const isUsingCachedRequests = shouldUseOfflineSnapshot({
+    isOffline,
+    liveItemCount: requests.length,
+    snapshotItemCount: cachedSellerRequests.items.length,
+  })
+  const effectiveRequests = isUsingCachedRequests ? cachedSellerRequests.items : requests
   const pendingCount = useMemo(
-    () => requests.filter((request) => request.status === 'pending').length,
-    [requests],
+    () => effectiveRequests.filter((request) => request.status === 'pending').length,
+    [effectiveRequests],
+  )
+  const cachedRequestsUpdatedAt = useMemo(
+    () => formatOfflineSnapshotUpdatedAt(cachedSellerRequests.updatedAt),
+    [cachedSellerRequests.updatedAt],
   )
 
   const filteredRequests = useMemo(() => {
-    return requests.filter((request) => {
+    return effectiveRequests.filter((request) => {
       if (!matchesQuery(request, searchValue)) {
         return false
       }
@@ -132,7 +156,7 @@ export default function FarmerRequestsScreen() {
 
       return true
     })
-  }, [activeFilter, requests, searchValue])
+  }, [activeFilter, effectiveRequests, searchValue])
 
   const handleMarkAllSeen = async () => {
     if (!user) {
@@ -254,11 +278,21 @@ export default function FarmerRequestsScreen() {
             </Pressable>
           ) : null}
         </View>
+        {isUsingCachedRequests ? (
+          <View style={styles.cachedNotice}>
+            <Text style={styles.cachedNoticeTitle}>Showing cached inbox</Text>
+            <Text style={styles.cachedNoticeText}>
+              {cachedRequestsUpdatedAt
+                ? `Last updated ${cachedRequestsUpdatedAt}. Reconnect to refresh buyer conversations.`
+                : 'Reconnect to refresh buyer conversations.'}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
-      {isLoading ? (
+      {isLoading && !isUsingCachedRequests ? (
         <RequestsScreenSkeleton />
-      ) : loadError && requests.length === 0 ? (
+      ) : loadError && effectiveRequests.length === 0 ? (
         <View style={styles.content}>
           <ErrorState
             title="Messages could not be loaded"
@@ -380,6 +414,25 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     gap: 10,
+  },
+  cachedNotice: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(176, 126, 40, 0.18)',
+    backgroundColor: '#fff7ea',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 4,
+  },
+  cachedNoticeTitle: {
+    color: palette.soil,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  cachedNoticeText: {
+    color: palette.clay,
+    fontSize: 12,
+    lineHeight: 17,
   },
   primaryAction: {
     flex: 1,

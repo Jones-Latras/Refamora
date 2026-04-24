@@ -1,35 +1,14 @@
-import { useEffect, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useConnectivity } from '../hooks/useConnectivity'
 import { palette, shadow } from '../utils/theme'
 
-const OFFLINE_BANNER_DURATION_MS = 1000
-
 export function OfflineBanner() {
   const { isOffline, isChecking } = useConnectivity()
   const insets = useSafeAreaInsets()
-  const [isVisible, setIsVisible] = useState(false)
 
-  useEffect(() => {
-    if (isChecking || !isOffline) {
-      setIsVisible(false)
-      return
-    }
-
-    setIsVisible(true)
-
-    const timeoutId = setTimeout(() => {
-      setIsVisible(false)
-    }, OFFLINE_BANNER_DURATION_MS)
-
-    return () => {
-      clearTimeout(timeoutId)
-    }
-  }, [isChecking, isOffline])
-
-  if (isChecking || !isOffline || !isVisible) {
+  if (isChecking || !isOffline) {
     return null
   }
 
