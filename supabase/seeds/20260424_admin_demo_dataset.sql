@@ -10,11 +10,6 @@
 --
 -- You can change the email addresses below if your demo accounts use different emails.
 --
--- Note:
--- The seller verification rows below use a placeholder `document_path`.
--- If you want the admin "Open document" action to work live, replace that path with
--- a real uploaded file from the `verification-documents` bucket before presenting.
-
 create extension if not exists pgcrypto;
 
 do $$
@@ -22,7 +17,6 @@ declare
   admin_email text := 'admin@agriwaste.test';
   seller_email text := 'farmer@agriwaste.test';
   buyer_email text := 'buyer@agriwaste.test';
-  verification_document_path text := 'demo-documents/manual-upload-required.jpg';
 
   v_admin_id uuid;
   v_seller_id uuid;
@@ -392,49 +386,6 @@ begin
     updated_at = now() - interval '2 days'
   where id = resolved_queue_id;
 
-  insert into public.seller_verification_requests (
-    id,
-    seller_id,
-    document_type,
-    document_number,
-    notes,
-    document_path,
-    status,
-    created_at,
-    updated_at
-  )
-  values
-    (
-      pending_verification_id,
-      v_seller_id,
-      'farm_id',
-      'FARM-DEMO-2026-001',
-      'Submitting current farm identification for manual verification before proposal presentation.',
-      verification_document_path,
-      'pending',
-      now() - interval '12 hours',
-      now() - interval '12 hours'
-    ),
-    (
-      rejected_verification_id,
-      v_seller_id,
-      'government_id',
-      'GOV-DEMO-2026-OLD',
-      'Older verification attempt kept for admin history demo.',
-      verification_document_path,
-      'rejected',
-      now() - interval '5 days',
-      now() - interval '4 days'
-    );
-
-  update public.seller_verification_requests
-  set
-    admin_note = 'Previous upload was too blurry. Seller was asked to submit a clearer document.',
-    reviewed_by = v_admin_id,
-    reviewed_at = now() - interval '4 days',
-    updated_at = now() - interval '4 days'
-  where id = rejected_verification_id;
-
   insert into public.app_crash_reports (
     id,
     user_id,
@@ -541,19 +492,5 @@ begin
         'reviewed_by', v_admin_id
       ),
       now() - interval '2 days'
-    ),
-    (
-      audit_verification_id,
-      v_admin_id,
-      'seller_verification_updated',
-      'seller_verification_request',
-      rejected_verification_id,
-      jsonb_build_object(
-        'seller_id', v_seller_id,
-        'previous_status', 'pending',
-        'next_status', 'rejected',
-        'reviewed_by', v_admin_id
-      ),
-      now() - interval '4 days'
     );
 end $$;
