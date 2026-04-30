@@ -47,6 +47,11 @@ const FILTER_OPTIONS: { key: SellerMessageFilter; label: string }[] = [
   { key: 'replied', label: 'Replied' },
 ]
 
+const EMPTY_SELLER_REQUESTS_SNAPSHOT = {
+  items: [] as ContactRequestSummary[],
+  updatedAt: null as string | null,
+}
+
 function toInquiryAssistItem(request: ContactRequestSummary): InquiryAssistItem {
   return {
     id: request.id,
@@ -83,8 +88,8 @@ export default function FarmerRequestsScreen() {
   const { showToast } = useToast()
   const cachedSellerRequests = useOfflineDataStore((state) =>
     user?.id
-      ? state.sellerRequestsByUser[user.id] ?? { items: [], updatedAt: null }
-      : { items: [], updatedAt: null },
+      ? state.sellerRequestsByUser[user.id] ?? EMPTY_SELLER_REQUESTS_SNAPSHOT
+      : EMPTY_SELLER_REQUESTS_SNAPSHOT,
   )
   const setCachedSellerRequests = useOfflineDataStore((state) => state.setSellerRequests)
   const [requests, setRequests] = useState<ContactRequestSummary[]>([])

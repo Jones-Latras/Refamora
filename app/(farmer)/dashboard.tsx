@@ -184,6 +184,15 @@ export default function FarmerDashboardScreen() {
   >([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const isSellerVerified = profile?.is_verified === true
+
+  const openCreateListing = useCallback(() => {
+    router.push(
+      isSellerVerified
+        ? '/(farmer)/create-listing'
+        : '/(shared)/seller-verification',
+    )
+  }, [isSellerVerified])
 
   const loadDashboard = useCallback(async () => {
     if (!user) {
@@ -345,7 +354,18 @@ export default function FarmerDashboardScreen() {
           savedDraft.values.title.trim() || 'Untitled listing draft'
         }" without starting over.`,
         actionLabel: 'Open draft',
-        onPress: () => router.push('/(farmer)/create-listing'),
+        onPress: openCreateListing,
+      })
+    }
+
+    if (profile && !isSellerVerified) {
+      reminders.push({
+        id: 'seller-verification',
+        title: 'Verify before posting',
+        description:
+          'Submit your seller verification document and wait for approval before publishing products.',
+        actionLabel: 'Start verification',
+        onPress: () => router.push('/(shared)/seller-verification'),
       })
     }
 
@@ -393,6 +413,9 @@ export default function FarmerDashboardScreen() {
     listings.length,
     pendingInquiryCount,
     profileCompletion,
+    profile,
+    isSellerVerified,
+    openCreateListing,
     savedDraft,
     staleListings,
   ])
@@ -462,7 +485,8 @@ export default function FarmerDashboardScreen() {
                 {getGreeting(profile?.full_name ?? user?.email)}
               </Text>
               <Text style={styles.headerMeta}>
-                {profile?.email ?? user?.email ?? 'No email'} | Verified seller
+                {profile?.email ?? user?.email ?? 'No email'} |{' '}
+                {isSellerVerified ? 'Verified seller' : 'Verification required'}
               </Text>
             </View>
           </View>
@@ -559,11 +583,17 @@ export default function FarmerDashboardScreen() {
 
         <View style={styles.primaryActions}>
           <Pressable
-            onPress={() => router.push('/(farmer)/create-listing')}
+            onPress={openCreateListing}
             style={[styles.primaryButton, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
           >
-            <Feather name="plus-circle" size={16} color={palette.cream} />
-            <Text style={styles.primaryButtonText}>Create Listing</Text>
+            <Feather
+              name={isSellerVerified ? 'plus-circle' : 'shield'}
+              size={16}
+              color={palette.cream}
+            />
+            <Text style={styles.primaryButtonText}>
+              {isSellerVerified ? 'Create Listing' : 'Verify to Post'}
+            </Text>
           </Pressable>
           <Pressable
             onPress={() => router.push('/(farmer)/my-listings')}
@@ -614,7 +644,7 @@ export default function FarmerDashboardScreen() {
               actionLabel={listings.length === 0 ? 'Create first listing' : undefined}
               onAction={
                 listings.length === 0
-                  ? () => router.push('/(farmer)/create-listing')
+                  ? openCreateListing
                   : undefined
               }
             />
@@ -646,9 +676,13 @@ export default function FarmerDashboardScreen() {
           ) : (
             <EmptyState
               title="No listings yet"
-              description="Create your first listing to start receiving buyer inquiries."
-              actionLabel="Create first listing"
-              onAction={() => router.push('/(farmer)/create-listing')}
+              description={
+                isSellerVerified
+                  ? 'Create your first listing to start receiving buyer inquiries.'
+                  : 'Verify your seller profile before publishing your first listing.'
+              }
+              actionLabel={isSellerVerified ? 'Create first listing' : 'Start verification'}
+              onAction={openCreateListing}
             />
           )}
         </View>

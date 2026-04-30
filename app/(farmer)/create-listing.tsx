@@ -9,6 +9,7 @@ import { ListingEditor } from '../../components/ListingEditor'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
 import { useListingDraftStore } from '../../hooks/useListingDrafts'
+import { useProfile } from '../../hooks/useProfile'
 import {
   createListing,
   getListingById,
@@ -25,6 +26,7 @@ function isRemoteImage(value?: string | null) {
 export default function CreateListingScreen() {
   const { duplicateFromId } = useLocalSearchParams<{ duplicateFromId?: string }>()
   const { user } = useAuth()
+  const { profile, isLoading: isProfileLoading } = useProfile(user?.id)
   const { showToast } = useToast()
   const savedDraft = useListingDraftStore((state) =>
     user?.id ? state.draftsByUser[user.id] ?? null : null,
@@ -128,6 +130,11 @@ export default function CreateListingScreen() {
       return
     }
 
+    if (!profile?.is_verified) {
+      showToast('Verify your seller profile before publishing a listing.', 'error')
+      return
+    }
+
     let imageUrl: string | null = values.image_url ?? null
 
     if (values.image_url && !isRemoteImage(values.image_url)) {
@@ -196,10 +203,16 @@ export default function CreateListingScreen() {
     })
   }
 
-  if (isLoadingDuplicate) {
+  if (isLoadingDuplicate || isProfileLoading) {
     return (
       <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
-        <BrandedLoadingScreen message="Preparing duplicate listing..." />
+        <BrandedLoadingScreen
+          message={
+            isLoadingDuplicate
+              ? 'Preparing duplicate listing...'
+              : 'Checking seller verification...'
+          }
+        />
       </SafeAreaView>
     )
   }
@@ -213,6 +226,21 @@ export default function CreateListingScreen() {
             description="The source listing for this duplicate flow could not be loaded. It may have been deleted, unpublished, or is no longer available in your account."
             actionLabel="Start a blank listing"
             onAction={() => router.replace('/(farmer)/create-listing')}
+          />
+        </View>
+      </SafeAreaView>
+    )
+  }
+
+  if (!profile?.is_verified) {
+    return (
+      <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
+        <View style={styles.wrapper}>
+          <EmptyState
+            title="Verify your seller profile first"
+            description="Refamora requires seller verification before products can be posted. Submit your verification document and wait for admin approval before publishing a listing."
+            actionLabel="Start verification"
+            onAction={() => router.push('/(shared)/seller-verification')}
           />
         </View>
       </SafeAreaView>

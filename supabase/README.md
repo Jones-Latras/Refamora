@@ -62,6 +62,7 @@ Those Phase 1 checklist items should remain partial until the SQL is applied to 
 
 - `seeds/20260416_dev_accounts.sql` is for development only and should not be applied to staging or production.
 - `seeds/20260416_storage_repair.sql` is a repair script, not a default production seed step.
+- `seeds/20260424_admin_demo_dataset.sql` is for proposal or demo environments only. It assumes buyer, seller, and admin accounts already exist, then seeds listings, inquiry history, reports, AI review queue items, verification requests, crash reports, and audit entries for the admin hub.
 
 ## AI functions
 

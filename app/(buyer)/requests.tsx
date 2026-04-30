@@ -37,6 +37,11 @@ const FILTER_OPTIONS: { key: BuyerMessageFilter; label: string }[] = [
   { key: 'sent', label: 'You sent' },
 ]
 
+const EMPTY_BUYER_REQUESTS_SNAPSHOT = {
+  items: [] as ContactRequestSummary[],
+  updatedAt: null as string | null,
+}
+
 function matchesQuery(request: ContactRequestSummary, query: string) {
   const normalizedQuery = query.trim().toLowerCase()
 
@@ -60,8 +65,8 @@ export default function BuyerRequestsScreen() {
   const { showToast } = useToast()
   const cachedBuyerRequests = useOfflineDataStore((state) =>
     user?.id
-      ? state.buyerRequestsByUser[user.id] ?? { items: [], updatedAt: null }
-      : { items: [], updatedAt: null },
+      ? state.buyerRequestsByUser[user.id] ?? EMPTY_BUYER_REQUESTS_SNAPSHOT
+      : EMPTY_BUYER_REQUESTS_SNAPSHOT,
   )
   const setCachedBuyerRequests = useOfflineDataStore((state) => state.setBuyerRequests)
   const [requests, setRequests] = useState<ContactRequestSummary[]>([])

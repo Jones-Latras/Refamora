@@ -33,7 +33,7 @@ import {
   markInquirySeen,
   sendContactRequestMessage,
 } from '../../../services/contactService'
-import type { ContactConversation } from '../../../types/app'
+import type { ContactConversation, ContactRequestSummary } from '../../../types/app'
 import { formatDateTime } from '../../../utils/formatters'
 import {
   formatOfflineSnapshotUpdatedAt,
@@ -43,6 +43,11 @@ import { palette, radii, shadow } from '../../../utils/theme'
 
 const EMPTY_CONVERSATION_SNAPSHOT = {
   items: null as ContactConversation | null,
+  updatedAt: null as string | null,
+}
+
+const EMPTY_REQUESTS_SNAPSHOT = {
+  items: [] as ContactRequestSummary[],
   updatedAt: null as string | null,
 }
 
@@ -72,13 +77,13 @@ export default function ContactConversationScreen() {
   const setCachedConversation = useOfflineDataStore((state) => state.setConversation)
   const cachedBuyerRequests = useOfflineDataStore((state) =>
     user?.id
-      ? state.buyerRequestsByUser[user.id] ?? { items: [], updatedAt: null }
-      : { items: [], updatedAt: null },
+      ? state.buyerRequestsByUser[user.id] ?? EMPTY_REQUESTS_SNAPSHOT
+      : EMPTY_REQUESTS_SNAPSHOT,
   )
   const cachedSellerRequests = useOfflineDataStore((state) =>
     user?.id
-      ? state.sellerRequestsByUser[user.id] ?? { items: [], updatedAt: null }
-      : { items: [], updatedAt: null },
+      ? state.sellerRequestsByUser[user.id] ?? EMPTY_REQUESTS_SNAPSHOT
+      : EMPTY_REQUESTS_SNAPSHOT,
   )
   const setCachedBuyerRequests = useOfflineDataStore((state) => state.setBuyerRequests)
   const setCachedSellerRequests = useOfflineDataStore((state) => state.setSellerRequests)

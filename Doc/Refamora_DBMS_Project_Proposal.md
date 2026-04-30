@@ -47,9 +47,12 @@
 - Agricultural waste listing creation and management
 - Search, filtering, and map-based listing discovery
 - Inquiry and message tracking
-- Listing reports and moderation records
+- Listing reports, moderation records, and admin audit logs
 - AI event logging and review queue records
 - Dashboard data for views and inquiries
+- Seller verification requests and approval status
+- Real-time in-app user notifications
+- App crash reporting logs
 
 ### Limitations
 
@@ -74,6 +77,9 @@ Refamora is a mobile marketplace system for agricultural waste exchange. It allo
 - Listing reports for suspicious or inaccurate posts
 - Dashboard summaries for listing views and inquiries
 - AI-assisted listing support, photo checking, moderation, and inbox assistance
+- Admin moderation hub with audit logs and app crash reports
+- Seller verification processing and badging
+- In-app notification system for inquiries and system updates
 
 ## 7. Conceptual Framework
 
@@ -122,12 +128,16 @@ flowchart LR
 - `contact_request_messages`
 - `listing_engagement_events`
 - `listing_reports`
+- `seller_verification_requests`
+- `user_notifications`
+- `admin_action_logs`
 
 #### Support Tables
 
 - `ai_events`
 - `listing_review_queue`
 - `waste_suggestions`
+- `app_crash_reports`
 
 ### Relationships (Brief)
 
@@ -140,6 +150,9 @@ flowchart LR
 - One `listing` can receive many `listing_reports`.
 - One `user` can trigger many `ai_events`.
 - One `ai_event` may create a `listing_review_queue` record.
+- One `user` can have many `user_notifications`.
+- One `user` can submit many `seller_verification_requests`.
+- One `user` (as admin) can create many `admin_action_logs`.
 
 ## 9. ER Diagram
 
@@ -161,6 +174,9 @@ erDiagram
     AI_EVENTS ||--o{ LISTING_REVIEW_QUEUE : may_create
     LISTINGS ||--o{ LISTING_REVIEW_QUEUE : may_enter
     USERS ||--o{ LISTING_REVIEW_QUEUE : owns
+    USERS ||--o{ USER_NOTIFICATIONS : receives
+    USERS ||--o{ SELLER_VERIFICATION_REQUESTS : submits
+    USERS ||--o{ ADMIN_ACTION_LOGS : logs_as_admin
 
     USERS {
         uuid id PK
@@ -235,6 +251,34 @@ erDiagram
         uuid seller_id FK
         text decision
         text queue_status
+        timestamptz created_at
+    }
+    
+    USER_NOTIFICATIONS {
+        uuid id PK
+        uuid user_id FK
+        text type
+        text title
+        text message
+        boolean is_read
+        timestamptz created_at
+    }
+
+    SELLER_VERIFICATION_REQUESTS {
+        uuid id PK
+        uuid seller_id FK
+        text document_type
+        text status
+        uuid reviewed_by FK
+        timestamptz created_at
+    }
+    
+    ADMIN_ACTION_LOGS {
+        uuid id PK
+        uuid admin_id FK
+        text action_type
+        text entity_type
+        uuid entity_id
         timestamptz created_at
     }
 ```

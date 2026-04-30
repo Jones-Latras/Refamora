@@ -29,6 +29,8 @@ const SEARCH_PAGE_MULTIPLIER = 4
 const SEARCH_RESULT_LIMIT_CAP = 96
 const DUPLICATE_LISTING_ERROR_MESSAGE =
   'You already have an active listing with the same details. Edit the existing listing instead of publishing it again.'
+const SELLER_VERIFICATION_REQUIRED_ERROR_MESSAGE =
+  'Verify your seller profile before publishing a listing.'
 const SEARCH_STOP_WORDS = new Set([
   'a',
   'an',
@@ -359,6 +361,29 @@ async function findDuplicateActiveListing(
     data?.find((existing) => isDuplicateActiveListing(listing, existing)) ?? null
 
   return { data: duplicate, error: null }
+}
+
+async function verifySellerCanPublish(
+  sellerId: string,
+): Promise<ServiceResult<null>> {
+  const { data, error } = await getSupabaseClient()
+    .from('users')
+    .select('role, is_verified')
+    .eq('id', sellerId)
+    .maybeSingle()
+
+  if (error) {
+    return { data: null, error }
+  }
+
+  if (data?.role !== 'farmer' || data.is_verified !== true) {
+    return {
+      data: null,
+      error: new Error(SELLER_VERIFICATION_REQUIRED_ERROR_MESSAGE),
+    }
+  }
+
+  return { data: null, error: null }
 }
 
 function mapCreateListingError(error: unknown) {
@@ -927,6 +952,12 @@ export async function createListing(
   }
 
   if ((listing.status ?? 'active') === 'active') {
+    const sellerVerificationResult = await verifySellerCanPublish(listing.seller_id)
+
+    if (sellerVerificationResult.error) {
+      return { data: null, error: sellerVerificationResult.error }
+    }
+
     const duplicateResult = await findDuplicateActiveListing(listing)
 
     if (duplicateResult.error) {
