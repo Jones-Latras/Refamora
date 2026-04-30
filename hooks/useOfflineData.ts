@@ -32,6 +32,7 @@ type OfflineDataState = {
   setBuyerRequests: (userId: string, items: ContactRequestSummary[]) => void
   setSellerRequests: (userId: string, items: ContactRequestSummary[]) => void
   setConversation: (requestId: string, item: ContactConversation) => void
+  removeListing: (listingId: string) => void
 }
 
 function createSnapshot<T>(items: T): OfflineSnapshot<T> {
@@ -102,6 +103,31 @@ export const useOfflineDataStore = create<OfflineDataState>()(
             [requestId]: createSnapshot(item),
           },
         })),
+      removeListing: (listingId) =>
+        set((state) => {
+          const { [listingId]: _removedDetail, ...listingDetailsById } =
+            state.listingDetailsById
+          const { [listingId]: _removedRelated, ...relatedListingsByListingId } =
+            state.relatedListingsByListingId
+
+          return {
+            buyerFeed: createSnapshot(
+              state.buyerFeed.items.filter((listing) => listing.id !== listingId),
+            ),
+            mapPins: createSnapshot(
+              state.mapPins.items.filter((pin) => pin.id !== listingId),
+            ),
+            listingDetailsById,
+            relatedListingsByListingId: Object.fromEntries(
+              Object.entries(relatedListingsByListingId).map(([relatedListingId, snapshot]) => [
+                relatedListingId,
+                createSnapshot(
+                  snapshot.items.filter((listing) => listing.id !== listingId),
+                ),
+              ]),
+            ),
+          }
+        }),
     }),
     {
       name: 'offline-data',

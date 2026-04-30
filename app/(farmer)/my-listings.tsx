@@ -22,6 +22,7 @@ import { useToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
 import { useListingDraftStore } from '../../hooks/useListingDrafts'
 import { useFarmerListings } from '../../hooks/useListings'
+import { useOfflineDataStore } from '../../hooks/useOfflineData'
 import {
   deleteListing,
   getSellerListingActivity,
@@ -124,6 +125,7 @@ export default function MyListingsScreen() {
   const { user } = useAuth()
   const { showToast } = useToast()
   const { data, isLoading, error, refetch } = useFarmerListings(user?.id)
+  const removeCachedListing = useOfflineDataStore((state) => state.removeListing)
   const savedDraft = useListingDraftStore((state) =>
     user?.id ? state.draftsByUser[user.id] ?? null : null,
   )
@@ -201,6 +203,7 @@ export default function MyListingsScreen() {
     }
 
     setExpandedListingId((current) => (current === listingId ? null : current))
+    removeCachedListing(listingId)
     showToast('Listing deleted.', 'success')
     await refetch()
     await refreshSupportingData()

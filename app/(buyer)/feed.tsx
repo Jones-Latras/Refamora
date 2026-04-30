@@ -187,10 +187,10 @@ export default function FeedScreen() {
   }
 
   useEffect(() => {
-    if (!isOffline && data.length > 0) {
+    if (!isOffline && !error && !hasSearch && activeFilterCount === 0) {
       setCachedBuyerFeed(data)
     }
-  }, [data, isOffline, setCachedBuyerFeed])
+  }, [activeFilterCount, data, error, hasSearch, isOffline, setCachedBuyerFeed])
 
   const cachedFeedUpdatedAt = useMemo(
     () => formatOfflineSnapshotUpdatedAt(cachedBuyerFeed.updatedAt),

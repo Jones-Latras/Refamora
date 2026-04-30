@@ -68,9 +68,7 @@ export default function MapScreen() {
     }
 
     setPins(result.data ?? [])
-    if ((result.data ?? []).length > 0) {
-      setCachedMapPins(result.data ?? [])
-    }
+    setCachedMapPins(result.data ?? [])
     setIsLoading(false)
     setIsRefreshing(false)
   }
