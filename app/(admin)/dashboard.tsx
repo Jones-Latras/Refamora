@@ -1,7 +1,9 @@
 import * as Linking from 'expo-linking'
+import { Feather } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
 import {
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -12,6 +14,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import { AppImage } from '../../components/AppImage'
 import { EmptyState } from '../../components/EmptyState'
 import { ErrorState } from '../../components/ErrorState'
 import { VerifiedBadge } from '../../components/VerifiedBadge'
@@ -121,15 +124,65 @@ type MetricCardProps = {
   value: string
   label: string
   hint?: string
+  icon: keyof typeof Feather.glyphMap
+  tone?: 'default' | 'warning' | 'danger' | 'success'
 }
 
-function MetricCard({ value, label, hint }: MetricCardProps) {
+function MetricCard({ value, label, hint, icon, tone = 'default' }: MetricCardProps) {
   return (
     <View style={styles.metricCard}>
-      <Text style={styles.metricValue}>{value}</Text>
+      <View style={styles.metricTopRow}>
+        <View
+          style={[
+            styles.metricIcon,
+            tone === 'warning'
+              ? styles.metricIconWarning
+              : tone === 'danger'
+                ? styles.metricIconDanger
+                : tone === 'success'
+                  ? styles.metricIconSuccess
+                  : null,
+          ]}
+        >
+          <Feather
+            name={icon}
+            size={15}
+            color={
+              tone === 'danger'
+                ? palette.error
+                : tone === 'warning'
+                  ? palette.harvest
+                  : palette.sageDark
+            }
+          />
+        </View>
+        <Text style={styles.metricValue}>{value}</Text>
+      </View>
       <Text style={styles.metricLabel}>{label}</Text>
       {hint ? <Text style={styles.metricHint}>{hint}</Text> : null}
     </View>
+  )
+}
+
+type QuickToolCardProps = {
+  title: string
+  description: string
+  icon: keyof typeof Feather.glyphMap
+  onPress: () => void
+}
+
+function QuickToolCard({ title, description, icon, onPress }: QuickToolCardProps) {
+  return (
+    <Pressable onPress={onPress} style={styles.quickCard}>
+      <View style={styles.quickCardHeader}>
+        <View style={styles.quickIcon}>
+          <Feather name={icon} size={15} color={palette.sageDark} />
+        </View>
+        <Feather name="chevron-right" size={16} color={palette.sageDark} />
+      </View>
+      <Text style={styles.quickCardTitle}>{title}</Text>
+      <Text style={styles.quickCardText}>{description}</Text>
+    </Pressable>
   )
 }
 
@@ -365,12 +418,19 @@ export default function AdminDashboardScreen() {
       return
     }
 
+    const adminNote = (verificationNotes[item.id] ?? item.adminNote ?? '').trim()
+
+    if (status === 'rejected' && !adminNote) {
+      showToast('Add an admin note before rejecting this verification request.', 'error')
+      return
+    }
+
     setIsActingOnId(item.id)
     const result = await updateAdminSellerVerificationStatus({
       requestId: item.id,
       sellerId: item.sellerId,
       status,
-      adminNote: verificationNotes[item.id] ?? item.adminNote,
+      adminNote,
       reviewerId: user.id,
     })
     setIsActingOnId(null)
@@ -382,6 +442,28 @@ export default function AdminDashboardScreen() {
 
     showToast('Verification request updated.', 'success')
     void loadAdminData('refresh')
+  }
+
+  const confirmVerificationAction = (
+    item: AdminSellerVerificationItem,
+    status: SellerVerificationRequestStatus,
+  ) => {
+    if (status === 'rejected') {
+      void handleVerificationAction(item, status)
+      return
+    }
+
+    Alert.alert(
+      'Approve seller verification?',
+      `${item.seller?.fullName ?? 'This seller'} will receive a verified seller badge and can publish listings.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Approve',
+          onPress: () => void handleVerificationAction(item, status),
+        },
+      ],
+    )
   }
 
   if (role !== 'admin') {
@@ -430,70 +512,97 @@ export default function AdminDashboardScreen() {
         <View style={styles.hero}>
           <View style={styles.heroHeader}>
             <View style={styles.heroTextBlock}>
+              <View style={styles.adminBadge}>
+                <Feather name="shield" size={12} color={palette.sageDark} />
+                <Text style={styles.adminBadgeText}>Admin Panel</Text>
+              </View>
               <Text style={styles.title}>Admin operations hub</Text>
               <Text style={styles.subtitle}>
-                Review moderation, seller verification, and app health from one admin surface.
+                Monitor seller verification, user reports, AI reviews, and system health from one focused workspace.
               </Text>
             </View>
             <Pressable onPress={handleLogout} style={styles.logoutButton}>
+              <Feather name="log-out" size={13} color={palette.error} />
               <Text style={styles.logoutButtonText}>Log out</Text>
             </Pressable>
           </View>
         </View>
 
         <View style={styles.metricsRow}>
-          <MetricCard value={pendingReportsCount.toString()} label="Pending reports" />
-          <MetricCard value={pendingQueueCount.toString()} label="Pending AI reviews" />
-          <MetricCard value={pendingVerificationCount.toString()} label="Pending verifications" />
-        </View>
-
-        <View style={styles.metricsRow}>
-          <MetricCard value={unavailableListingsCount.toString()} label="Unavailable listings" />
-          <MetricCard value={fatalCrashCount.toString()} label="Recent fatal crashes" />
           <MetricCard
-            value={crashReports.length.toString()}
-            label="Recent crash reports"
-            hint={recentCrashHint}
+            value={pendingReportsCount.toString()}
+            label="Pending reports"
+            hint="Needs action"
+            icon="flag"
+            tone="warning"
+          />
+          <MetricCard
+            value={pendingQueueCount.toString()}
+            label="Pending AI reviews"
+            hint="Review queue"
+            icon="zap"
+            tone="warning"
+          />
+          <MetricCard
+            value={pendingVerificationCount.toString()}
+            label="Pending verifications"
+            hint="Seller checks"
+            icon="credit-card"
           />
         </View>
 
+        <View style={styles.metricsRow}>
+          <MetricCard
+            value={unavailableListingsCount.toString()}
+            label="Unavailable listings"
+            hint="Paused or held"
+            icon="pause-circle"
+          />
+          <MetricCard
+            value={fatalCrashCount.toString()}
+            label="Fatal crashes"
+            hint="High priority"
+            icon="alert-triangle"
+            tone="danger"
+          />
+          <MetricCard
+            value={crashReports.length.toString()}
+            label="Crash reports"
+            hint={recentCrashHint}
+            icon="activity"
+            tone={crashReports.length > 0 ? 'warning' : 'success'}
+          />
+        </View>
+
+        <View style={styles.sectionIntro}>
+          <Text style={styles.sectionTitle}>Admin tools</Text>
+          <Text style={styles.sectionSubtitle}>Jump into focused review and reporting workflows.</Text>
+        </View>
         <View style={styles.quickGrid}>
-          <Pressable
+          <QuickToolCard
+            title="Verifications"
+            description="Review seller documents and approval queue."
+            icon="shield"
             onPress={() => router.push('/(admin)/verifications')}
-            style={styles.quickCard}
-          >
-            <Text style={styles.quickCardTitle}>Seller verification reviews</Text>
-            <Text style={styles.quickCardText}>
-              Open the full verification queue for detailed seller document review.
-            </Text>
-          </Pressable>
-          <Pressable
+          />
+          <QuickToolCard
+            title="Audit log"
+            description="Track sensitive admin decisions."
+            icon="clipboard"
             onPress={() => router.push('/(admin)/audit-log')}
-            style={styles.quickCard}
-          >
-            <Text style={styles.quickCardTitle}>Admin audit log</Text>
-            <Text style={styles.quickCardText}>
-              Review the recorded history of sensitive admin actions.
-            </Text>
-          </Pressable>
-          <Pressable
+          />
+          <QuickToolCard
+            title="Analytics"
+            description="Inspect marketplace growth and activity."
+            icon="bar-chart-2"
             onPress={() => router.push('/(admin)/analytics' as never)}
-            style={styles.quickCard}
-          >
-            <Text style={styles.quickCardTitle}>Marketplace analytics</Text>
-            <Text style={styles.quickCardText}>
-              Review user, listing, view, and inquiry trends from the app.
-            </Text>
-          </Pressable>
-          <Pressable
+          />
+          <QuickToolCard
+            title="Crash reports"
+            description="Investigate app failures and routes."
+            icon="alert-octagon"
             onPress={() => router.push('/(admin)/crashes')}
-            style={styles.quickCard}
-          >
-            <Text style={styles.quickCardTitle}>App crash reports</Text>
-            <Text style={styles.quickCardText}>
-              Review client-side crash entries captured from production-style app use.
-            </Text>
-          </Pressable>
+          />
         </View>
 
         {crashReports.length > 0 ? (
@@ -518,42 +627,58 @@ export default function AdminDashboardScreen() {
                     <View
                       style={[
                         styles.statusBadge,
-                        item.severity === 'fatal' ? styles.statusNegative : styles.statusWarning,
+                        item.severity === 'fatal'
+                          ? styles.statusFatal
+                          : styles.statusWarningStrong,
                       ]}
                     >
                       <Text style={styles.statusBadgeText}>{item.severity}</Text>
                     </View>
                   </View>
-                  <Text style={styles.metaText}>
-                    {item.route ?? 'Unknown route'} | {item.platform} | {formatTimestamp(item.createdAt)}
-                  </Text>
+                  <View style={styles.metadataRow}>
+                    <Text style={styles.codeMeta} numberOfLines={1}>
+                      {item.route ?? 'Unknown route'}
+                    </Text>
+                    <Text style={styles.metaText}>{item.platform}</Text>
+                    <Text style={styles.metaText}>{formatTimestamp(item.createdAt)}</Text>
+                  </View>
+                  <Pressable
+                    onPress={() => router.push('/(admin)/crashes')}
+                    style={styles.smallInlineLink}
+                  >
+                    <Text style={styles.smallInlineLinkText}>View details</Text>
+                  </Pressable>
                 </View>
               ))}
             </View>
           </View>
         ) : null}
 
-        <View style={styles.segmentRow}>
-          {([
-            ['reports', 'User reports'],
-            ['queue', 'AI review queue'],
-            ['verifications', 'Verifications'],
-          ] as const).map(([value, label]) => (
-            <Pressable
-              key={value}
-              onPress={() => setActiveTab(value)}
-              style={[styles.segmentButton, activeTab === value ? styles.segmentActive : null]}
-            >
-              <Text
-                style={[
-                  styles.segmentText,
-                  activeTab === value ? styles.segmentTextActive : null,
-                ]}
+        <View style={styles.reviewSectionHeader}>
+          <Text style={styles.sectionTitle}>Review queues</Text>
+          <Text style={styles.sectionSubtitle}>Triage reports, AI moderation, and seller approvals.</Text>
+          <View style={styles.segmentRow}>
+            {([
+              ['reports', 'User reports'],
+              ['queue', 'AI review queue'],
+              ['verifications', 'Verifications'],
+            ] as const).map(([value, label]) => (
+              <Pressable
+                key={value}
+                onPress={() => setActiveTab(value)}
+                style={[styles.segmentButton, activeTab === value ? styles.segmentActive : null]}
               >
-                {label}
-              </Text>
-            </Pressable>
-          ))}
+                <Text
+                  style={[
+                    styles.segmentText,
+                    activeTab === value ? styles.segmentTextActive : null,
+                  ]}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
 
         {activeTab === 'reports' ? (
@@ -627,7 +752,7 @@ export default function AdminDashboardScreen() {
                     onChangeText={(value) =>
                       setReportNotes((current) => ({ ...current, [item.id]: value }))
                     }
-                    placeholder="Admin note"
+                    placeholder="Add reason or internal note before resolving this report"
                     placeholderTextColor="#9e9183"
                     multiline
                     style={styles.noteInput}
@@ -727,6 +852,22 @@ export default function AdminDashboardScreen() {
                     </View>
                   </View>
 
+                  <View style={styles.reviewImageFrame}>
+                    {item.listing?.imageUrl ? (
+                      <AppImage
+                        uri={item.listing.imageUrl}
+                        style={styles.reviewImage}
+                      />
+                    ) : (
+                      <View style={styles.reviewImageFallback}>
+                        <Feather name="image" size={22} color={palette.muted} />
+                        <Text style={styles.reviewImageFallbackText}>
+                          No listing photo attached
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
                   <Text style={styles.metaText}>
                     Decision: {item.decision === 'block' ? 'Block' : 'Needs review'}
                   </Text>
@@ -760,7 +901,7 @@ export default function AdminDashboardScreen() {
                     onChangeText={(value) =>
                       setQueueNotes((current) => ({ ...current, [item.id]: value }))
                     }
-                    placeholder="Admin note"
+                    placeholder="Add reason or internal note before resolving this review"
                     placeholderTextColor="#9e9183"
                     multiline
                     style={styles.noteInput}
@@ -856,9 +997,10 @@ export default function AdminDashboardScreen() {
                   <View style={styles.cardHeader}>
                     <View style={styles.headerTextBlock}>
                       <Text style={styles.cardTitle}>{item.seller?.fullName ?? 'Unknown seller'}</Text>
-                      <Text style={styles.metaText}>
+                      <Text style={styles.metaText}>Seller</Text>
+                      <Text style={styles.sellerMetaText}>
                         {item.seller?.city ?? 'Location not provided'}
-                        {item.seller?.email ? ` | ${item.seller.email}` : ''}
+                        {item.seller?.email ? ` · ${item.seller.email}` : ''}
                       </Text>
                     </View>
                     <View style={[styles.statusBadge, getVerificationStatusTone(item.status)]}>
@@ -868,12 +1010,27 @@ export default function AdminDashboardScreen() {
 
                   {item.status === 'approved' ? <VerifiedBadge /> : null}
 
-                  <Text style={styles.metaText}>
-                    Document: {DOCUMENT_LABELS[item.documentType] ?? 'Verification proof'}
-                  </Text>
-                  <Text style={styles.metaText}>Reference: {item.documentNumber}</Text>
-                  <Text style={styles.metaText}>Submitted: {formatTimestamp(item.createdAt)}</Text>
-                  {item.notes ? <Text style={styles.detailText}>{item.notes}</Text> : null}
+                  <View style={styles.metadataGrid}>
+                    <View style={styles.metadataItem}>
+                      <Text style={styles.metadataLabel}>Document</Text>
+                      <Text style={styles.metadataValue}>
+                        {DOCUMENT_LABELS[item.documentType] ?? 'Verification proof'}
+                      </Text>
+                    </View>
+                    <View style={styles.metadataItem}>
+                      <Text style={styles.metadataLabel}>Reference</Text>
+                      <Text style={styles.metadataValue}>{item.documentNumber}</Text>
+                    </View>
+                    <View style={styles.metadataItem}>
+                      <Text style={styles.metadataLabel}>Submitted</Text>
+                      <Text style={styles.metadataValue}>{formatTimestamp(item.createdAt)}</Text>
+                    </View>
+                  </View>
+                  {item.notes ? (
+                    <View style={styles.codeBox}>
+                      <Text style={styles.codeBoxText}>{item.notes}</Text>
+                    </View>
+                  ) : null}
                   {item.adminNote ? (
                     <Text style={styles.metaText}>Admin note: {item.adminNote}</Text>
                   ) : null}
@@ -890,26 +1047,31 @@ export default function AdminDashboardScreen() {
                     onChangeText={(value) =>
                       setVerificationNotes((current) => ({ ...current, [item.id]: value }))
                     }
-                    placeholder="Admin note"
+                    placeholder="Add reason or internal note before approving/rejecting"
                     placeholderTextColor="#9e9183"
                     multiline
                     style={styles.noteInput}
                   />
+                  <Text style={styles.noteHelper}>Admin note required when rejecting.</Text>
 
                   <View style={styles.actionRow}>
                     <Pressable
                       disabled={isActingOnId === item.id}
-                      onPress={() => void handleVerificationAction(item, 'approved')}
+                      onPress={() => confirmVerificationAction(item, 'approved')}
                       style={[styles.actionButton, styles.primaryAction]}
                     >
-                      <Text style={styles.primaryActionText}>Approve</Text>
+                      <Text style={styles.primaryActionText}>
+                        {isActingOnId === item.id ? 'Working...' : 'Approve'}
+                      </Text>
                     </Pressable>
                     <Pressable
-                      disabled={isActingOnId === item.id}
-                      onPress={() => void handleVerificationAction(item, 'rejected')}
+                      disabled={isActingOnId === item.id || !(verificationNotes[item.id] ?? item.adminNote ?? '').trim()}
+                      onPress={() => confirmVerificationAction(item, 'rejected')}
                       style={[styles.actionButton, styles.warningAction]}
                     >
-                      <Text style={styles.warningActionText}>Reject</Text>
+                      <Text style={styles.warningActionText}>
+                        {isActingOnId === item.id ? 'Working...' : 'Reject'}
+                      </Text>
                     </Pressable>
                   </View>
                 </View>
@@ -949,6 +1111,24 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 6,
   },
+  adminBadge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 999,
+    backgroundColor: '#eef5ef',
+    borderWidth: 1,
+    borderColor: 'rgba(58, 102, 72, 0.16)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  adminBadgeText: {
+    color: palette.sageDark,
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
   title: {
     color: palette.soil,
     fontSize: 30,
@@ -961,6 +1141,9 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     borderRadius: 999,
     backgroundColor: '#f9e4df',
     paddingHorizontal: 14,
@@ -985,6 +1168,29 @@ const styles = StyleSheet.create({
     gap: 4,
     ...shadow,
   },
+  metricTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+  },
+  metricIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#eef5ef',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  metricIconWarning: {
+    backgroundColor: '#f5ecd6',
+  },
+  metricIconDanger: {
+    backgroundColor: '#f9e4df',
+  },
+  metricIconSuccess: {
+    backgroundColor: '#e8f2ea',
+  },
   metricValue: {
     color: palette.soil,
     fontSize: 24,
@@ -1002,26 +1208,45 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   quickGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
   },
   quickCard: {
+    width: '48.5%',
     backgroundColor: '#eef5ef',
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: 'rgba(58, 102, 72, 0.12)',
-    padding: 16,
-    gap: 4,
+    padding: 14,
+    gap: 6,
+  },
+  quickCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  quickIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: palette.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   quickCardTitle: {
     color: palette.soil,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '800',
   },
   quickCardText: {
     color: palette.sageDark,
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 11,
+    lineHeight: 16,
     fontWeight: '700',
+  },
+  sectionIntro: {
+    gap: 4,
   },
   sectionCard: {
     backgroundColor: palette.surface,
@@ -1086,6 +1311,39 @@ const styles = StyleSheet.create({
     color: palette.soil,
     fontSize: 14,
     fontWeight: '800',
+  },
+  metadataRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    alignItems: 'center',
+  },
+  codeMeta: {
+    maxWidth: '52%',
+    borderRadius: 6,
+    backgroundColor: palette.parchment,
+    color: palette.clay,
+    fontSize: 11,
+    fontWeight: '700',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  smallInlineLink: {
+    alignSelf: 'flex-start',
+  },
+  smallInlineLinkText: {
+    color: palette.sageDark,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  reviewSectionHeader: {
+    backgroundColor: palette.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: palette.border,
+    padding: 14,
+    gap: 10,
+    ...shadow,
   },
   segmentRow: {
     flexDirection: 'row',
@@ -1163,6 +1421,32 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '800',
   },
+  reviewImageFrame: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    borderRadius: radii.sm,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: palette.parchment,
+  },
+  reviewImage: {
+    width: '100%',
+    height: '100%',
+  },
+  reviewImageFallback: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 16,
+  },
+  reviewImageFallbackText: {
+    color: palette.muted,
+    fontSize: 12,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
   statusBadge: {
     borderRadius: 999,
     paddingHorizontal: 10,
@@ -1171,11 +1455,17 @@ const styles = StyleSheet.create({
   statusWarning: {
     backgroundColor: '#f5ecd6',
   },
+  statusWarningStrong: {
+    backgroundColor: '#f1d99d',
+  },
   statusPositive: {
     backgroundColor: '#e8f2ea',
   },
   statusNegative: {
     backgroundColor: '#f9e4df',
+  },
+  statusFatal: {
+    backgroundColor: '#efc9c0',
   },
   statusMuted: {
     backgroundColor: '#efefef',
@@ -1190,6 +1480,48 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontSize: 12,
     lineHeight: 18,
+  },
+  sellerMetaText: {
+    color: palette.soil,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '700',
+  },
+  metadataGrid: {
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: '#fbfdfb',
+    padding: 12,
+    gap: 10,
+  },
+  metadataItem: {
+    gap: 2,
+  },
+  metadataLabel: {
+    color: palette.muted,
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  metadataValue: {
+    color: palette.soil,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '700',
+  },
+  codeBox: {
+    borderRadius: radii.sm,
+    backgroundColor: palette.parchment,
+    borderWidth: 1,
+    borderColor: palette.border,
+    padding: 12,
+  },
+  codeBoxText: {
+    color: palette.clay,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '700',
   },
   detailText: {
     color: palette.soil,
@@ -1206,6 +1538,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     color: palette.ink,
     textAlignVertical: 'top',
+  },
+  noteHelper: {
+    color: palette.error,
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '800',
   },
   actionRow: {
     flexDirection: 'row',
